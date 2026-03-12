@@ -15,11 +15,14 @@ SmartFlow is a personal finance management system based on accounting principles
 - `docs/4. 技术实现要点.md` - Technical implementation details
 - `docs/5. 用户体验.md` - UX design and interaction patterns
 
+## MCP
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
 ## Tech Stack
 
 - **Frontend**: Vue 3 + Vite + TypeScript
 - **State/Routing**: Pinia + Vue Router 4
 - **Local Database**: Dexie.js
-- **UI**: TailwindCSS (component library TBD)
+- **UI**: TailwindCSS + shadcn-vue
 - **Charts**: ECharts (vue-echarts)
 - **Utilities**: currency.js (monetary calculations), dayjs (date calculations), PapaParse (CSV parsing)
