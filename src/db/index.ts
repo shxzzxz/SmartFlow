@@ -9,7 +9,7 @@ export class SmartFlowDB extends Dexie {
   constructor() {
     super('SmartFlowDB')
     this.version(1).stores({
-      accounts: '++id, type, parentId',
+      accounts: '++id, type, parentId, sortOrder',
       transactions: '++id, txType, txTime, source, parentTxId',
       entries: '++id, transactionId, accountId',
     })

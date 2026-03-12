@@ -14,10 +14,13 @@ export interface Account {
   currency: string
   balance: number
   iconUrl?: string | null
+  creditLimit?: number | null
   billingDay?: number | null
   repaymentDay?: number | null
+  sortOrder: number
   isHidden: boolean
   createdAt: Date
+  updatedAt: Date
 }
 
 export interface Transaction {
@@ -31,6 +34,7 @@ export interface Transaction {
   parentTxId?: number | null
   source: DataSource
   createdAt: Date
+  updatedAt: Date
 }
 
 export interface Entry {
@@ -40,4 +44,5 @@ export interface Entry {
   flowDirection: FlowDirection
   amount: number
   createdAt: Date
+  updatedAt: Date
 }
