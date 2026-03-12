@@ -14,6 +14,26 @@ const router = createRouter({
       component: () => import('@/views/AccountsView.vue'),
     },
     {
+      path: '/accounts/manage',
+      name: 'accounts-manage',
+      component: () => import('@/views/AccountsManageView.vue'),
+    },
+    {
+      path: '/accounts/new',
+      name: 'account-new',
+      component: () => import('@/views/AccountNewView.vue'),
+    },
+    {
+      path: '/categories',
+      name: 'categories',
+      component: () => import('@/views/CategoriesView.vue'),
+    },
+    {
+      path: '/categories/new',
+      name: 'category-new',
+      component: () => import('@/views/CategoryNewView.vue'),
+    },
+    {
       path: '/transactions',
       name: 'transactions',
       component: () => import('@/views/TransactionsView.vue'),

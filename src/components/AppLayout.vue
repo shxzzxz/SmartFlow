@@ -35,7 +35,7 @@ import { RouterLink } from 'vue-router'
             <ArrowLeftRight :size="22" />
             <span class="text-sm font-semibold">交易流水</span>
           </RouterLink>
-          <RouterLink to="/accounts" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" active-class="bg-primary/10 text-primary">
+          <RouterLink to="/accounts/manage" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" active-class="bg-primary/10 text-primary">
             <Landmark :size="22" />
             <span class="text-sm font-medium">账户管理</span>
           </RouterLink>
@@ -43,10 +43,10 @@ import { RouterLink } from 'vue-router'
             <PieChart :size="22" />
             <span class="text-sm font-medium">预算管理</span>
           </a>
-          <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+          <RouterLink to="/categories" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" active-class="bg-primary/10 text-primary">
             <Shapes :size="22" />
             <span class="text-sm font-medium">分类管理</span>
-          </a>
+          </RouterLink>
           <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
             <Database :size="22" />
             <span class="text-sm font-medium">数据管理</span>

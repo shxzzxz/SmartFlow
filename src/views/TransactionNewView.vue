@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 
 const router = useRouter()
@@ -37,6 +38,9 @@ const closeModal = () => {
             <PlusCircle class="text-primary w-5 h-5" />
             <DialogTitle class="text-base sm:text-lg font-bold tracking-tight">新增交易</DialogTitle>
           </div>
+          <DialogDescription class="text-sm text-muted-foreground mt-1">
+            记录您的收入、支出或转账交易
+          </DialogDescription>
         </DialogHeader>
 
         <!-- Type Selector -->
