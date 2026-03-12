@@ -19,6 +19,11 @@ const router = createRouter({
       component: () => import('@/views/TransactionsView.vue'),
     },
     {
+      path: '/transactions/calendar',
+      name: 'transactions-calendar',
+      component: () => import('@/views/TransactionsCalendarView.vue'),
+    },
+    {
       path: '/transactions/new',
       name: 'transaction-new',
       component: () => import('@/views/TransactionNewView.vue'),
