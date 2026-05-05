@@ -1,0 +1,117 @@
+# ===== Agent / AI 工具 =====
+.claude/
+.codex/
+.superpowers/
+.worktrees/
+
+# ===== 临时文件 =====
+demo/
+temp/
+tmp/
+
+# ===== Flutter / Dart =====
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.fvm/
+.flutter-version
+pubspec.lock
+
+# 生成文件
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+*.config.dart
+**/generated_plugin_registrant.dart
+
+# Flutter symbols & 元数据
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.metadata
+
+# ===== Android =====
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+**/android/app/release/
+**/android/app/debug/
+*.jks
+*.keystore
+*.iml
+
+# ===== iOS / macOS =====
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# ===== 日志 =====
+logs
+*.log
+
+# ===== 构建产物 / 测试覆盖 =====
+coverage
+dist
+dist-ssr
+*.local
+
+# ===== IDE / 编辑器 =====
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iws
+*.ipr
+*~
+.history/
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===== 环境变量 / 密钥 =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
