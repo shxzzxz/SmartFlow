@@ -19,13 +19,8 @@ tmp/
 build/
 .fvm/
 .flutter-version
-pubspec.lock
 
-# 生成文件
-*.g.dart
-*.freezed.dart
-*.mocks.dart
-*.config.dart
+# Flutter 工具自动生成的插件注册文件
 **/generated_plugin_registrant.dart
 
 # Flutter symbols & 元数据
@@ -34,11 +29,8 @@ pubspec.lock
 .metadata
 
 # ===== Android =====
-**/android/**/gradle-wrapper.jar
 **/android/.gradle
 **/android/captures/
-**/android/gradlew
-**/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
