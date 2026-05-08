@@ -16,12 +16,13 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
   Stream<List<TransactionListItem>> watchTransactions(
     TransactionListQuery query,
   ) {
-    final accountFilter = query.accountId == null
-        ? ''
-        : 'AND EXISTS ('
-            'SELECT 1 FROM entries ae '
-            'WHERE ae.transaction_id = t.id AND ae.account_id = ?'
-            ') ';
+    final accountFilter =
+        query.accountId == null
+            ? ''
+            : 'AND EXISTS ('
+                'SELECT 1 FROM entries ae '
+                'WHERE ae.transaction_id = t.id AND ae.account_id = ?'
+                ') ';
     final variables = <Variable<Object>>[
       Variable<String>(BusinessState.current.name),
       if (query.accountId != null) Variable<int>(query.accountId!),
@@ -33,7 +34,18 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
         .customSelect(
           'SELECT t.id, t.business_purpose, t.occurred_at, '
           't.currency_code, t.primary_amount_minor, t.counterparty_name, '
-          "t.note, COALESCE(group_concat(a.name, ' / '), '') AS account_names "
+          't.note, '
+          "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
+          "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
+          "AND a.account_type = 'expense' THEN a.name "
+          "WHEN t.business_purpose = 'dailyIncome' "
+          "AND a.account_type = 'income' THEN a.name END) AS category_name, "
+          "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+          "AND e.direction = 'credit' THEN a.name END) "
+          'AS flow_out_account_name, '
+          "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+          "AND e.direction = 'debit' THEN a.name END) "
+          'AS flow_in_account_name '
           'FROM transactions t '
           'LEFT JOIN entries e ON e.transaction_id = t.id '
           'LEFT JOIN accounts a ON a.id = e.account_id '
@@ -75,28 +87,32 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
         .asyncMap((_) => _getTransactionDetail(transactionId));
   }
 
-  Future<TransactionDetailView?> _getTransactionDetail(int transactionId) async {
-    final transaction = await (_database.select(_database.transactions)
-          ..where((row) => row.id.equals(transactionId)))
-        .getSingleOrNull();
+  Future<TransactionDetailView?> _getTransactionDetail(
+    int transactionId,
+  ) async {
+    final transaction =
+        await (_database.select(_database.transactions)
+          ..where((row) => row.id.equals(transactionId))).getSingleOrNull();
     if (transaction == null) {
       return null;
     }
 
-    final details = await (_database.select(_database.transactionDetails)
-          ..where((row) => row.transactionId.equals(transactionId))
-          ..orderBy([(row) => OrderingTerm.asc(row.lineNo)]))
-        .get();
+    final details =
+        await (_database.select(_database.transactionDetails)
+              ..where((row) => row.transactionId.equals(transactionId))
+              ..orderBy([(row) => OrderingTerm.asc(row.lineNo)]))
+            .get();
 
-    final entryRows = await (_database.select(_database.entries).join([
-      innerJoin(
-        _database.accounts,
-        _database.accounts.id.equalsExp(_database.entries.accountId),
-      ),
-    ])
-          ..where(_database.entries.transactionId.equals(transactionId))
-          ..orderBy([OrderingTerm.asc(_database.entries.id)]))
-        .get();
+    final entryRows =
+        await (_database.select(_database.entries).join([
+                innerJoin(
+                  _database.accounts,
+                  _database.accounts.id.equalsExp(_database.entries.accountId),
+                ),
+              ])
+              ..where(_database.entries.transactionId.equals(transactionId))
+              ..orderBy([OrderingTerm.asc(_database.entries.id)]))
+            .get();
 
     return TransactionDetailView(
       transaction: _mapTransaction(transaction),
@@ -142,6 +158,9 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       counterpartyName: row.read<String?>('counterparty_name'),
       note: row.read<String?>('note'),
       accountNames: row.read<String>('account_names'),
+      categoryName: row.read<String?>('category_name'),
+      flowOutAccountName: row.read<String?>('flow_out_account_name'),
+      flowInAccountName: row.read<String?>('flow_in_account_name'),
     );
   }
 

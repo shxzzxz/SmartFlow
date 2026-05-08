@@ -48,6 +48,9 @@ class TransactionListItem {
     required this.occurredAt,
     required this.primaryAmount,
     required this.accountNames,
+    this.categoryName,
+    this.flowOutAccountName,
+    this.flowInAccountName,
     this.counterpartyName,
     this.note,
   });
@@ -57,6 +60,9 @@ class TransactionListItem {
   final DateTime occurredAt;
   final Money primaryAmount;
   final String accountNames;
+  final String? categoryName;
+  final String? flowOutAccountName;
+  final String? flowInAccountName;
   final String? counterpartyName;
   final String? note;
 }

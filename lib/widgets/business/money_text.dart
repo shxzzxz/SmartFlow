@@ -19,10 +19,12 @@ class MoneyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final color = switch (semantic) {
       MoneySemantic.income => financeColors.income,
       MoneySemantic.expense => financeColors.expense,
+      MoneySemantic.neutral => colors.onSurface,
       MoneySemantic.asset => financeColors.asset,
       MoneySemantic.liability => financeColors.liability,
       MoneySemantic.equity => financeColors.equity,
@@ -38,10 +40,4 @@ class MoneyText extends StatelessWidget {
   }
 }
 
-enum MoneySemantic {
-  income,
-  expense,
-  asset,
-  liability,
-  equity,
-}
+enum MoneySemantic { income, expense, neutral, asset, liability, equity }

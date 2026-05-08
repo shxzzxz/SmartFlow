@@ -18,9 +18,12 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('SmartFlow'), findsOneWidget);
-    expect(find.text('净资产'), findsOneWidget);
-    expect(find.text('首页'), findsOneWidget);
-    expect(find.text('记一笔'), findsWidgets);
+    final now = DateTime.now();
+
+    expect(find.text('${now.year}年${now.month}月'), findsOneWidget);
+    expect(find.text('本月收入'), findsOneWidget);
+    expect(find.text('本月支出'), findsOneWidget);
+    expect(find.text('剩余预算'), findsOneWidget);
+    expect(find.text('本月暂无交易记录'), findsOneWidget);
   });
 }

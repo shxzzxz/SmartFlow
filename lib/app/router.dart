@@ -7,6 +7,7 @@ import '../features/accounts/pages/accounts_page.dart';
 import '../features/categories/pages/categories_page.dart';
 import '../features/categories/pages/category_form_page.dart';
 import '../features/home/pages/home_page.dart';
+import '../features/placeholder/pages/placeholder_page.dart';
 import '../features/transactions/pages/transaction_detail_page.dart';
 import '../features/transactions/pages/transaction_form_page.dart';
 import '../features/transactions/pages/transactions_page.dart';
@@ -16,13 +17,22 @@ final appRouter = GoRouter(
     ShellRoute(
       builder: (context, state, child) => AppShell(child: child),
       routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const HomePage(),
-        ),
+        GoRoute(path: '/', builder: (context, state) => const HomePage()),
         GoRoute(
           path: '/accounts',
           builder: (context, state) => const AccountsPage(),
+        ),
+        GoRoute(
+          path: '/calendar',
+          builder: (context, state) => const PlaceholderPage(title: '日历'),
+        ),
+        GoRoute(
+          path: '/statistics',
+          builder: (context, state) => const PlaceholderPage(title: '统计'),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (context, state) => const PlaceholderPage(title: '我的'),
         ),
         GoRoute(
           path: '/categories',
@@ -40,9 +50,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/transactions/:id',
-      builder: (context, state) => TransactionDetailPage(
-        transactionId: int.parse(state.pathParameters['id']!),
-      ),
+      builder:
+          (context, state) => TransactionDetailPage(
+            transactionId: int.parse(state.pathParameters['id']!),
+          ),
     ),
     GoRoute(
       path: '/accounts/new',
@@ -50,9 +61,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/accounts/:id',
-      builder: (context, state) => AccountTransactionsPage(
-        accountId: int.parse(state.pathParameters['id']!),
-      ),
+      builder:
+          (context, state) => AccountTransactionsPage(
+            accountId: int.parse(state.pathParameters['id']!),
+          ),
     ),
     GoRoute(
       path: '/categories/new',

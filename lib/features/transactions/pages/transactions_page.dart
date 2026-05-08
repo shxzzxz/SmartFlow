@@ -61,7 +61,8 @@ class _TransactionSummaryCard extends StatelessWidget {
     final now = DateTime.now();
     final monthItems = items.where(
       (item) =>
-          item.occurredAt.year == now.year && item.occurredAt.month == now.month,
+          item.occurredAt.year == now.year &&
+          item.occurredAt.month == now.month,
     );
     final incomeMinor = monthItems
         .where((item) => item.businessPurpose == BusinessPurpose.dailyIncome)
@@ -123,9 +124,9 @@ class _SummaryMetric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(color: colors.onSurfaceVariant),
         ),
         const SizedBox(height: AppSpacing.space4),
         MoneyText(
@@ -145,13 +146,7 @@ class _TransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final semantic = switch (item.businessPurpose) {
-      BusinessPurpose.dailyExpense => MoneySemantic.expense,
-      BusinessPurpose.dailyIncome => MoneySemantic.income,
-      BusinessPurpose.transfer => null,
-      BusinessPurpose.openingBalance => MoneySemantic.equity,
-      _ => null,
-    };
+    final semantic = _moneySemanticForPurpose(item.businessPurpose);
 
     return Card(
       child: ListTile(
@@ -173,4 +168,20 @@ class _TransactionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+MoneySemantic _moneySemanticForPurpose(BusinessPurpose purpose) {
+  return switch (purpose) {
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.refund ||
+    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.borrowing => MoneySemantic.income,
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.debtRepayment => MoneySemantic.expense,
+    BusinessPurpose.transfer ||
+    BusinessPurpose.openingBalance ||
+    BusinessPurpose.balanceAdjustment ||
+    BusinessPurpose.reimbursementClose => MoneySemantic.neutral,
+  };
 }
