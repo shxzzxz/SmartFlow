@@ -1,0 +1,49 @@
+import 'package:drift/drift.dart';
+
+import '../../../domain/enums/accounting_enums.dart';
+
+@DataClassName('TransactionRow')
+class Transactions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get rootTransactionId => integer()
+      .named('root_transaction_id')
+      .nullable()
+      .references(Transactions, #id)();
+  TextColumn get businessPurpose =>
+      textEnum<BusinessPurpose>().named('business_purpose')();
+  DateTimeColumn get occurredAt => dateTime().named('occurred_at')();
+  TextColumn get currencyCode =>
+      text().named('currency_code').withLength(min: 3, max: 3)();
+  IntColumn get primaryAmountMinor =>
+      integer().named('primary_amount_minor')();
+  TextColumn get counterpartyName =>
+      text().named('counterparty_name').nullable()();
+  TextColumn get note => text().nullable()();
+  IntColumn get parentTransactionId => integer()
+      .named('parent_transaction_id')
+      .nullable()
+      .references(Transactions, #id)();
+  IntColumn get reimbursementExpenseAccountId =>
+      integer().named('reimbursement_expense_account_id').nullable()();
+  TextColumn get mutationKind =>
+      textEnum<MutationKind>().named('mutation_kind')();
+  IntColumn get mutationPreviousTransactionId => integer()
+      .named('mutation_previous_transaction_id')
+      .nullable()
+      .references(Transactions, #id)();
+  TextColumn get mutationReason =>
+      textEnum<MutationReason>().named('mutation_reason').nullable()();
+  TextColumn get businessState =>
+      textEnum<BusinessState>().named('business_state')();
+  BoolColumn get isExcludedFromStats => boolean()
+      .named('is_excluded_from_stats')
+      .withDefault(const Constant(false))();
+  BoolColumn get isExcludedFromBudget => boolean()
+      .named('is_excluded_from_budget')
+      .withDefault(const Constant(false))();
+  TextColumn get sourceKind => textEnum<SourceKind>().named('source_kind')();
+  DateTimeColumn get createdAt =>
+      dateTime().named('created_at').withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt =>
+      dateTime().named('updated_at').withDefault(currentDateAndTime)();
+}
