@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
+import 'package:smartflow/domain/entities/account.dart';
 import 'package:smartflow/domain/enums/accounting_enums.dart';
+import 'package:smartflow/domain/repositories/account_repository.dart';
 import 'package:smartflow/domain/services/posting_command.dart';
 import 'package:smartflow/domain/services/posting_service.dart';
 import 'package:smartflow/domain/services/transaction_service.dart';
@@ -113,6 +115,28 @@ void main() {
       expect(result, isA<FailureResult<PostTransactionResult>>());
       expect(postingService.lastCommand, isNull);
     });
+
+    test('rejects accounts used in the wrong transaction role', () async {
+      service = TransactionServiceImpl(
+        postingService,
+        accountRepository: _FakeAccountRepository({
+          1: _account(id: 1, type: AccountType.expense),
+          101: _account(id: 101, type: AccountType.expense),
+        }),
+      );
+
+      final result = await service.createExpense(
+        CreateExpenseCommand(
+          amount: const Money(minorUnits: 2000),
+          paidFromAccountId: 1,
+          expenseAccountId: 101,
+          occurredAt: DateTime(2026, 5),
+        ),
+      );
+
+      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(postingService.lastCommand, isNull);
+    });
   });
 }
 
@@ -131,4 +155,51 @@ class _RecordingPostingService implements PostingService {
       ),
     );
   }
+}
+
+class _FakeAccountRepository implements AccountRepository {
+  const _FakeAccountRepository(this.accounts);
+
+  final Map<int, Account> accounts;
+
+  @override
+  Future<List<Account>> findAccountsByIds(Set<int> ids) async {
+    return [
+      for (final id in ids)
+        if (accounts[id] != null) accounts[id]!,
+    ];
+  }
+
+  @override
+  Future<Account?> findAccountById(int id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<List<Account>> watchAccounts(Set<AccountType> types) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Account> createAccount(command) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateAccount(command) {
+    throw UnimplementedError();
+  }
+}
+
+Account _account({
+  required int id,
+  required AccountType type,
+}) {
+  return Account(
+    id: id,
+    name: 'Account $id',
+    type: type,
+    currencyCode: Money.defaultCurrency,
+    balance: Money.zero(),
+  );
 }
