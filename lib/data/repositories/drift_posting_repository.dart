@@ -123,6 +123,36 @@ class DriftPostingRepository implements PostingRepository {
     });
   }
 
+  @override
+  Future<void> updateTransactionMetadata({
+    required int transactionId,
+    String? note,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
+  }) async {
+    if (note == null &&
+        isExcludedFromStats == null &&
+        isExcludedFromBudget == null) {
+      return;
+    }
+    await (_database.update(_database.transactions)
+          ..where((t) => t.id.equals(transactionId)))
+        .write(
+      TransactionsCompanion(
+        note: note == null
+            ? const Value.absent()
+            : Value(note.isEmpty ? null : note),
+        isExcludedFromStats: isExcludedFromStats == null
+            ? const Value.absent()
+            : Value(isExcludedFromStats),
+        isExcludedFromBudget: isExcludedFromBudget == null
+            ? const Value.absent()
+            : Value(isExcludedFromBudget),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   domain.Account _mapAccount(AccountRow row) {
     return domain.Account(
       id: row.id,

@@ -47,6 +47,12 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           "AND a.account_type = 'income' THEN a.icon_key END) "
           'AS category_icon_key, '
           "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+          "AND e.direction = 'credit' THEN a.id END) "
+          'AS flow_out_account_id, '
+          "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+          "AND e.direction = 'debit' THEN a.id END) "
+          'AS flow_in_account_id, '
+          "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
           "AND e.direction = 'credit' THEN a.name END) "
           'AS flow_out_account_name, '
           "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
@@ -267,6 +273,12 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
       'NULL AS category_name, NULL AS category_icon_key, '
       "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+      "AND e.direction = 'credit' THEN a.id END) "
+      'AS flow_out_account_id, '
+      "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+      "AND e.direction = 'debit' THEN a.id END) "
+      'AS flow_in_account_id, '
+      "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
       "AND e.direction = 'credit' THEN a.name END) "
       'AS flow_out_account_name, '
       "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
@@ -305,6 +317,8 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       accountNames: row.read<String>('account_names'),
       categoryName: row.read<String?>('category_name'),
       categoryIconKey: row.read<String?>('category_icon_key'),
+      flowOutAccountId: row.read<int?>('flow_out_account_id'),
+      flowInAccountId: row.read<int?>('flow_in_account_id'),
       flowOutAccountName: row.read<String?>('flow_out_account_name'),
       flowInAccountName: row.read<String?>('flow_in_account_name'),
     );
@@ -332,6 +346,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       isExcludedFromStats: row.isExcludedFromStats,
       isExcludedFromBudget: row.isExcludedFromBudget,
       sourceKind: row.sourceKind,
+      createdAt: row.createdAt,
     );
   }
 }

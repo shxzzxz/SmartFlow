@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
@@ -10,9 +10,11 @@ import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
+import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
-import '../../../widgets/business/category_icon.dart';
+import '../../../widgets/business/account_icon.dart';
+import '../../../widgets/business/category_avatar.dart';
 import '../../../widgets/business/finance_labels.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -35,30 +37,36 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final transactionsAsync = ref.watch(transactionListProvider());
-    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colors.surface,
       body: SafeArea(
-        child: transactionsAsync.when(
-          loading:
-              () => _HomeLoadingView(
-                visibleMonth: _visibleMonth,
-                onMonthPressed: _pickMonth,
+        child: Column(
+          children: [
+            _HomeHeader(
+              visibleMonth: _visibleMonth,
+              onMonthPressed: _pickMonth,
+            ),
+            Expanded(
+              child: transactionsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) =>
+                    Center(child: Text('加载失败：$error')),
+                data: (transactions) => _HomeContent(
+                  visibleMonth: _visibleMonth,
+                  transactions: transactions,
+                ),
               ),
-          error:
-              (error, stackTrace) => _HomeErrorView(
-                visibleMonth: _visibleMonth,
-                error: error,
-                onMonthPressed: _pickMonth,
-              ),
-          data:
-              (transactions) => _HomeContent(
-                visibleMonth: _visibleMonth,
-                transactions: transactions,
-                onMonthPressed: _pickMonth,
-              ),
+            ),
+          ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/transactions/new'),
+        tooltip: '新建记账',
+        shape: const CircleBorder(),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        child: const Icon(RemixIcons.add_line),
       ),
     );
   }
@@ -74,52 +82,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (!mounted || selected == null) {
       return;
     }
-
     setState(() {
       _visibleMonth = DateTime(selected.year, selected.month);
     });
-  }
-}
-
-class _HomeContent extends StatelessWidget {
-  const _HomeContent({
-    required this.visibleMonth,
-    required this.transactions,
-    required this.onMonthPressed,
-  });
-
-  final DateTime visibleMonth;
-  final List<TransactionListItem> transactions;
-  final VoidCallback onMonthPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final monthItems = _transactionsInMonth(transactions, visibleMonth);
-    final groups = _groupByDate(monthItems);
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space14,
-        AppSpacing.space16,
-        AppSpacing.space16,
-      ),
-      children: [
-        _HomeHeader(visibleMonth: visibleMonth, onMonthPressed: onMonthPressed),
-        const SizedBox(height: AppSpacing.space14),
-        _MonthlySummaryCard(items: monthItems),
-        const SizedBox(height: AppSpacing.space10),
-        const _NewTransactionButton(),
-        const SizedBox(height: AppSpacing.space16),
-        if (groups.isEmpty)
-          const _EmptyTransactionCard()
-        else
-          for (final group in groups) ...[
-            _TransactionDaySection(group: group),
-            const SizedBox(height: AppSpacing.space16),
-          ],
-      ],
-    );
   }
 }
 
@@ -134,49 +99,93 @@ class _HomeHeader extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Row(
-      children: [
-        InkWell(
-          onTap: onMonthPressed,
-          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space4,
-              vertical: AppSpacing.space8,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${visibleMonth.year}年${visibleMonth.month}月',
-                  style: textTheme.headlineSmall?.copyWith(
-                    fontSize: AppTypography.fontSizeXl,
-                    fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space16,
+        AppSpacing.space10,
+        AppSpacing.space8,
+        AppSpacing.space12,
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: onMonthPressed,
+            borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space4,
+                vertical: AppSpacing.space6,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${visibleMonth.year}年${visibleMonth.month}月',
+                    style: textTheme.titleLarge?.copyWith(
+                      fontSize: AppTypography.fontSizeLg,
+                      fontWeight: FontWeight.w500,
+                      color: colors.onSurface,
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.space4),
-                Icon(
-                  Icons.arrow_drop_down_rounded,
-                  color: colors.onSurface,
-                  size: AppSpacing.space20,
-                ),
-              ],
+                  const SizedBox(width: AppSpacing.space4),
+                  Icon(
+                    RemixIcons.arrow_down_s_line,
+                    color: colors.onSurfaceVariant,
+                    size: AppSpacing.space20,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        const Spacer(),
-        IconButton(
-          onPressed: () => context.go('/transactions'),
-          icon: const Icon(Icons.search_rounded),
-          iconSize: 27,
-          tooltip: '搜索',
-        ),
-        IconButton(
-          onPressed: () => context.go('/transactions'),
-          icon: const Icon(Icons.filter_alt_outlined),
-          iconSize: 27,
-          tooltip: '筛选',
-        ),
+          const Spacer(),
+          IconButton(
+            onPressed: () => context.go('/transactions'),
+            icon: const Icon(RemixIcons.search_line),
+            iconSize: 22,
+            color: colors.onSurface,
+            tooltip: '搜索',
+          ),
+          IconButton(
+            onPressed: () => context.go('/transactions'),
+            icon: const Icon(RemixIcons.equalizer_line),
+            iconSize: 22,
+            color: colors.onSurface,
+            tooltip: '筛选',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeContent extends StatelessWidget {
+  const _HomeContent({required this.visibleMonth, required this.transactions});
+
+  final DateTime visibleMonth;
+  final List<TransactionListItem> transactions;
+
+  @override
+  Widget build(BuildContext context) {
+    final monthItems = _transactionsInMonth(transactions, visibleMonth);
+    final groups = _groupByDate(monthItems);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space16,
+        0,
+        AppSpacing.space16,
+        AppSpacing.space24 + 56, // 留给 FAB
+      ),
+      children: [
+        _MonthlySummaryCard(items: monthItems),
+        const SizedBox(height: AppSpacing.space20),
+        if (groups.isEmpty)
+          const _EmptyTransactionCard()
+        else
+          for (final group in groups) ...[
+            _TransactionDayCard(group: group),
+            const SizedBox(height: AppSpacing.space10),
+          ],
       ],
     );
   }
@@ -203,11 +212,9 @@ class _MonthlySummaryCard extends StatelessWidget {
 
     return AppSurface(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          AppSpacing.space18,
-          AppSpacing.space16,
-          AppSpacing.space18,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space16,
         ),
         child: IntrinsicHeight(
           child: Row(
@@ -218,9 +225,10 @@ class _MonthlySummaryCard extends StatelessWidget {
                   amountMinor: incomeMinor,
                   amountColor: financeColors.income,
                   caption: '较上月 +8.6%',
+                  showSign: true,
                 ),
               ),
-              const SizedBox(width: AppSpacing.space16),
+              _SummaryDivider(color: colors.outlineVariant),
               Expanded(
                 child: _SummaryMetric(
                   label: '本月支出',
@@ -229,12 +237,12 @@ class _MonthlySummaryCard extends StatelessWidget {
                   caption: '较上月 +12.3%',
                 ),
               ),
-              const SizedBox(width: AppSpacing.space16),
+              _SummaryDivider(color: colors.outlineVariant),
               Expanded(
                 child: _SummaryMetric(
                   label: '剩余预算',
                   amountMinor: remainingBudgetMinor,
-                  amountColor: colors.onSurface,
+                  amountColor: colors.primary,
                   caption: '剩余 $remainingPercent%',
                 ),
               ),
@@ -246,42 +254,20 @@ class _MonthlySummaryCard extends StatelessWidget {
   }
 }
 
-class _NewTransactionButton extends StatelessWidget {
-  const _NewTransactionButton();
+class _SummaryDivider extends StatelessWidget {
+  const _SummaryDivider({required this.color});
+
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return AppSurface(
-      border: true,
-      child: InkWell(
-        onTap: () => context.push('/transactions/new'),
-        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
-        child: SizedBox(
-          height: 42,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.add_card_outlined,
-                color: colors.primary,
-                size: AppSpacing.space20,
-              ),
-              const SizedBox(width: AppSpacing.space8),
-              Text(
-                '新建记账',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colors.primary,
-                  fontSize: AppTypography.fontSizeSm,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return Container(
+      width: 1,
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space12,
+        vertical: AppSpacing.space4,
       ),
+      color: color.withValues(alpha: 0.6),
     );
   }
 }
@@ -292,56 +278,54 @@ class _SummaryMetric extends StatelessWidget {
     required this.amountMinor,
     required this.amountColor,
     required this.caption,
+    this.showSign = false,
   });
 
   final String label;
   final int amountMinor;
   final Color amountColor;
   final String caption;
+  final bool showSign;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                style: textTheme.labelLarge?.copyWith(
-                  fontSize: AppTypography.fontSizeSm,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: textTheme.bodySmall?.copyWith(
+            fontSize: AppTypography.fontSizeXs,
+            color: colors.onSurface,
+            fontWeight: FontWeight.w400,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: AppSpacing.space10),
+        const SizedBox(height: AppSpacing.space6),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Text(
-            _formatCurrency(amountMinor),
+            _formatMonthlyAmount(amountMinor, showSign: showSign),
             style: textTheme.titleMedium?.copyWith(
-              fontSize: AppTypography.fontSizeLg,
+              fontSize: 18,
               color: amountColor,
               fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
           ),
         ),
-        const SizedBox(height: AppSpacing.space10),
+        const SizedBox(height: AppSpacing.space6),
         Text(
           caption,
           style: textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: AppTypography.fontSizeSm,
-            fontWeight: FontWeight.w500,
+            color: colors.onSurfaceVariant,
+            fontSize: 11,
+            fontWeight: FontWeight.w400,
           ),
           overflow: TextOverflow.ellipsis,
         ),
@@ -350,8 +334,52 @@ class _SummaryMetric extends StatelessWidget {
   }
 }
 
-class _TransactionDaySection extends StatelessWidget {
-  const _TransactionDaySection({required this.group});
+class _TransactionDayCard extends StatelessWidget {
+  const _TransactionDayCard({required this.group});
+
+  final _TransactionDayGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dividerColor = colors.outlineVariant.withValues(alpha: 0.5);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space4,
+            0,
+            AppSpacing.space4,
+            AppSpacing.space8,
+          ),
+          child: _DayHeader(group: group),
+        ),
+        AppSurface(
+          child: Column(
+            children: [
+              for (var i = 0; i < group.items.length; i++) ...[
+                _TransactionRow(item: group.items[i]),
+                if (i < group.items.length - 1)
+                  Container(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space16,
+                    ),
+                    height: 1,
+                    color: dividerColor,
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.group});
 
   final _TransactionDayGroup group;
 
@@ -360,56 +388,36 @@ class _TransactionDaySection extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final sectionTextStyle = textTheme.titleSmall?.copyWith(
-      fontSize: AppTypography.fontSizeSm,
-      fontWeight: FontWeight.w500,
-    );
 
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Text(
-              '${group.date.month}月${group.date.day}日',
-              style: sectionTextStyle?.copyWith(color: colors.onSurface),
-            ),
-            const SizedBox(width: AppSpacing.space16),
-            Text(
-              _weekdayLabel(group.date),
-              style: sectionTextStyle?.copyWith(color: colors.onSurfaceVariant),
-            ),
-            const Spacer(),
-            _DayTotal(
-              label: '收入',
-              amountMinor: group.incomeMinor,
-              color: financeColors.income,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space8,
-              ),
-              child: Text(
-                '·',
-                style: sectionTextStyle?.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-            ),
-            _DayTotal(
-              label: '支出',
-              amountMinor: group.expenseMinor,
-              color: financeColors.expense,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space8),
-        AppSurface(
-          border: true,
-          child: Column(
-            children: [
-              for (final item in group.items) _TransactionItemTile(item: item),
-            ],
+        Text(
+          '${group.date.month}月${group.date.day}日',
+          style: textTheme.titleSmall?.copyWith(
+            fontSize: AppTypography.fontSizeMd,
+            fontWeight: FontWeight.w500,
+            color: colors.onSurface,
           ),
+        ),
+        const SizedBox(width: AppSpacing.space8),
+        Text(
+          _weekdayLabel(group.date),
+          style: textTheme.bodySmall?.copyWith(
+            fontSize: AppTypography.fontSizeXs,
+            color: colors.onSurfaceVariant,
+          ),
+        ),
+        const Spacer(),
+        _DayTotal(
+          label: '收入',
+          amountMinor: group.incomeMinor,
+          color: financeColors.income,
+        ),
+        const SizedBox(width: AppSpacing.space12),
+        _DayTotal(
+          label: '支出',
+          amountMinor: group.expenseMinor,
+          color: financeColors.expense,
         ),
       ],
     );
@@ -429,20 +437,25 @@ class _DayTotal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Text.rich(
       TextSpan(
-        text: label,
+        text: '$label ',
         style: textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: AppTypography.fontSizeSm,
+          fontSize: AppTypography.fontSizeXs,
+          color: colors.onSurfaceVariant,
           fontWeight: FontWeight.w400,
         ),
         children: [
           TextSpan(
             text: _formatCurrency(amountMinor),
-            style: TextStyle(color: color, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w500,
+              fontSize: AppTypography.fontSizeXs,
+            ),
           ),
         ],
       ),
@@ -451,8 +464,8 @@ class _DayTotal extends StatelessWidget {
   }
 }
 
-class _TransactionItemTile extends StatelessWidget {
-  const _TransactionItemTile({required this.item});
+class _TransactionRow extends StatelessWidget {
+  const _TransactionRow({required this.item});
 
   final TransactionListItem item;
 
@@ -463,23 +476,25 @@ class _TransactionItemTile extends StatelessWidget {
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final amountColor = _amountColor(colors, financeColors, item.businessPurpose);
     final title = _transactionPrimaryLabel(item);
+    final note = item.note?.trim();
+    final hasNote = note != null && note.isNotEmpty;
+    final subtitle = hasNote
+        ? '${_formatTime(item.occurredAt)}  $note'
+        : _formatTime(item.occurredAt);
 
     return InkWell(
       onTap: () => context.push('/transactions/${item.id}'),
-      borderRadius: BorderRadius.circular(AppRadius.radiusXl),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space14,
-          AppSpacing.space8,
-          AppSpacing.space14,
-          AppSpacing.space8,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space14,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CategoryIcon(
+            CategoryAvatar(
               iconKey: _resolveCategoryIconKey(item),
-              fallback: _categoryIconFallback(item.businessPurpose),
+              fallback: _categoryAvatarFallback(item.businessPurpose),
             ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
@@ -494,26 +509,24 @@ class _TransactionItemTile extends StatelessWidget {
                           style: textTheme.titleSmall?.copyWith(
                             fontSize: AppTypography.fontSizeMd,
                             fontWeight: FontWeight.w400,
+                            color: colors.onSurface,
                           ),
                           overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.space8),
-                      if (_needsBadge(item.businessPurpose))
+                      if (_needsBadge(item.businessPurpose)) ...[
+                        const SizedBox(width: AppSpacing.space6),
                         _PurposeBadge(purpose: item.businessPurpose),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.space2),
+                  const SizedBox(height: AppSpacing.space4),
                   Text(
-                    [
-                      _formatTime(item.occurredAt),
-                      if (item.note?.trim().isNotEmpty == true)
-                        item.note!.trim(),
-                    ].join('  '),
+                    subtitle,
                     style: textTheme.bodySmall?.copyWith(
                       fontSize: AppTypography.fontSizeXs,
                       color: colors.onSurfaceVariant,
-                      fontWeight: FontWeight.w400,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -523,7 +536,7 @@ class _TransactionItemTile extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.space8),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 132),
+              constraints: const BoxConstraints(maxWidth: 140),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -549,26 +562,23 @@ class _TransactionItemTile extends StatelessWidget {
   }
 }
 
-class _AccountLine extends StatelessWidget {
+class _AccountLine extends ConsumerWidget {
   const _AccountLine({required this.item});
 
   final TransactionListItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final accountText = _transactionAccountLabel(item);
-    final iconAsset = _accountIconAsset(accountText);
+    final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+    final iconKey = _resolveIconKey(item, accounts);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SvgPicture.asset(
-          iconAsset,
-          width: AppTypography.fontSizeXs,
-          height: AppTypography.fontSizeXs,
-        ),
+        AccountIcon(iconKey: iconKey, size: 12),
         const SizedBox(width: AppSpacing.space4),
         Flexible(
           child: Text(
@@ -579,11 +589,27 @@ class _AccountLine extends StatelessWidget {
               fontWeight: FontWeight.w400,
             ),
             overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ),
       ],
     );
   }
+}
+
+String? _resolveIconKey(TransactionListItem item, List<Account> accounts) {
+  final accountId = switch (item.businessPurpose) {
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.debtRepayment =>
+      item.flowOutAccountId ?? item.flowInAccountId,
+    _ => item.flowInAccountId ?? item.flowOutAccountId,
+  };
+  if (accountId == null) return null;
+  for (final account in accounts) {
+    if (account.id == accountId) return account.iconKey;
+  }
+  return null;
 }
 
 class _PurposeBadge extends StatelessWidget {
@@ -598,18 +624,18 @@ class _PurposeBadge extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space4,
+        horizontal: AppSpacing.space6,
+        vertical: 2,
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadius.radiusSm),
       ),
       child: Text(
-        transactionPurposeLabel(purpose),
+        _shortPurposeLabel(purpose),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
-          fontSize: AppTypography.fontSizeXs,
+          fontSize: 10,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -623,24 +649,19 @@ class _EmptyTransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      color: colors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-        side: BorderSide(color: colors.outlineVariant),
-      ),
+    return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space24),
         child: Row(
           children: [
-            Icon(Icons.receipt_long_outlined, color: colors.onSurfaceVariant),
+            Icon(RemixIcons.file_list_3_line, color: colors.onSurfaceVariant),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Text(
                 '本月暂无交易记录',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: textTheme.bodyMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
               ),
@@ -648,65 +669,6 @@ class _EmptyTransactionCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _HomeLoadingView extends StatelessWidget {
-  const _HomeLoadingView({
-    required this.visibleMonth,
-    required this.onMonthPressed,
-  });
-
-  final DateTime visibleMonth;
-  final VoidCallback onMonthPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.space24),
-      children: [
-        _HomeHeader(visibleMonth: visibleMonth, onMonthPressed: onMonthPressed),
-        const SizedBox(height: AppSpacing.space24),
-        const Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacing.space24),
-            child: LinearProgressIndicator(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HomeErrorView extends StatelessWidget {
-  const _HomeErrorView({
-    required this.visibleMonth,
-    required this.error,
-    required this.onMonthPressed,
-  });
-
-  final DateTime visibleMonth;
-  final Object error;
-  final VoidCallback onMonthPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.space24),
-      children: [
-        _HomeHeader(visibleMonth: visibleMonth, onMonthPressed: onMonthPressed),
-        const SizedBox(height: AppSpacing.space24),
-        Card(
-          margin: EdgeInsets.zero,
-          child: ListTile(
-            leading: const Icon(Icons.error_outline_rounded),
-            title: const Text('数据加载失败'),
-            subtitle: Text('$error'),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -799,6 +761,16 @@ bool _needsBadge(BusinessPurpose purpose) {
   };
 }
 
+String _shortPurposeLabel(BusinessPurpose purpose) {
+  return switch (purpose) {
+    BusinessPurpose.refund => '退',
+    BusinessPurpose.reimbursementAdvance => '报',
+    BusinessPurpose.reimbursementReceipt => '收',
+    BusinessPurpose.reimbursementClose => '结',
+    _ => transactionPurposeLabel(purpose),
+  };
+}
+
 String? _resolveCategoryIconKey(TransactionListItem item) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
@@ -815,14 +787,19 @@ String? _resolveCategoryIconKey(TransactionListItem item) {
   };
 }
 
-CategoryIconFallback _categoryIconFallback(BusinessPurpose purpose) {
+CategoryAvatarFallback _categoryAvatarFallback(BusinessPurpose purpose) {
   return switch (purpose) {
-    BusinessPurpose.dailyIncome => CategoryIconFallback.income,
-    BusinessPurpose.dailyExpense => CategoryIconFallback.expense,
-    _ => CategoryIconFallback.generic,
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.refund ||
+    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.borrowing => CategoryAvatarFallback.income,
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.debtRepayment => CategoryAvatarFallback.expense,
+    BusinessPurpose.transfer => CategoryAvatarFallback.transfer,
+    _ => CategoryAvatarFallback.generic,
   };
 }
-
 
 String _transactionPrimaryLabel(TransactionListItem item) {
   return switch (item.businessPurpose) {
@@ -853,12 +830,11 @@ String _flowAccountLabel(TransactionListItem item) {
 }
 
 String _firstAccountName(TransactionListItem item) {
-  final parts =
-      item.accountNames
-          .split('/')
-          .map((part) => part.trim())
-          .where((part) => part.isNotEmpty)
-          .toList();
+  final parts = item.accountNames
+      .split('/')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
   if (parts.isEmpty) {
     return '';
   }
@@ -873,21 +849,6 @@ String? _cleanText(String? value) {
   return trimmed;
 }
 
-String _accountIconAsset(String accountNames) {
-  if (accountNames.contains('支付宝')) {
-    return 'assets/icons/account/alipay.svg';
-  }
-  if (accountNames.contains('微信')) {
-    return 'assets/icons/account/wechat_pay.svg';
-  }
-  if (accountNames.contains('招商')) {
-    return 'assets/icons/account/cmb_credit_card.svg';
-  }
-  if (accountNames.contains('中国银行') || accountNames.contains('储蓄')) {
-    return 'assets/icons/account/boc_debit_card.svg';
-  }
-  return 'assets/icons/account/boc_debit_card.svg';
-}
 
 Color _amountColor(
   ColorScheme colors,
@@ -927,6 +888,12 @@ Color _purposeAccentColor(AppThemeExtension colors, BusinessPurpose purpose) {
 
 String _formatCurrency(int minorUnits) {
   return Money(minorUnits: minorUnits.abs()).format();
+}
+
+String _formatMonthlyAmount(int minorUnits, {required bool showSign}) {
+  final formatted = Money(minorUnits: minorUnits.abs()).format();
+  if (!showSign) return formatted;
+  return minorUnits >= 0 ? formatted : '-$formatted';
 }
 
 String _formatTransactionAmount(TransactionListItem item) {

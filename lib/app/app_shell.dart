@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../design_system/tokens/spacing.dart';
+import '../design_system/tokens/typography.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({required this.child, super.key});
@@ -18,51 +20,59 @@ class AppShell extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          height: 58,
           decoration: BoxDecoration(
-            color: colors.surface,
+            color: colors.surfaceContainerLowest,
             border: Border(
               top: BorderSide(
                 color: colors.outlineVariant.withValues(alpha: 0.45),
               ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space8,
+            vertical: AppSpacing.space8,
+          ),
           child: Row(
             children: [
               _BottomNavItem(
-                icon: Icons.home_outlined,
-                selectedIcon: Icons.home_rounded,
+                icon: RemixIcons.home_4_line,
+                selectedIcon: RemixIcons.home_4_fill,
+                label: '首页',
                 selected: selectedIndex == 0,
                 onTap: () => context.go('/'),
               ),
               _BottomNavItem(
-                icon: Icons.calendar_month_outlined,
-                selectedIcon: Icons.calendar_month_rounded,
+                icon: RemixIcons.calendar_line,
+                selectedIcon: RemixIcons.calendar_fill,
+                label: '日历',
                 selected: selectedIndex == 1,
                 onTap: () => context.go('/calendar'),
               ),
               _BottomNavItem(
-                icon: Icons.account_balance_wallet_outlined,
-                selectedIcon: Icons.account_balance_wallet_rounded,
+                icon: RemixIcons.wallet_3_line,
+                selectedIcon: RemixIcons.wallet_3_fill,
+                label: '资产',
                 selected: selectedIndex == 2,
                 onTap: () => context.go('/accounts'),
               ),
               _BottomNavItem(
-                icon: Icons.pie_chart_outline_rounded,
-                selectedIcon: Icons.pie_chart_rounded,
+                icon: RemixIcons.pie_chart_line,
+                selectedIcon: RemixIcons.pie_chart_fill,
+                label: '统计',
                 selected: selectedIndex == 3,
                 onTap: () => context.go('/statistics'),
               ),
               _BottomNavItem(
-                icon: Icons.category_outlined,
-                selectedIcon: Icons.category_rounded,
+                icon: RemixIcons.apps_2_line,
+                selectedIcon: RemixIcons.apps_2_fill,
+                label: '分类',
                 selected: selectedIndex == 4,
                 onTap: () => context.go('/categories'),
               ),
               _BottomNavItem(
-                icon: Icons.person_outline_rounded,
-                selectedIcon: Icons.person_rounded,
+                icon: RemixIcons.user_3_line,
+                selectedIcon: RemixIcons.user_3_fill,
+                label: '我的',
                 selected: selectedIndex == 5,
                 onTap: () => context.go('/profile'),
               ),
@@ -98,12 +108,14 @@ class _BottomNavItem extends StatelessWidget {
   const _BottomNavItem({
     required this.icon,
     required this.selectedIcon,
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
   final IconData icon;
   final IconData selectedIcon;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
@@ -115,13 +127,22 @@ class _BottomNavItem extends StatelessWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.space16),
+        borderRadius: BorderRadius.circular(AppSpacing.space8),
         child: Padding(
-          padding: const EdgeInsets.only(top: AppSpacing.space8),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(selected ? selectedIcon : icon, color: color, size: 24),
+              Icon(selected ? selectedIcon : icon, color: color, size: 22),
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: AppTypography.fontSizeXs - 2,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),

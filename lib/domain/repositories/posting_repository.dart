@@ -8,4 +8,11 @@ abstract interface class PostingRepository {
     required PostTransactionCommand command,
     required Map<int, int> balanceDeltasMinor,
   });
+
+  Future<void> updateTransactionMetadata({
+    required int transactionId,
+    String? note,
+    bool? isExcludedFromStats,
+    bool? isExcludedFromBudget,
+  });
 }

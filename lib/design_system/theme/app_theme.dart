@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tokens/radius.dart';
+import '../tokens/typography.dart';
 import 'app_color_scheme.dart';
 import 'app_text_theme.dart';
 import 'app_theme_extension.dart';
@@ -23,6 +24,8 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colors,
+      fontFamily: AppTypography.fontFamily,
+      fontFamilyFallback: AppTypography.fontFamilyFallback,
       textTheme: AppTextThemes.textTheme(colors),
       extensions: [extension],
       chipTheme: ChipThemeData(

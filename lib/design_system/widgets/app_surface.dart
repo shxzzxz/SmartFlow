@@ -8,7 +8,7 @@ class AppSurface extends StatelessWidget {
     required this.child,
     super.key,
     this.border = false,
-    this.borderRadius = AppRadius.radiusXl,
+    this.borderRadius = AppRadius.radiusLg,
   });
 
   final Widget child;
@@ -22,7 +22,7 @@ class AppSurface extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: colors.surfaceContainerLowest,
         borderRadius: radius,
         border:
             border

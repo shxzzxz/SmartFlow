@@ -79,6 +79,8 @@ class TransactionListItem {
     required this.accountNames,
     this.categoryName,
     this.categoryIconKey,
+    this.flowOutAccountId,
+    this.flowInAccountId,
     this.flowOutAccountName,
     this.flowInAccountName,
     this.counterpartyName,
@@ -92,6 +94,8 @@ class TransactionListItem {
   final String accountNames;
   final String? categoryName;
   final String? categoryIconKey;
+  final int? flowOutAccountId;
+  final int? flowInAccountId;
   final String? flowOutAccountName;
   final String? flowInAccountName;
   final String? counterpartyName;

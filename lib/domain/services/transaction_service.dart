@@ -4,6 +4,7 @@ import '../../core/result/result.dart';
 import '../entities/transaction.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/account_repository.dart';
+import '../repositories/posting_repository.dart';
 import '../repositories/system_account_resolver.dart';
 import '../repositories/transaction_query_repository.dart';
 import 'posting_command.dart';
@@ -49,6 +50,10 @@ abstract interface class TransactionService {
   Future<Result<PostTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
   );
+
+  Future<Result<void>> updateTransactionMetadata(
+    UpdateTransactionMetadataCommand command,
+  );
 }
 
 class TransactionServiceImpl implements TransactionService {
@@ -57,14 +62,17 @@ class TransactionServiceImpl implements TransactionService {
     AccountRepository? accountRepository,
     TransactionQueryRepository? transactionQueryRepository,
     SystemAccountResolver? systemAccountResolver,
+    PostingRepository? postingRepository,
   })  : _accountRepository = accountRepository,
         _queryRepository = transactionQueryRepository,
-        _systemAccounts = systemAccountResolver;
+        _systemAccounts = systemAccountResolver,
+        _postingRepository = postingRepository;
 
   final PostingService _postingService;
   final AccountRepository? _accountRepository;
   final TransactionQueryRepository? _queryRepository;
   final SystemAccountResolver? _systemAccounts;
+  final PostingRepository? _postingRepository;
 
   @override
   Future<Result<PostTransactionResult>> createExpense(
@@ -949,6 +957,55 @@ class TransactionServiceImpl implements TransactionService {
     );
   }
 
+  @override
+  Future<Result<void>> updateTransactionMetadata(
+    UpdateTransactionMetadataCommand command,
+  ) async {
+    if (command.note == null &&
+        command.isExcludedFromStats == null &&
+        command.isExcludedFromBudget == null) {
+      return const Result.success(null);
+    }
+    final repository = _postingRepository;
+    if (repository == null) {
+      return const Result.failure(
+        Failure(
+          code: 'posting_repository_unavailable',
+          message: 'PostingRepository is required to update transaction metadata.',
+        ),
+      );
+    }
+    final query = _queryRepository;
+    if (query != null) {
+      final transaction = await query.findTransactionById(command.transactionId);
+      if (transaction == null) {
+        return const Result.failure(
+          Failure(
+            code: 'transaction_not_found',
+            message: 'Transaction does not exist.',
+          ),
+        );
+      }
+    }
+    try {
+      await repository.updateTransactionMetadata(
+        transactionId: command.transactionId,
+        note: command.note,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+      );
+      return const Result.success(null);
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'transaction_metadata_update_failed',
+          message: 'Failed to update transaction metadata.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
   Failure? _validateAdvance(
     Transaction? advance,
     String currencyCode,
@@ -1332,4 +1389,18 @@ class AdjustBalanceCommand {
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
+}
+
+class UpdateTransactionMetadataCommand {
+  const UpdateTransactionMetadataCommand({
+    required this.transactionId,
+    this.note,
+    this.isExcludedFromStats,
+    this.isExcludedFromBudget,
+  });
+
+  final int transactionId;
+  final String? note;
+  final bool? isExcludedFromStats;
+  final bool? isExcludedFromBudget;
 }

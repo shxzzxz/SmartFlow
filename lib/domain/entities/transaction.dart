@@ -14,6 +14,7 @@ class Transaction {
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
     required this.sourceKind,
+    required this.createdAt,
     this.counterpartyName,
     this.note,
     this.parentTransactionId,
@@ -39,4 +40,5 @@ class Transaction {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+  final DateTime createdAt;
 }

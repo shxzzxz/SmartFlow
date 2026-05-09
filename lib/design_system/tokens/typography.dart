@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTypography {
+  static const fontFamily = 'HarmonyOS Sans SC';
+
   static const fontFamilyFallback = <String>[
+    'HarmonyOS Sans',
     'Roboto',
     'Noto Sans CJK SC',
     'Microsoft YaHei',

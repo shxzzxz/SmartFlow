@@ -72,6 +72,7 @@ TransactionService transactionService(Ref ref) {
     accountRepository: ref.watch(accountRepositoryProvider),
     transactionQueryRepository: ref.watch(transactionQueryRepositoryProvider),
     systemAccountResolver: ref.watch(systemAccountResolverProvider),
+    postingRepository: ref.watch(postingRepositoryProvider),
   );
 }
 
