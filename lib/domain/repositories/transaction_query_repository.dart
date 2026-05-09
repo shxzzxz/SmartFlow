@@ -7,6 +7,8 @@ abstract interface class TransactionQueryRepository {
     TransactionListQuery query,
   );
 
+  Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query);
+
   Stream<TransactionDetailView?> watchTransactionDetail(int transactionId);
 
   Future<Transaction?> findTransactionById(int transactionId);

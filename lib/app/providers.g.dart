@@ -418,7 +418,7 @@ final class TransactionServiceProvider
 }
 
 String _$transactionServiceHash() =>
-    r'e7bdfe49b5df281b0dae981794ccb1bc7f9b4e3e';
+    r'62c3502d8b334bc85e38765049b2130168a44c18';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
@@ -734,6 +734,185 @@ final class TransactionListFamily extends $Family
 
   @override
   String toString() => r'transactionListProvider';
+}
+
+@ProviderFor(homeMonthTransactions)
+final homeMonthTransactionsProvider = HomeMonthTransactionsFamily._();
+
+final class HomeMonthTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TransactionListItem>>,
+          List<TransactionListItem>,
+          Stream<List<TransactionListItem>>
+        >
+    with
+        $FutureModifier<List<TransactionListItem>>,
+        $StreamProvider<List<TransactionListItem>> {
+  HomeMonthTransactionsProvider._({
+    required HomeMonthTransactionsFamily super.from,
+    required ({int year, int month}) super.argument,
+  }) : super(
+         retry: null,
+         name: r'homeMonthTransactionsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$homeMonthTransactionsHash();
+
+  @override
+  String toString() {
+    return r'homeMonthTransactionsProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<TransactionListItem>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<TransactionListItem>> create(Ref ref) {
+    final argument = this.argument as ({int year, int month});
+    return homeMonthTransactions(
+      ref,
+      year: argument.year,
+      month: argument.month,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HomeMonthTransactionsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$homeMonthTransactionsHash() =>
+    r'12e39d210f7388150bcf69d9a46e7f8f8820628b';
+
+final class HomeMonthTransactionsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<TransactionListItem>>,
+          ({int year, int month})
+        > {
+  HomeMonthTransactionsFamily._()
+    : super(
+        retry: null,
+        name: r'homeMonthTransactionsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  HomeMonthTransactionsProvider call({required int year, required int month}) =>
+      HomeMonthTransactionsProvider._(
+        argument: (year: year, month: month),
+        from: this,
+      );
+
+  @override
+  String toString() => r'homeMonthTransactionsProvider';
+}
+
+@ProviderFor(homeMonthCashflowSummary)
+final homeMonthCashflowSummaryProvider = HomeMonthCashflowSummaryFamily._();
+
+final class HomeMonthCashflowSummaryProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<CashflowSummary>,
+          CashflowSummary,
+          Stream<CashflowSummary>
+        >
+    with $FutureModifier<CashflowSummary>, $StreamProvider<CashflowSummary> {
+  HomeMonthCashflowSummaryProvider._({
+    required HomeMonthCashflowSummaryFamily super.from,
+    required ({int year, int month}) super.argument,
+  }) : super(
+         retry: null,
+         name: r'homeMonthCashflowSummaryProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$homeMonthCashflowSummaryHash();
+
+  @override
+  String toString() {
+    return r'homeMonthCashflowSummaryProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<CashflowSummary> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<CashflowSummary> create(Ref ref) {
+    final argument = this.argument as ({int year, int month});
+    return homeMonthCashflowSummary(
+      ref,
+      year: argument.year,
+      month: argument.month,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HomeMonthCashflowSummaryProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$homeMonthCashflowSummaryHash() =>
+    r'7274875d4358857c36630fe4ca6da35f292984e5';
+
+final class HomeMonthCashflowSummaryFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<CashflowSummary>,
+          ({int year, int month})
+        > {
+  HomeMonthCashflowSummaryFamily._()
+    : super(
+        retry: null,
+        name: r'homeMonthCashflowSummaryProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  HomeMonthCashflowSummaryProvider call({
+    required int year,
+    required int month,
+  }) => HomeMonthCashflowSummaryProvider._(
+    argument: (year: year, month: month),
+    from: this,
+  );
+
+  @override
+  String toString() => r'homeMonthCashflowSummaryProvider';
 }
 
 @ProviderFor(transactionDetail)

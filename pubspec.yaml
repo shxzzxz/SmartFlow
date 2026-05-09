@@ -79,7 +79,6 @@ flutter:
   assets:
     - assets/icons/account/
     - assets/icons/category/
-    - assets/illustrations/
 
   fonts:
     - family: HarmonyOS Sans

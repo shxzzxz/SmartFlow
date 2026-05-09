@@ -8,6 +8,8 @@ abstract interface class TransactionQueryService {
     TransactionListQuery query,
   );
 
+  Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query);
+
   Stream<TransactionDetailView?> watchTransactionDetail(int transactionId);
 
   Future<Transaction?> findTransactionById(int transactionId);
@@ -27,6 +29,11 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
     TransactionListQuery query,
   ) {
     return _repository.watchTransactions(query);
+  }
+
+  @override
+  Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query) {
+    return _repository.watchCashflowSummary(query);
   }
 
   @override
@@ -60,16 +67,52 @@ class TransactionListQuery {
   const TransactionListQuery({
     this.accountId,
     this.topLevelOnly = true,
+    this.occurredFrom,
+    this.occurredUntil,
     this.limit = 100,
     this.offset = 0,
   });
 
   final int? accountId;
   final bool topLevelOnly;
+
+  /// 包含下界。
+  final DateTime? occurredFrom;
+
+  /// 不包含上界（半开区间），便于按月份切片。
+  final DateTime? occurredUntil;
   final int limit;
   final int offset;
 }
 
+class CashflowSummaryQuery {
+  const CashflowSummaryQuery({
+    required this.occurredFrom,
+    required this.occurredUntil,
+    this.currencyCode = Money.defaultCurrency,
+  });
+
+  /// 包含下界。
+  final DateTime occurredFrom;
+
+  /// 不包含上界（半开区间），便于按月份切片。
+  final DateTime occurredUntil;
+  final String currencyCode;
+}
+
+class CashflowSummary {
+  const CashflowSummary({required this.income, required this.expense});
+
+  final Money income;
+  final Money expense;
+
+  Money get net => income - expense;
+}
+
+/// 首页 / 流水页消费的主交易行视图。
+///
+/// 子交易（退款、报销到账、结束报销）不再作为独立行出现，而是聚合到这里
+/// 由对应主交易行通过 badge 表达。详情仍可在交易详情页查看。
 class TransactionListItem {
   const TransactionListItem({
     required this.id,
@@ -77,6 +120,8 @@ class TransactionListItem {
     required this.occurredAt,
     required this.primaryAmount,
     required this.accountNames,
+    required this.isExcludedFromStats,
+    required this.isExcludedFromBudget,
     this.categoryName,
     this.categoryIconKey,
     this.flowOutAccountId,
@@ -85,6 +130,14 @@ class TransactionListItem {
     this.flowInAccountName,
     this.counterpartyName,
     this.note,
+    this.refundedTotal,
+    this.refundChildCount = 0,
+    this.reimbursementReceivedTotal,
+    this.reimbursementChildCount = 0,
+    this.reimbursementGapIncome,
+    this.reimbursementGapExpense,
+    this.repaymentInterest,
+    this.repaymentFee,
   });
 
   final int id;
@@ -100,6 +153,34 @@ class TransactionListItem {
   final String? flowInAccountName;
   final String? counterpartyName;
   final String? note;
+
+  /// 该主交易是否标记为不计入收支统计。
+  final bool isExcludedFromStats;
+
+  /// 该主交易是否标记为不计入预算。
+  final bool isExcludedFromBudget;
+
+  /// 该主交易下退款子交易（business_purpose = refund）的累计金额；
+  /// 仅普通支出可能非空。
+  final Money? refundedTotal;
+  final int refundChildCount;
+
+  /// 该主交易下报销到账 + 结束报销子交易的累计金额；
+  /// 仅报销垫付可能非空。
+  final Money? reimbursementReceivedTotal;
+  final int reimbursementChildCount;
+
+  /// 报销结束子交易携带的"差额收入"（公司多给）合计，仅报销垫付可能非空。
+  final Money? reimbursementGapIncome;
+
+  /// 报销结束子交易携带的"差额支出"（公司少给）合计，仅报销垫付可能非空。
+  final Money? reimbursementGapExpense;
+
+  /// 还款主交易的利息分项合计，仅还款可能非空。
+  final Money? repaymentInterest;
+
+  /// 还款主交易的手续费分项合计，仅还款可能非空。
+  final Money? repaymentFee;
 }
 
 class TransactionDetailView {

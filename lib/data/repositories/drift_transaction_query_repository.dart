@@ -16,26 +16,35 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
   Stream<List<TransactionListItem>> watchTransactions(
     TransactionListQuery query,
   ) {
-    final accountFilter = query.accountId == null
-        ? ''
-        : 'AND EXISTS ('
-              'SELECT 1 FROM entries ae '
-              'WHERE ae.transaction_id = t.id AND ae.account_id = ?'
-              ') ';
+    final accountFilter =
+        query.accountId == null
+            ? ''
+            : 'AND EXISTS ('
+                'SELECT 1 FROM entries ae '
+                'WHERE ae.transaction_id = t.id AND ae.account_id = ?'
+                ') ';
     final topLevelFilter =
         query.topLevelOnly ? 'AND t.parent_transaction_id IS NULL ' : '';
+    final fromFilter =
+        query.occurredFrom == null ? '' : 'AND t.occurred_at >= ? ';
+    final untilFilter =
+        query.occurredUntil == null ? '' : 'AND t.occurred_at < ? ';
     final variables = <Variable<Object>>[
       Variable<String>(BusinessState.current.name),
       if (query.accountId != null) Variable<int>(query.accountId!),
+      if (query.occurredFrom != null) Variable<DateTime>(query.occurredFrom!),
+      if (query.occurredUntil != null) Variable<DateTime>(query.occurredUntil!),
       Variable<int>(query.limit),
       Variable<int>(query.offset),
     ];
 
     return _database
         .customSelect(
-          'SELECT t.id, t.business_purpose, t.occurred_at, '
+          'WITH page AS ('
+          'SELECT t.id, COALESCE(t.root_transaction_id, t.id) AS root_id, '
+          't.parent_transaction_id, t.business_purpose, t.occurred_at, '
           't.currency_code, t.primary_amount_minor, t.counterparty_name, '
-          't.note, '
+          't.note, t.is_excluded_from_stats, t.is_excluded_from_budget, '
           "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
           "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
           "AND a.account_type = 'expense' THEN a.name "
@@ -57,25 +66,161 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           'AS flow_out_account_name, '
           "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
           "AND e.direction = 'debit' THEN a.name END) "
-          'AS flow_in_account_name '
+          'AS flow_in_account_name, '
+          // 还款利息 / 手续费：来自主交易自身的 transaction_details
+          '(SELECT COALESCE(SUM(td.amount_minor), 0) '
+          'FROM transaction_details td '
+          'WHERE td.transaction_id = t.id '
+          "AND td.detail_type = 'repaymentInterest') "
+          'AS repayment_interest_minor, '
+          '(SELECT COALESCE(SUM(td.amount_minor), 0) '
+          'FROM transaction_details td '
+          'WHERE td.transaction_id = t.id '
+          "AND td.detail_type = 'repaymentFee') "
+          'AS repayment_fee_minor '
           'FROM transactions t '
           'LEFT JOIN entries e ON e.transaction_id = t.id '
           'LEFT JOIN accounts a ON a.id = e.account_id '
           'WHERE t.business_state = ? '
           '$topLevelFilter'
           '$accountFilter'
+          '$fromFilter'
+          '$untilFilter'
           'GROUP BY t.id '
           'ORDER BY t.occurred_at DESC, t.id DESC '
-          'LIMIT ? OFFSET ?',
+          'LIMIT ? OFFSET ?'
+          '), roots AS ('
+          'SELECT DISTINCT root_id FROM page'
+          '), refund_agg AS ('
+          'SELECT c.root_transaction_id AS root_id, '
+          'COALESCE(SUM(c.primary_amount_minor), 0) AS total_minor, '
+          'COUNT(*) AS child_count '
+          'FROM transactions c '
+          'JOIN roots r ON r.root_id = c.root_transaction_id '
+          'WHERE c.parent_transaction_id IS NOT NULL '
+          "AND c.business_purpose = 'refund' "
+          "AND c.business_state = 'current' "
+          'GROUP BY c.root_transaction_id'
+          '), reimbursement_agg AS ('
+          'SELECT c.root_transaction_id AS root_id, '
+          'COALESCE(SUM(c.primary_amount_minor), 0) AS total_minor, '
+          'COUNT(*) AS child_count '
+          'FROM transactions c '
+          'JOIN roots r ON r.root_id = c.root_transaction_id '
+          'WHERE c.parent_transaction_id IS NOT NULL '
+          "AND c.business_purpose IN ('reimbursementReceipt', "
+          "'reimbursementClose') "
+          "AND c.business_state = 'current' "
+          'GROUP BY c.root_transaction_id'
+          '), reimbursement_gap_agg AS ('
+          'SELECT c.root_transaction_id AS root_id, '
+          "COALESCE(SUM(CASE WHEN td.detail_type = 'reimbursementGapIncome' "
+          'THEN td.amount_minor ELSE 0 END), 0) AS gap_income_minor, '
+          "COALESCE(SUM(CASE WHEN td.detail_type = 'reimbursementGapExpense' "
+          'THEN td.amount_minor ELSE 0 END), 0) AS gap_expense_minor '
+          'FROM transactions c '
+          'JOIN roots r ON r.root_id = c.root_transaction_id '
+          'JOIN transaction_details td ON td.transaction_id = c.id '
+          'WHERE c.parent_transaction_id IS NOT NULL '
+          "AND c.business_state = 'current' "
+          "AND td.detail_type IN ('reimbursementGapIncome', "
+          "'reimbursementGapExpense') "
+          'GROUP BY c.root_transaction_id'
+          ') '
+          'SELECT p.id, p.business_purpose, p.occurred_at, '
+          'p.currency_code, p.primary_amount_minor, p.counterparty_name, '
+          'p.note, p.is_excluded_from_stats, p.is_excluded_from_budget, '
+          'p.account_names, p.category_name, p.category_icon_key, '
+          'p.flow_out_account_id, p.flow_in_account_id, '
+          'p.flow_out_account_name, p.flow_in_account_name, '
+          "CASE WHEN p.parent_transaction_id IS NULL "
+          "AND p.business_purpose = 'dailyExpense' "
+          'THEN COALESCE(ra.total_minor, 0) ELSE 0 END '
+          'AS refunded_total_minor, '
+          "CASE WHEN p.parent_transaction_id IS NULL "
+          "AND p.business_purpose = 'dailyExpense' "
+          'THEN COALESCE(ra.child_count, 0) ELSE 0 END '
+          'AS refund_child_count, '
+          "CASE WHEN p.parent_transaction_id IS NULL "
+          "AND p.business_purpose = 'reimbursementAdvance' "
+          'THEN COALESCE(ba.total_minor, 0) ELSE 0 END '
+          'AS reimbursement_received_minor, '
+          "CASE WHEN p.parent_transaction_id IS NULL "
+          "AND p.business_purpose = 'reimbursementAdvance' "
+          'THEN COALESCE(ba.child_count, 0) ELSE 0 END '
+          'AS reimbursement_child_count, '
+          "CASE WHEN p.parent_transaction_id IS NULL "
+          "AND p.business_purpose = 'reimbursementAdvance' "
+          'THEN COALESCE(ga.gap_income_minor, 0) ELSE 0 END '
+          'AS reimbursement_gap_income_minor, '
+          "CASE WHEN p.parent_transaction_id IS NULL "
+          "AND p.business_purpose = 'reimbursementAdvance' "
+          'THEN COALESCE(ga.gap_expense_minor, 0) ELSE 0 END '
+          'AS reimbursement_gap_expense_minor, '
+          'p.repayment_interest_minor, p.repayment_fee_minor '
+          'FROM page p '
+          'LEFT JOIN refund_agg ra ON ra.root_id = p.root_id '
+          'LEFT JOIN reimbursement_agg ba ON ba.root_id = p.root_id '
+          'LEFT JOIN reimbursement_gap_agg ga ON ga.root_id = p.root_id '
+          'ORDER BY p.occurred_at DESC, p.id DESC',
           variables: variables,
           readsFrom: {
             _database.transactions,
+            _database.transactionDetails,
             _database.entries,
             _database.accounts,
           },
         )
         .watch()
         .map((rows) => rows.map(_mapListItem).toList());
+  }
+
+  @override
+  Stream<CashflowSummary> watchCashflowSummary(CashflowSummaryQuery query) {
+    return _database
+        .customSelect(
+          'SELECT '
+          "COALESCE(SUM(CASE WHEN a.account_type = 'income' THEN "
+          "CASE WHEN e.direction = 'credit' THEN e.amount_minor "
+          "WHEN e.direction = 'debit' THEN -e.amount_minor "
+          'ELSE 0 END ELSE 0 END), 0) AS income_minor, '
+          "COALESCE(SUM(CASE WHEN a.account_type = 'expense' THEN "
+          "CASE WHEN e.direction = 'debit' THEN e.amount_minor "
+          "WHEN e.direction = 'credit' THEN -e.amount_minor "
+          'ELSE 0 END ELSE 0 END), 0) AS expense_minor '
+          'FROM entries e '
+          'JOIN transactions t ON t.id = e.transaction_id '
+          'JOIN accounts a ON a.id = e.account_id '
+          "WHERE t.business_state = 'current' "
+          'AND t.is_excluded_from_stats = 0 '
+          'AND t.currency_code = ? '
+          'AND t.occurred_at >= ? '
+          'AND t.occurred_at < ? '
+          "AND a.account_type IN ('income', 'expense')",
+          variables: [
+            Variable<String>(query.currencyCode),
+            Variable<DateTime>(query.occurredFrom),
+            Variable<DateTime>(query.occurredUntil),
+          ],
+          readsFrom: {
+            _database.transactions,
+            _database.entries,
+            _database.accounts,
+          },
+        )
+        .watchSingle()
+        .map(
+          (row) => CashflowSummary(
+            income: Money(
+              minorUnits: row.read<int>('income_minor'),
+              currency: query.currencyCode,
+            ),
+            expense: Money(
+              minorUnits: row.read<int>('expense_minor'),
+              currency: query.currencyCode,
+            ),
+          ),
+        );
   }
 
   @override
@@ -105,9 +250,9 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
 
   @override
   Future<domain.Transaction?> findTransactionById(int transactionId) async {
-    final row = await (_database.select(_database.transactions)
-          ..where((t) => t.id.equals(transactionId)))
-        .getSingleOrNull();
+    final row =
+        await (_database.select(_database.transactions)
+          ..where((t) => t.id.equals(transactionId))).getSingleOrNull();
     if (row == null) return null;
     return _mapTransaction(row);
   }
@@ -117,49 +262,49 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
     int rootTransactionId, {
     String currencyCode = Money.defaultCurrency,
   }) async {
-    final row = await _database.customSelect(
-      'SELECT COALESCE(SUM(t.primary_amount_minor), 0) AS total '
-      'FROM transactions t '
-      'WHERE t.root_transaction_id = ? '
-      "AND t.business_purpose = 'refund' "
-      "AND t.business_state = 'current'",
-      variables: [Variable<int>(rootTransactionId)],
-      readsFrom: {_database.transactions},
-    ).getSingle();
-    return Money(
-      minorUnits: row.read<int>('total'),
-      currency: currencyCode,
-    );
+    final row =
+        await _database
+            .customSelect(
+              'SELECT COALESCE(SUM(t.primary_amount_minor), 0) AS total '
+              'FROM transactions t '
+              'WHERE t.root_transaction_id = ? '
+              "AND t.business_purpose = 'refund' "
+              "AND t.business_state = 'current'",
+              variables: [Variable<int>(rootTransactionId)],
+              readsFrom: {_database.transactions},
+            )
+            .getSingle();
+    return Money(minorUnits: row.read<int>('total'), currency: currencyCode);
   }
 
   @override
   Future<ReimbursementSummary?> getReimbursementSummary(
     int rootTransactionId,
   ) async {
-    final advance = await (_database.select(_database.transactions)
-          ..where(
-            (t) =>
-                t.id.equals(rootTransactionId) &
-                t.businessPurpose.equalsValue(
-                  BusinessPurpose.reimbursementAdvance,
-                ),
-          ))
-        .getSingleOrNull();
+    final advance =
+        await (_database.select(_database.transactions)..where(
+          (t) =>
+              t.rootTransactionId.equals(rootTransactionId) &
+              t.parentTransactionId.isNull() &
+              t.businessPurpose.equalsValue(
+                BusinessPurpose.reimbursementAdvance,
+              ) &
+              t.businessState.equalsValue(BusinessState.current),
+        )).getSingleOrNull();
     if (advance == null) {
       return null;
     }
 
-    final children = await (_database.select(_database.transactions)
-          ..where(
-            (t) =>
-                t.rootTransactionId.equals(rootTransactionId) &
-                t.businessPurpose.isInValues({
-                  BusinessPurpose.reimbursementReceipt,
-                  BusinessPurpose.reimbursementClose,
-                }) &
-                t.businessState.equalsValue(BusinessState.current),
-          ))
-        .get();
+    final children =
+        await (_database.select(_database.transactions)..where(
+          (t) =>
+              t.rootTransactionId.equals(rootTransactionId) &
+              t.businessPurpose.isInValues({
+                BusinessPurpose.reimbursementReceipt,
+                BusinessPurpose.reimbursementClose,
+              }) &
+              t.businessState.equalsValue(BusinessState.current),
+        )).get();
 
     var receivedMinor = 0;
     var isClosed = false;
@@ -178,9 +323,10 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       minorUnits: receivedMinor,
       currency: advance.currencyCode,
     );
-    final outstanding = isClosed
-        ? Money(minorUnits: 0, currency: advance.currencyCode)
-        : advanceAmount - receivedAmount;
+    final outstanding =
+        isClosed
+            ? Money(minorUnits: 0, currency: advance.currencyCode)
+            : advanceAmount - receivedAmount;
     return ReimbursementSummary(
       advanceAmount: advanceAmount,
       receivedAmount: receivedAmount,
@@ -226,7 +372,9 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
     }
     ReimbursementSummary? reimbursementSummary;
     if (transaction.businessPurpose == BusinessPurpose.reimbursementAdvance) {
-      reimbursementSummary = await getReimbursementSummary(transaction.id);
+      reimbursementSummary = await getReimbursementSummary(
+        transaction.rootTransactionId ?? transaction.id,
+      );
     }
 
     return TransactionDetailView(
@@ -266,42 +414,56 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       Variable<int>(parentId),
       Variable<String>(BusinessState.current.name),
     ];
-    final rows = await _database.customSelect(
-      'SELECT t.id, t.business_purpose, t.occurred_at, '
-      't.currency_code, t.primary_amount_minor, t.counterparty_name, '
-      't.note, '
-      "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
-      'NULL AS category_name, NULL AS category_icon_key, '
-      "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
-      "AND e.direction = 'credit' THEN a.id END) "
-      'AS flow_out_account_id, '
-      "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
-      "AND e.direction = 'debit' THEN a.id END) "
-      'AS flow_in_account_id, '
-      "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
-      "AND e.direction = 'credit' THEN a.name END) "
-      'AS flow_out_account_name, '
-      "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
-      "AND e.direction = 'debit' THEN a.name END) "
-      'AS flow_in_account_name '
-      'FROM transactions t '
-      'LEFT JOIN entries e ON e.transaction_id = t.id '
-      'LEFT JOIN accounts a ON a.id = e.account_id '
-      'WHERE t.parent_transaction_id = ? AND t.business_state = ? '
-      'GROUP BY t.id '
-      'ORDER BY t.occurred_at DESC, t.id DESC',
-      variables: variables,
-      readsFrom: {
-        _database.transactions,
-        _database.entries,
-        _database.accounts,
-      },
-    ).get();
+    final rows =
+        await _database
+            .customSelect(
+              'SELECT t.id, t.business_purpose, t.occurred_at, '
+              't.currency_code, t.primary_amount_minor, t.counterparty_name, '
+              't.note, t.is_excluded_from_stats, t.is_excluded_from_budget, '
+              "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
+              'NULL AS category_name, NULL AS category_icon_key, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'credit' THEN a.id END) "
+              'AS flow_out_account_id, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'debit' THEN a.id END) "
+              'AS flow_in_account_id, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'credit' THEN a.name END) "
+              'AS flow_out_account_name, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'debit' THEN a.name END) "
+              'AS flow_in_account_name, '
+              '0 AS refunded_total_minor, 0 AS refund_child_count, '
+              '0 AS reimbursement_received_minor, 0 AS reimbursement_child_count, '
+              '0 AS reimbursement_gap_income_minor, '
+              '0 AS reimbursement_gap_expense_minor, '
+              '0 AS repayment_interest_minor, 0 AS repayment_fee_minor '
+              'FROM transactions t '
+              'LEFT JOIN entries e ON e.transaction_id = t.id '
+              'LEFT JOIN accounts a ON a.id = e.account_id '
+              'WHERE t.parent_transaction_id = ? AND t.business_state = ? '
+              'GROUP BY t.id '
+              'ORDER BY t.occurred_at DESC, t.id DESC',
+              variables: variables,
+              readsFrom: {
+                _database.transactions,
+                _database.entries,
+                _database.accounts,
+              },
+            )
+            .get();
     return rows.map(_mapListItem).toList();
   }
 
   TransactionListItem _mapListItem(QueryRow row) {
     final currencyCode = row.read<String>('currency_code');
+    Money? optionalMoney(String column) {
+      final value = row.read<int>(column);
+      if (value == 0) return null;
+      return Money(minorUnits: value, currency: currencyCode);
+    }
+
     return TransactionListItem(
       id: row.read<int>('id'),
       businessPurpose: BusinessPurpose.values.byName(
@@ -321,6 +483,16 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       flowInAccountId: row.read<int?>('flow_in_account_id'),
       flowOutAccountName: row.read<String?>('flow_out_account_name'),
       flowInAccountName: row.read<String?>('flow_in_account_name'),
+      isExcludedFromStats: row.read<bool>('is_excluded_from_stats'),
+      isExcludedFromBudget: row.read<bool>('is_excluded_from_budget'),
+      refundedTotal: optionalMoney('refunded_total_minor'),
+      refundChildCount: row.read<int>('refund_child_count'),
+      reimbursementReceivedTotal: optionalMoney('reimbursement_received_minor'),
+      reimbursementChildCount: row.read<int>('reimbursement_child_count'),
+      reimbursementGapIncome: optionalMoney('reimbursement_gap_income_minor'),
+      reimbursementGapExpense: optionalMoney('reimbursement_gap_expense_minor'),
+      repaymentInterest: optionalMoney('repayment_interest_minor'),
+      repaymentFee: optionalMoney('repayment_fee_minor'),
     );
   }
 

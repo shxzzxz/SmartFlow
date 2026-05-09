@@ -1,16 +1,12 @@
 import 'package:drift/drift.dart';
 
 import '../../../domain/enums/accounting_enums.dart';
-import 'accounts.dart';
-import 'transactions.dart';
 
 @DataClassName('EntryRow')
 class Entries extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get transactionId =>
-      integer().named('transaction_id').references(Transactions, #id)();
-  IntColumn get accountId =>
-      integer().named('account_id').references(Accounts, #id)();
+  IntColumn get transactionId => integer().named('transaction_id')();
+  IntColumn get accountId => integer().named('account_id')();
   TextColumn get direction => textEnum<EntryDirection>()();
   IntColumn get amountMinor => integer().named('amount_minor')();
   DateTimeColumn get createdAt =>

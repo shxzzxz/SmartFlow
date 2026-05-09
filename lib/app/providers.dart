@@ -99,15 +99,48 @@ Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
 }
 
 @riverpod
-Stream<List<TransactionListItem>> transactionList(
-  Ref ref, {
-  int? accountId,
-}) {
-  return ref.watch(transactionQueryServiceProvider).watchTransactions(
+Stream<List<TransactionListItem>> transactionList(Ref ref, {int? accountId}) {
+  return ref
+      .watch(transactionQueryServiceProvider)
+      .watchTransactions(
         TransactionListQuery(
           accountId: accountId,
           topLevelOnly: accountId == null,
         ),
+      );
+}
+
+@riverpod
+Stream<List<TransactionListItem>> homeMonthTransactions(
+  Ref ref, {
+  required int year,
+  required int month,
+}) {
+  final from = DateTime(year, month);
+  final until = DateTime(year, month + 1);
+  return ref
+      .watch(transactionQueryServiceProvider)
+      .watchTransactions(
+        TransactionListQuery(
+          topLevelOnly: true,
+          occurredFrom: from,
+          occurredUntil: until,
+        ),
+      );
+}
+
+@riverpod
+Stream<CashflowSummary> homeMonthCashflowSummary(
+  Ref ref, {
+  required int year,
+  required int month,
+}) {
+  final from = DateTime(year, month);
+  final until = DateTime(year, month + 1);
+  return ref
+      .watch(transactionQueryServiceProvider)
+      .watchCashflowSummary(
+        CashflowSummaryQuery(occurredFrom: from, occurredUntil: until),
       );
 }
 

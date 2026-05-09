@@ -9,8 +9,7 @@ class Accounts extends Table {
   TextColumn get accountType => textEnum<AccountType>().named('account_type')();
   TextColumn get accountSubtype =>
       textEnum<AccountSubtype>().named('account_subtype').nullable()();
-  IntColumn get parentId =>
-      integer().named('parent_id').nullable().references(Accounts, #id)();
+  IntColumn get parentId => integer().named('parent_id').nullable()();
   TextColumn get currencyCode =>
       text().named('currency_code').withLength(min: 3, max: 3)();
   IntColumn get balanceMinor =>
@@ -25,8 +24,7 @@ class Accounts extends Table {
       integer().named('sort_order').withDefault(const Constant(0))();
   BoolColumn get isHidden =>
       boolean().named('is_hidden').withDefault(const Constant(false))();
-  DateTimeColumn get archivedAt =>
-      dateTime().named('archived_at').nullable()();
+  DateTimeColumn get archivedAt => dateTime().named('archived_at').nullable()();
   TextColumn get systemKey =>
       textEnum<SystemKey>().named('system_key').nullable()();
   DateTimeColumn get createdAt =>
@@ -35,7 +33,5 @@ class Accounts extends Table {
       dateTime().named('updated_at').withDefault(currentDateAndTime)();
 
   @override
-  List<String> get customConstraints => [
-    'UNIQUE (system_key, currency_code)',
-  ];
+  List<String> get customConstraints => ['UNIQUE (system_key, currency_code)'];
 }
