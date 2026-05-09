@@ -32,7 +32,7 @@ class TransactionRow extends StatelessWidget {
         hasNote
             ? '${formatTime(item.occurredAt)}  $note'
             : formatTime(item.occurredAt);
-    final badges = TransactionProgressBadges(item: item);
+    final hasBadges = _hasBadges(item);
 
     return InkWell(
       onTap: () => context.push('/transactions/${item.id}'),
@@ -53,15 +53,27 @@ class TransactionRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: textTheme.titleSmall?.copyWith(
-                      fontSize: AppTypography.fontSizeMd,
-                      fontWeight: FontWeight.w400,
-                      color: colors.onSurface,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: Text(
+                          title,
+                          style: textTheme.titleSmall?.copyWith(
+                            fontSize: AppTypography.fontSizeMd,
+                            fontWeight: FontWeight.w400,
+                            color: colors.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      if (hasBadges) ...[
+                        const SizedBox(width: AppSpacing.space8),
+                        Flexible(child: TransactionProgressBadges(item: item)),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
@@ -73,10 +85,6 @@ class TransactionRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (_hasBadges(item)) ...[
-                    const SizedBox(height: AppSpacing.space6),
-                    badges,
-                  ],
                 ],
               ),
             ),

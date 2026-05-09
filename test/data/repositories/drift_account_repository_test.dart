@@ -23,46 +23,69 @@ void main() {
       await database.close();
     });
 
-    test('creates an account with opening balance in one posting chain', () async {
+    test(
+      'creates an account with opening balance in one posting chain',
+      () async {
+        final service = AccountServiceImpl(repository);
+
+        final result = await service.createAccount(
+          CreateAccountCommand(
+            name: '招行',
+            type: AccountType.asset,
+            openingBalance: const Money(minorUnits: 5000000),
+            openingOccurredAt: DateTime(2026, 5),
+          ),
+        );
+
+        expect(result, isA<Success>());
+        final account = (result as Success).value;
+        expect(account.balance, const Money(minorUnits: 5000000));
+
+        final transactions = await database.select(database.transactions).get();
+        final details =
+            await database.select(database.transactionDetails).get();
+        final entries = await database.select(database.entries).get();
+        final systemAccounts =
+            await (database.select(database.accounts)..where(
+              (row) => row.systemKey.equalsValue(SystemKey.openingBalance),
+            )).get();
+
+        expect(transactions, hasLength(1));
+        expect(
+          transactions.single.businessPurpose,
+          BusinessPurpose.openingBalance,
+        );
+        expect(
+          details.single.detailType,
+          TransactionDetailType.openingBalanceMain,
+        );
+        expect(entries, hasLength(2));
+        expect(systemAccounts.single.accountType, AccountType.equity);
+        expect(systemAccounts.single.balanceMinor, 5000000);
+      },
+    );
+
+    test('creates reimbursement account as asset subtype', () async {
       final service = AccountServiceImpl(repository);
 
       final result = await service.createAccount(
-        CreateAccountCommand(
-          name: '招行',
+        const CreateAccountCommand(
+          name: '公司报销',
           type: AccountType.asset,
-          openingBalance: const Money(minorUnits: 5000000),
-          openingOccurredAt: DateTime(2026, 5),
+          subtype: AccountSubtype.reimbursement,
         ),
       );
 
       expect(result, isA<Success>());
       final account = (result as Success).value;
-      expect(account.balance, const Money(minorUnits: 5000000));
-
-      final transactions = await database.select(database.transactions).get();
-      final details = await database.select(database.transactionDetails).get();
-      final entries = await database.select(database.entries).get();
-      final systemAccounts = await (database.select(database.accounts)
-            ..where(
-              (row) => row.systemKey.equalsValue(SystemKey.openingBalance),
-            ))
-          .get();
-
-      expect(transactions, hasLength(1));
-      expect(transactions.single.businessPurpose, BusinessPurpose.openingBalance);
-      expect(details.single.detailType, TransactionDetailType.openingBalanceMain);
-      expect(entries, hasLength(2));
-      expect(systemAccounts.single.accountType, AccountType.equity);
-      expect(systemAccounts.single.balanceMinor, 5000000);
+      expect(account.type, AccountType.asset);
+      expect(account.subtype, AccountSubtype.reimbursement);
     });
 
     test('builds income and expense category trees', () async {
       final service = CategoryServiceImpl(repository);
       final parentResult = await service.createCategory(
-        const CreateCategoryCommand(
-          name: '餐饮',
-          type: AccountType.expense,
-        ),
+        const CreateCategoryCommand(name: '餐饮', type: AccountType.expense),
       );
       final parent = (parentResult as Success).value;
 

@@ -5,12 +5,10 @@ import '../../domain/enums/accounting_enums.dart';
 import 'finance_labels.dart';
 
 class AccountTypeTag extends StatelessWidget {
-  const AccountTypeTag({
-    required this.type,
-    super.key,
-  });
+  const AccountTypeTag({required this.type, this.subtype, super.key});
 
   final AccountType type;
+  final AccountSubtype? subtype;
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +23,18 @@ class AccountTypeTag extends StatelessWidget {
     };
 
     return Chip(
-      label: Text(accountTypeLabel(type)),
+      label: Text(_accountTagLabel(type, subtype)),
       avatar: Icon(Icons.circle, size: 10, color: color),
       visualDensity: VisualDensity.compact,
       backgroundColor: colors.surfaceContainerHighest,
       side: BorderSide(color: colors.outlineVariant),
     );
   }
+}
+
+String _accountTagLabel(AccountType type, AccountSubtype? subtype) {
+  if (type == AccountType.asset) {
+    return subtype == AccountSubtype.reimbursement ? '报销账户' : '资金账户';
+  }
+  return accountTypeLabel(type);
 }

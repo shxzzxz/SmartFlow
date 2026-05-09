@@ -10,7 +10,8 @@ import '../../../design_system/widgets/app_form_section.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/account_service.dart';
-import '../../../widgets/business/finance_labels.dart';
+
+enum _AccountKind { fund, reimbursement, liability }
 
 class AccountFormPage extends ConsumerStatefulWidget {
   const AccountFormPage({super.key});
@@ -24,7 +25,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   final _nameController = TextEditingController();
   final _openingBalanceController = TextEditingController(text: '0');
   final _noteController = TextEditingController();
-  AccountType _type = AccountType.asset;
+  _AccountKind _kind = _AccountKind.fund;
   bool _submitting = false;
 
   @override
@@ -54,7 +55,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
             children: [
               const AppPageHeader(
                 title: '新建账户',
-                subtitle: '添加资产或负债账户',
+                subtitle: '添加资金、报销或负债账户',
                 showBackButton: true,
               ),
               const SizedBox(height: AppSpacing.space14),
@@ -73,24 +74,24 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                                 ? '请输入账户名称'
                                 : null,
                   ),
-                  DropdownButtonFormField<AccountType>(
-                    initialValue: _type,
+                  DropdownButtonFormField<_AccountKind>(
+                    initialValue: _kind,
                     decoration: const InputDecoration(
                       labelText: '账户类型',
                       prefixIcon: Icon(Icons.category),
                     ),
                     items:
-                        const [AccountType.asset, AccountType.liability]
+                        _AccountKind.values
                             .map(
-                              (type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(accountTypeLabel(type)),
+                              (kind) => DropdownMenuItem(
+                                value: kind,
+                                child: Text(_accountKindLabel(kind)),
                               ),
                             )
                             .toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() => _type = value);
+                        setState(() => _kind = value);
                       }
                     },
                   ),
@@ -153,12 +154,14 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     }
 
     setState(() => _submitting = true);
+    final type = _accountTypeForKind(_kind);
     final result = await ref
         .read(accountServiceProvider)
         .createAccount(
           CreateAccountCommand(
             name: _nameController.text,
-            type: _type,
+            type: type,
+            subtype: _accountSubtypeForKind(_kind),
             openingBalance: Money.parse(_openingBalanceController.text),
             openingOccurredAt: DateTime.now(),
             note: _noteController.text,
@@ -178,4 +181,26 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
         ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
+}
+
+String _accountKindLabel(_AccountKind kind) {
+  return switch (kind) {
+    _AccountKind.fund => '资金账户',
+    _AccountKind.reimbursement => '报销账户',
+    _AccountKind.liability => '负债账户',
+  };
+}
+
+AccountType _accountTypeForKind(_AccountKind kind) {
+  return switch (kind) {
+    _AccountKind.fund || _AccountKind.reimbursement => AccountType.asset,
+    _AccountKind.liability => AccountType.liability,
+  };
+}
+
+AccountSubtype? _accountSubtypeForKind(_AccountKind kind) {
+  return switch (kind) {
+    _AccountKind.reimbursement => AccountSubtype.reimbursement,
+    _ => null,
+  };
 }

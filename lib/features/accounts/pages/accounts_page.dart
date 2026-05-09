@@ -260,7 +260,10 @@ class _AccountTile extends StatelessWidget {
                       spacing: AppSpacing.space8,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        AccountTypeTag(type: account.type),
+                        AccountTypeTag(
+                          type: account.type,
+                          subtype: account.subtype,
+                        ),
                         if (account.note?.trim().isNotEmpty == true)
                           Text(
                             account.note!.trim(),
