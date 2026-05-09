@@ -16,7 +16,14 @@ import '../../../widgets/business/category_icon.dart';
 import '../../../widgets/business/finance_labels.dart';
 
 class CategoryFormPage extends ConsumerStatefulWidget {
-  const CategoryFormPage({super.key});
+  const CategoryFormPage({
+    super.key,
+    this.initialType = AccountType.expense,
+    this.initialParentId,
+  });
+
+  final AccountType initialType;
+  final int? initialParentId;
 
   @override
   ConsumerState<CategoryFormPage> createState() => _CategoryFormPageState();
@@ -30,6 +37,13 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   int? _parentId;
   String? _iconKey;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _type = widget.initialType;
+    _parentId = widget.initialParentId;
+  }
 
   @override
   void dispose() {
@@ -47,6 +61,10 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
           data: (nodes) => nodes.map((node) => node.account).toList(),
           orElse: () => const <Account>[],
         );
+    final effectiveParentId =
+        parentOptions.any((parent) => parent.id == _parentId)
+            ? _parentId
+            : null;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -106,8 +124,11 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                     },
                   ),
                   DropdownButtonFormField<int?>(
-                    key: ValueKey(_type),
-                    initialValue: _parentId,
+                    key: ValueKey(
+                      '${_type.name}_${parentOptions.length}_'
+                      '${_parentId ?? 'none'}',
+                    ),
+                    initialValue: effectiveParentId,
                     decoration: const InputDecoration(
                       labelText: '父分类',
                       prefixIcon: Icon(Icons.account_tree),
@@ -224,9 +245,10 @@ class _IconPickerField extends StatelessWidget {
               _IconChoiceTile(
                 choice: choice,
                 selected: choice.iconKey == selected,
-                onTap: () => onChanged(
-                  choice.iconKey == selected ? null : choice.iconKey,
-                ),
+                onTap:
+                    () => onChanged(
+                      choice.iconKey == selected ? null : choice.iconKey,
+                    ),
               ),
           ],
         ),
@@ -267,9 +289,7 @@ class _IconChoiceTile extends StatelessWidget {
             width: selected ? 1.5 : 1,
           ),
         ),
-        child: Center(
-          child: CategoryIcon(iconKey: choice.iconKey, size: 24),
-        ),
+        child: Center(child: CategoryIcon(iconKey: choice.iconKey, size: 24)),
       ),
     );
   }

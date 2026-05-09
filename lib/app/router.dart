@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
+import '../domain/enums/accounting_enums.dart';
 import '../features/accounts/pages/account_form_page.dart';
 import '../features/accounts/pages/account_transactions_page.dart';
 import '../features/accounts/pages/accounts_page.dart';
@@ -87,7 +88,17 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/categories/new',
-      builder: (context, state) => const CategoryFormPage(),
+      builder: (context, state) {
+        final type = switch (state.uri.queryParameters['type']) {
+          'income' => AccountType.income,
+          'expense' => AccountType.expense,
+          _ => AccountType.expense,
+        };
+        final parentId = int.tryParse(
+          state.uri.queryParameters['parentId'] ?? '',
+        );
+        return CategoryFormPage(initialType: type, initialParentId: parentId);
+      },
     ),
   ],
 );
