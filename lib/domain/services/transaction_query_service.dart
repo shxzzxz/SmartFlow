@@ -9,6 +9,12 @@ abstract interface class TransactionQueryService {
   );
 
   Stream<TransactionDetailView?> watchTransactionDetail(int transactionId);
+
+  Future<Transaction?> findTransactionById(int transactionId);
+
+  Future<Money> getRefundedTotal(int rootTransactionId, {String currencyCode});
+
+  Future<ReimbursementSummary?> getReimbursementSummary(int rootTransactionId);
 }
 
 class TransactionQueryServiceImpl implements TransactionQueryService {
@@ -27,16 +33,39 @@ class TransactionQueryServiceImpl implements TransactionQueryService {
   Stream<TransactionDetailView?> watchTransactionDetail(int transactionId) {
     return _repository.watchTransactionDetail(transactionId);
   }
+
+  @override
+  Future<Transaction?> findTransactionById(int transactionId) {
+    return _repository.findTransactionById(transactionId);
+  }
+
+  @override
+  Future<Money> getRefundedTotal(
+    int rootTransactionId, {
+    String currencyCode = Money.defaultCurrency,
+  }) {
+    return _repository.getRefundedTotal(
+      rootTransactionId,
+      currencyCode: currencyCode,
+    );
+  }
+
+  @override
+  Future<ReimbursementSummary?> getReimbursementSummary(int rootTransactionId) {
+    return _repository.getReimbursementSummary(rootTransactionId);
+  }
 }
 
 class TransactionListQuery {
   const TransactionListQuery({
     this.accountId,
+    this.topLevelOnly = true,
     this.limit = 100,
     this.offset = 0,
   });
 
   final int? accountId;
+  final bool topLevelOnly;
   final int limit;
   final int offset;
 }
@@ -74,11 +103,17 @@ class TransactionDetailView {
     required this.transaction,
     required this.details,
     required this.entries,
+    this.children = const [],
+    this.refundedTotal,
+    this.reimbursementSummary,
   });
 
   final Transaction transaction;
   final List<TransactionDetailLineView> details;
   final List<EntryLineView> entries;
+  final List<TransactionListItem> children;
+  final Money? refundedTotal;
+  final ReimbursementSummary? reimbursementSummary;
 }
 
 class TransactionDetailLineView {
@@ -107,4 +142,18 @@ class EntryLineView {
   final AccountType accountType;
   final EntryDirection direction;
   final Money amount;
+}
+
+class ReimbursementSummary {
+  const ReimbursementSummary({
+    required this.advanceAmount,
+    required this.receivedAmount,
+    required this.outstanding,
+    required this.isClosed,
+  });
+
+  final Money advanceAmount;
+  final Money receivedAmount;
+  final Money outstanding;
+  final bool isClosed;
 }

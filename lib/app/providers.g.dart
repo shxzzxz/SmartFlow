@@ -9,6 +9,54 @@ part of 'providers.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
+@ProviderFor(systemAccountResolver)
+final systemAccountResolverProvider = SystemAccountResolverProvider._();
+
+final class SystemAccountResolverProvider
+    extends
+        $FunctionalProvider<
+          SystemAccountResolver,
+          SystemAccountResolver,
+          SystemAccountResolver
+        >
+    with $Provider<SystemAccountResolver> {
+  SystemAccountResolverProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'systemAccountResolverProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$systemAccountResolverHash();
+
+  @$internal
+  @override
+  $ProviderElement<SystemAccountResolver> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SystemAccountResolver create(Ref ref) {
+    return systemAccountResolver(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SystemAccountResolver value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SystemAccountResolver>(value),
+    );
+  }
+}
+
+String _$systemAccountResolverHash() =>
+    r'aeb329d1aaf6e2b71728c508c986c02214f78e46';
+
 @ProviderFor(accountRepository)
 final accountRepositoryProvider = AccountRepositoryProvider._();
 
@@ -54,7 +102,7 @@ final class AccountRepositoryProvider
   }
 }
 
-String _$accountRepositoryHash() => r'd18c6b65455a5da1e8787472648c66c231ce9741';
+String _$accountRepositoryHash() => r'65fc03a76cbcbe6d277d9fdec12a58237bb3639b';
 
 @ProviderFor(categoryRepository)
 final categoryRepositoryProvider = CategoryRepositoryProvider._();
@@ -102,7 +150,7 @@ final class CategoryRepositoryProvider
 }
 
 String _$categoryRepositoryHash() =>
-    r'237ab55433bc628170e8a7fddf828014bc7141b5';
+    r'8306f40f86bc6cf3f9e69eed8dc8e29f3fb02423';
 
 @ProviderFor(postingRepository)
 final postingRepositoryProvider = PostingRepositoryProvider._();
@@ -370,7 +418,7 @@ final class TransactionServiceProvider
 }
 
 String _$transactionServiceHash() =>
-    r'1da3af54aaf4720a6a43c2ee926a447c559405df';
+    r'e7bdfe49b5df281b0dae981794ccb1bc7f9b4e3e';
 
 @ProviderFor(transactionQueryService)
 final transactionQueryServiceProvider = TransactionQueryServiceProvider._();
@@ -458,6 +506,81 @@ final class AccountListProvider
 }
 
 String _$accountListHash() => r'604f0ccedf8e249a36081a3c95152268e618d6a8';
+
+@ProviderFor(accountsByTypes)
+final accountsByTypesProvider = AccountsByTypesFamily._();
+
+final class AccountsByTypesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Account>>,
+          List<Account>,
+          Stream<List<Account>>
+        >
+    with $FutureModifier<List<Account>>, $StreamProvider<List<Account>> {
+  AccountsByTypesProvider._({
+    required AccountsByTypesFamily super.from,
+    required Set<AccountType> super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountsByTypesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountsByTypesHash();
+
+  @override
+  String toString() {
+    return r'accountsByTypesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Account>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Account>> create(Ref ref) {
+    final argument = this.argument as Set<AccountType>;
+    return accountsByTypes(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountsByTypesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountsByTypesHash() => r'32e91322158a461a3d81fda4ff9f6b578722fe70';
+
+final class AccountsByTypesFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Account>>, Set<AccountType>> {
+  AccountsByTypesFamily._()
+    : super(
+        retry: null,
+        name: r'accountsByTypesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountsByTypesProvider call(Set<AccountType> types) =>
+      AccountsByTypesProvider._(argument: types, from: this);
+
+  @override
+  String toString() => r'accountsByTypesProvider';
+}
 
 @ProviderFor(categoryTree)
 final categoryTreeProvider = CategoryTreeFamily._();
@@ -593,7 +716,7 @@ final class TransactionListProvider
   }
 }
 
-String _$transactionListHash() => r'21ebaa59974d55766854975f6fa0174fcb14f16f';
+String _$transactionListHash() => r'9992d1fe01690b6280430b6e986f890d17cfba19';
 
 final class TransactionListFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<TransactionListItem>>, int?> {

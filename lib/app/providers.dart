@@ -3,11 +3,13 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/database/database_provider.dart';
 import '../data/repositories/drift_account_repository.dart';
 import '../data/repositories/drift_posting_repository.dart';
+import '../data/repositories/drift_system_account_resolver.dart';
 import '../data/repositories/drift_transaction_query_repository.dart';
 import '../domain/entities/account.dart';
 import '../domain/enums/accounting_enums.dart';
 import '../domain/repositories/account_repository.dart';
 import '../domain/repositories/posting_repository.dart';
+import '../domain/repositories/system_account_resolver.dart';
 import '../domain/repositories/transaction_query_repository.dart';
 import '../domain/services/account_service.dart';
 import '../domain/services/category_service.dart';
@@ -18,13 +20,24 @@ import '../domain/services/transaction_service.dart';
 part 'providers.g.dart';
 
 @Riverpod(keepAlive: true)
+SystemAccountResolver systemAccountResolver(Ref ref) {
+  return DriftSystemAccountResolver(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 AccountRepository accountRepository(Ref ref) {
-  return DriftAccountRepository(ref.watch(appDatabaseProvider));
+  return DriftAccountRepository(
+    ref.watch(appDatabaseProvider),
+    systemAccounts: ref.watch(systemAccountResolverProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)
 CategoryRepository categoryRepository(Ref ref) {
-  return DriftAccountRepository(ref.watch(appDatabaseProvider));
+  return DriftAccountRepository(
+    ref.watch(appDatabaseProvider),
+    systemAccounts: ref.watch(systemAccountResolverProvider),
+  );
 }
 
 @Riverpod(keepAlive: true)
@@ -57,6 +70,8 @@ TransactionService transactionService(Ref ref) {
   return TransactionServiceImpl(
     ref.watch(postingServiceProvider),
     accountRepository: ref.watch(accountRepositoryProvider),
+    transactionQueryRepository: ref.watch(transactionQueryRepositoryProvider),
+    systemAccountResolver: ref.watch(systemAccountResolverProvider),
   );
 }
 
@@ -73,6 +88,11 @@ Stream<List<Account>> accountList(Ref ref) {
 }
 
 @riverpod
+Stream<List<Account>> accountsByTypes(Ref ref, Set<AccountType> types) {
+  return ref.watch(accountRepositoryProvider).watchAccounts(types);
+}
+
+@riverpod
 Stream<List<CategoryNode>> categoryTree(Ref ref, AccountType type) {
   return ref.watch(categoryServiceProvider).watchCategoryTree(type);
 }
@@ -82,9 +102,12 @@ Stream<List<TransactionListItem>> transactionList(
   Ref ref, {
   int? accountId,
 }) {
-  return ref
-      .watch(transactionQueryServiceProvider)
-      .watchTransactions(TransactionListQuery(accountId: accountId));
+  return ref.watch(transactionQueryServiceProvider).watchTransactions(
+        TransactionListQuery(
+          accountId: accountId,
+          topLevelOnly: accountId == null,
+        ),
+      );
 }
 
 @riverpod

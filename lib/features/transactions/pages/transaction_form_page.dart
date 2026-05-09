@@ -21,7 +21,15 @@ import '../../../widgets/business/category_icon.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
 
-enum _TransactionFormMode { expense, income, transfer }
+enum _TransactionFormMode {
+  expense,
+  income,
+  transfer,
+  reimbursementAdvance,
+  repayment,
+  borrowing,
+  balanceAdjustment,
+}
 
 class TransactionFormPage extends ConsumerStatefulWidget {
   const TransactionFormPage({super.key});
@@ -35,6 +43,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _feeController = TextEditingController();
+  final _interestController = TextEditingController();
+  final _repayFeeController = TextEditingController();
+  final _targetBalanceController = TextEditingController();
   final _counterpartyController = TextEditingController();
   final _noteController = TextEditingController();
   _TransactionFormMode _mode = _TransactionFormMode.expense;
@@ -43,12 +54,21 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   int? _expenseCategoryId;
   int? _incomeCategoryId;
   int? _feeCategoryId;
+  int? _interestCategoryId;
+  int? _repayFeeCategoryId;
+  int? _liabilityAccountId;
+  int? _receivableAccountId;
+  int? _adjustmentAccountId;
+
   bool _submitting = false;
 
   @override
   void dispose() {
     _amountController.dispose();
     _feeController.dispose();
+    _interestController.dispose();
+    _repayFeeController.dispose();
+    _targetBalanceController.dispose();
     _counterpartyController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -56,16 +76,27 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final accountAsync = ref.watch(accountListProvider);
-    final expenseAsync = ref.watch(categoryTreeProvider(AccountType.expense));
-    final incomeAsync = ref.watch(categoryTreeProvider(AccountType.income));
-    final accounts = accountAsync.value ?? const <Account>[];
-    final expenseCategories = _flatten(expenseAsync.value ?? const []);
-    final incomeCategories = _flatten(incomeAsync.value ?? const []);
-    final colors = Theme.of(context).colorScheme;
+    final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+    final liabilityAccounts = accounts
+        .where((a) => a.type == AccountType.liability)
+        .toList();
+    final receivableAccounts = accounts
+        .where(
+          (a) =>
+              a.type == AccountType.asset &&
+              a.subtype == AccountSubtype.reimbursement,
+        )
+        .toList();
+    final assetOrLiabilityAccounts = accounts;
+    final expenseCategories = _flatten(
+      ref.watch(categoryTreeProvider(AccountType.expense)).value ?? const [],
+    );
+    final incomeCategories = _flatten(
+      ref.watch(categoryTreeProvider(AccountType.income)).value ?? const [],
+    );
 
     return Scaffold(
-      backgroundColor: colors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -79,7 +110,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             children: [
               const AppPageHeader(
                 title: '新增交易',
-                subtitle: '记录支出、收入或账户转账',
+                subtitle: '记录支出、收入、转账或复合交易',
                 showBackButton: true,
               ),
               const SizedBox(height: AppSpacing.space14),
@@ -90,6 +121,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               const SizedBox(height: AppSpacing.space16),
               _AmountHero(
                 controller: _amountController,
+                label: _amountLabel(_mode),
                 semantic: _amountSemantic(_mode),
                 validator: _validatePositiveMoney,
               ),
@@ -112,10 +144,16 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                   onSelect: (id) =>
                       setState(() => _incomeCategoryId = id),
                 ),
-              if (_mode != _TransactionFormMode.transfer)
+              if (_mode == _TransactionFormMode.expense ||
+                  _mode == _TransactionFormMode.income)
                 const SizedBox(height: AppSpacing.space16),
               AppFormSection(
-                children: _buildModeFields(accounts, expenseCategories),
+                children: _buildModeFields(
+                  accounts: assetOrLiabilityAccounts,
+                  liabilityAccounts: liabilityAccounts,
+                  receivableAccounts: receivableAccounts,
+                  expenseCategories: expenseCategories,
+                ),
               ),
               const SizedBox(height: AppSpacing.space16),
               AppFormSection(
@@ -158,10 +196,12 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     );
   }
 
-  List<Widget> _buildModeFields(
-    List<Account> accounts,
-    List<Account> expenseCategories,
-  ) {
+  List<Widget> _buildModeFields({
+    required List<Account> accounts,
+    required List<Account> liabilityAccounts,
+    required List<Account> receivableAccounts,
+    required List<Account> expenseCategories,
+  }) {
     return switch (_mode) {
       _TransactionFormMode.expense => [
           _accountDropdown(
@@ -198,7 +238,8 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               labelText: '手续费',
               prefixIcon: Icon(Icons.receipt_long),
             ),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
             validator: _validateOptionalMoney,
           ),
           _accountDropdown(
@@ -207,6 +248,114 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             accounts: expenseCategories,
             required: false,
             onChanged: (value) => setState(() => _feeCategoryId = value),
+          ),
+        ],
+      _TransactionFormMode.reimbursementAdvance => [
+          _accountDropdown(
+            label: '应收账户',
+            value: _receivableAccountId,
+            accounts: receivableAccounts,
+            emptyHint: '请先创建报销账户（资产 · 报销）',
+            onChanged: (value) => setState(() => _receivableAccountId = value),
+          ),
+          _accountDropdown(
+            label: '垫付账户',
+            value: _fromAccountId,
+            accounts: accounts,
+            onChanged: (value) => setState(() => _fromAccountId = value),
+          ),
+          _accountDropdown(
+            label: '报销支出分类',
+            value: _expenseCategoryId,
+            accounts: expenseCategories,
+            onChanged: (value) =>
+                setState(() => _expenseCategoryId = value),
+          ),
+        ],
+      _TransactionFormMode.repayment => [
+          _accountDropdown(
+            label: '负债账户',
+            value: _liabilityAccountId,
+            accounts: liabilityAccounts,
+            onChanged: (value) => setState(() => _liabilityAccountId = value),
+          ),
+          _accountDropdown(
+            label: '还款账户',
+            value: _fromAccountId,
+            accounts: accounts,
+            onChanged: (value) => setState(() => _fromAccountId = value),
+          ),
+          TextFormField(
+            controller: _interestController,
+            decoration: const InputDecoration(
+              labelText: '利息',
+              prefixIcon: Icon(Icons.percent),
+            ),
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            validator: _validateOptionalMoney,
+          ),
+          _accountDropdown(
+            label: '利息分类',
+            value: _interestCategoryId,
+            accounts: expenseCategories,
+            required: false,
+            onChanged: (value) =>
+                setState(() => _interestCategoryId = value),
+          ),
+          TextFormField(
+            controller: _repayFeeController,
+            decoration: const InputDecoration(
+              labelText: '手续费',
+              prefixIcon: Icon(Icons.receipt_long),
+            ),
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            validator: _validateOptionalMoney,
+          ),
+          _accountDropdown(
+            label: '手续费分类',
+            value: _repayFeeCategoryId,
+            accounts: expenseCategories,
+            required: false,
+            onChanged: (value) =>
+                setState(() => _repayFeeCategoryId = value),
+          ),
+        ],
+      _TransactionFormMode.borrowing => [
+          _accountDropdown(
+            label: '负债账户',
+            value: _liabilityAccountId,
+            accounts: liabilityAccounts,
+            onChanged: (value) => setState(() => _liabilityAccountId = value),
+          ),
+          _accountDropdown(
+            label: '到账账户（可选）',
+            value: _toAccountId,
+            accounts: accounts,
+            required: false,
+            onChanged: (value) => setState(() => _toAccountId = value),
+          ),
+        ],
+      _TransactionFormMode.balanceAdjustment => [
+          _accountDropdown(
+            label: '调整账户',
+            value: _adjustmentAccountId,
+            accounts: accounts,
+            onChanged: (value) =>
+                setState(() => _adjustmentAccountId = value),
+          ),
+          TextFormField(
+            controller: _targetBalanceController,
+            decoration: const InputDecoration(
+              labelText: '目标余额',
+              prefixIcon: Icon(Icons.tune),
+            ),
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+              signed: true,
+            ),
+            validator: _validateMoney,
           ),
         ],
     };
@@ -218,12 +367,24 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     required List<Account> accounts,
     required ValueChanged<int?> onChanged,
     bool required = true,
+    String? emptyHint,
   }) {
     final validValue =
         accounts.any((account) => account.id == value) ? value : null;
+    if (accounts.isEmpty && emptyHint != null) {
+      return InputDecorator(
+        decoration: InputDecoration(labelText: label),
+        child: Text(
+          emptyHint,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
 
     return DropdownButtonFormField<int>(
-      key: ValueKey(label),
+      key: ValueKey('${_mode.name}_$label'),
       initialValue: validValue,
       decoration: InputDecoration(
         labelText: label,
@@ -242,7 +403,20 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     );
   }
 
+  String _amountLabel(_TransactionFormMode mode) {
+    return switch (mode) {
+      _TransactionFormMode.balanceAdjustment => '当前余额',
+      _TransactionFormMode.repayment => '本金',
+      _TransactionFormMode.borrowing => '借入金额',
+      _TransactionFormMode.reimbursementAdvance => '垫付金额',
+      _ => '金额',
+    };
+  }
+
   String? _validatePositiveMoney(String? value) {
+    if (_mode == _TransactionFormMode.balanceAdjustment) {
+      return null;
+    }
     try {
       final money = Money.parse(value ?? '');
       return money.minorUnits > 0 ? null : '金额必须大于 0';
@@ -264,6 +438,15 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     }
   }
 
+  String? _validateMoney(String? value) {
+    try {
+      Money.parse(value ?? '');
+      return null;
+    } on FormatException {
+      return '请输入有效金额';
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -279,44 +462,92 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
     setState(() => _submitting = true);
     final service = ref.read(transactionServiceProvider);
-    final amount = Money.parse(_amountController.text);
-    final fee = _feeController.text.trim().isEmpty
-        ? null
-        : Money.parse(_feeController.text);
-    final occurredAt = DateTime.now();
+    final now = DateTime.now();
     final counterparty = _blankToNull(_counterpartyController.text);
     final note = _blankToNull(_noteController.text);
 
-    final result = switch (_mode) {
-      _TransactionFormMode.expense => await service.createExpense(
+    final result = await switch (_mode) {
+      _TransactionFormMode.expense => service.createExpense(
           CreateExpenseCommand(
-            amount: amount,
+            amount: Money.parse(_amountController.text),
             paidFromAccountId: _fromAccountId!,
             expenseAccountId: _expenseCategoryId!,
-            occurredAt: occurredAt,
+            occurredAt: now,
             counterpartyName: counterparty,
             note: note,
           ),
         ),
-      _TransactionFormMode.income => await service.createIncome(
+      _TransactionFormMode.income => service.createIncome(
           CreateIncomeCommand(
-            amount: amount,
+            amount: Money.parse(_amountController.text),
             receiveAccountId: _toAccountId!,
             incomeAccountId: _incomeCategoryId!,
-            occurredAt: occurredAt,
+            occurredAt: now,
             counterpartyName: counterparty,
             note: note,
           ),
         ),
-      _TransactionFormMode.transfer => await service.createTransfer(
+      _TransactionFormMode.transfer => service.createTransfer(
           CreateTransferCommand(
-            amount: amount,
+            amount: Money.parse(_amountController.text),
             fromAccountId: _fromAccountId!,
             toAccountId: _toAccountId!,
-            feeAmount: fee,
-            feeExpenseAccountId:
-                fee != null && fee.minorUnits > 0 ? _feeCategoryId : null,
-            occurredAt: occurredAt,
+            feeAmount: _feeController.text.trim().isEmpty
+                ? null
+                : Money.parse(_feeController.text),
+            feeExpenseAccountId: _feeController.text.trim().isEmpty
+                ? null
+                : _feeCategoryId,
+            occurredAt: now,
+            counterpartyName: counterparty,
+            note: note,
+          ),
+        ),
+      _TransactionFormMode.reimbursementAdvance =>
+        service.createReimbursementAdvance(
+          CreateReimbursementAdvanceCommand(
+            amount: Money.parse(_amountController.text),
+            receivableAccountId: _receivableAccountId!,
+            paidFromAccountId: _fromAccountId!,
+            expenseCategoryId: _expenseCategoryId!,
+            occurredAt: now,
+            counterpartyName: counterparty,
+            note: note,
+          ),
+        ),
+      _TransactionFormMode.repayment => service.createRepayment(
+          CreateRepaymentCommand(
+            principal: Money.parse(_amountController.text),
+            interest: _interestController.text.trim().isEmpty
+                ? null
+                : Money.parse(_interestController.text),
+            fee: _repayFeeController.text.trim().isEmpty
+                ? null
+                : Money.parse(_repayFeeController.text),
+            liabilityAccountId: _liabilityAccountId!,
+            paidFromAccountId: _fromAccountId!,
+            interestExpenseAccountId: _interestCategoryId,
+            feeExpenseAccountId: _repayFeeCategoryId,
+            occurredAt: now,
+            counterpartyName: counterparty,
+            note: note,
+          ),
+        ),
+      _TransactionFormMode.borrowing => service.createBorrowing(
+          CreateBorrowingCommand(
+            amount: Money.parse(_amountController.text),
+            liabilityAccountId: _liabilityAccountId!,
+            receiveAccountId: _toAccountId,
+            occurredAt: now,
+            counterpartyName: counterparty,
+            note: note,
+          ),
+        ),
+      _TransactionFormMode.balanceAdjustment => service.adjustBalance(
+          AdjustBalanceCommand(
+            accountId: _adjustmentAccountId!,
+            targetBalance: Money.parse(_targetBalanceController.text),
+            occurredAt: now,
             counterpartyName: counterparty,
             note: note,
           ),
@@ -357,7 +588,10 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     return switch (mode) {
       _TransactionFormMode.expense => MoneySemantic.expense,
       _TransactionFormMode.income => MoneySemantic.income,
-      _TransactionFormMode.transfer => MoneySemantic.neutral,
+      _TransactionFormMode.reimbursementAdvance => MoneySemantic.expense,
+      _TransactionFormMode.repayment => MoneySemantic.expense,
+      _TransactionFormMode.borrowing => MoneySemantic.income,
+      _ => MoneySemantic.neutral,
     };
   }
 }
@@ -374,17 +608,23 @@ class _ModeTabs extends StatelessWidget {
       border: true,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space4),
-        child: Row(
-          children: [
-            for (final value in _TransactionFormMode.values)
-              Expanded(
-                child: _ModeTabItem(
-                  label: _modeLabel(value),
-                  selected: value == mode,
-                  onTap: () => onChanged(value),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final value in _TransactionFormMode.values)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space2,
+                  ),
+                  child: _ModeTabItem(
+                    label: _modeLabel(value),
+                    selected: value == mode,
+                    onTap: () => onChanged(value),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -412,6 +652,7 @@ class _ModeTabItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.radiusMd),
       child: Container(
         height: AppSpacing.space32,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
         decoration: BoxDecoration(
           color: selected ? colors.primary.withValues(alpha: 0.10) : null,
           borderRadius: BorderRadius.circular(AppRadius.radiusMd),
@@ -435,17 +676,23 @@ String _modeLabel(_TransactionFormMode mode) {
     _TransactionFormMode.expense => '支出',
     _TransactionFormMode.income => '收入',
     _TransactionFormMode.transfer => '转账',
+    _TransactionFormMode.reimbursementAdvance => '报销垫付',
+    _TransactionFormMode.repayment => '还款',
+    _TransactionFormMode.borrowing => '借入',
+    _TransactionFormMode.balanceAdjustment => '余额调整',
   };
 }
 
 class _AmountHero extends StatelessWidget {
   const _AmountHero({
     required this.controller,
+    required this.label,
     required this.semantic,
     required this.validator,
   });
 
   final TextEditingController controller;
+  final String label;
   final MoneySemantic semantic;
   final FormFieldValidator<String> validator;
 
@@ -473,7 +720,7 @@ class _AmountHero extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '金额',
+              label,
               style: textTheme.bodySmall?.copyWith(
                 color: colors.onSurfaceVariant,
                 fontSize: AppTypography.fontSizeSm,
@@ -481,10 +728,12 @@ class _AmountHero extends StatelessWidget {
             ),
             TextFormField(
               controller: controller,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
               ],
               style: TextStyle(
                 fontSize: 36,

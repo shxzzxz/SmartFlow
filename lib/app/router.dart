@@ -8,6 +8,9 @@ import '../features/categories/pages/categories_page.dart';
 import '../features/categories/pages/category_form_page.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/placeholder/pages/placeholder_page.dart';
+import '../features/transactions/pages/refund_form_page.dart';
+import '../features/transactions/pages/reimbursement_close_form_page.dart';
+import '../features/transactions/pages/reimbursement_receipt_form_page.dart';
 import '../features/transactions/pages/transaction_detail_page.dart';
 import '../features/transactions/pages/transaction_form_page.dart';
 import '../features/transactions/pages/transactions_page.dart';
@@ -50,10 +53,27 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/transactions/:id',
-      builder:
-          (context, state) => TransactionDetailPage(
-            transactionId: int.parse(state.pathParameters['id']!),
-          ),
+      builder: (context, state) => TransactionDetailPage(
+        transactionId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
+      path: '/transactions/:id/refund',
+      builder: (context, state) => RefundFormPage(
+        parentTransactionId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
+      path: '/transactions/:id/reimburse-receipt',
+      builder: (context, state) => ReimbursementReceiptFormPage(
+        advanceTransactionId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
+      path: '/transactions/:id/reimburse-close',
+      builder: (context, state) => ReimbursementCloseFormPage(
+        advanceTransactionId: int.parse(state.pathParameters['id']!),
+      ),
     ),
     GoRoute(
       path: '/accounts/new',
@@ -61,10 +81,9 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/accounts/:id',
-      builder:
-          (context, state) => AccountTransactionsPage(
-            accountId: int.parse(state.pathParameters['id']!),
-          ),
+      builder: (context, state) => AccountTransactionsPage(
+        accountId: int.parse(state.pathParameters['id']!),
+      ),
     ),
     GoRoute(
       path: '/categories/new',

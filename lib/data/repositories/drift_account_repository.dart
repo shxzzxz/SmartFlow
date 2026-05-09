@@ -5,14 +5,18 @@ import '../../domain/entities/account.dart' as domain;
 import '../../domain/enums/accounting_enums.dart';
 import '../../domain/ledger/ledger_rules.dart';
 import '../../domain/repositories/account_repository.dart';
+import '../../domain/repositories/system_account_resolver.dart';
 import '../../domain/services/account_service.dart';
 import '../../domain/services/category_service.dart';
 import '../database/app_database.dart';
+import 'drift_system_account_resolver.dart';
 
 class DriftAccountRepository implements AccountRepository, CategoryRepository {
-  const DriftAccountRepository(this._database);
+  DriftAccountRepository(this._database, {SystemAccountResolver? systemAccounts})
+    : _systemAccounts = systemAccounts ?? DriftSystemAccountResolver(_database);
 
   final AppDatabase _database;
+  final SystemAccountResolver _systemAccounts;
 
   @override
   Future<domain.Account?> findAccountById(int id) async {
@@ -170,9 +174,8 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
     required DateTime occurredAt,
     required DateTime now,
   }) async {
-    final openingAccountId = await _findOrCreateOpeningBalanceAccount(
+    final openingAccountId = await _systemAccounts.resolveOpeningBalance(
       currencyCode: amount.currency,
-      now: now,
     );
     final amountMinor = amount.minorUnits.abs();
     final targetDirection = _directionForBalanceDelta(
@@ -247,33 +250,6 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
       ),
       now,
     );
-  }
-
-  Future<int> _findOrCreateOpeningBalanceAccount({
-    required String currencyCode,
-    required DateTime now,
-  }) async {
-    final existing = await (_database.select(_database.accounts)
-          ..where(
-            (account) =>
-                account.systemKey.equalsValue(SystemKey.openingBalance) &
-                account.currencyCode.equals(currencyCode),
-          ))
-        .getSingleOrNull();
-    if (existing != null) {
-      return existing.id;
-    }
-
-    return _database.into(_database.accounts).insert(
-          AccountsCompanion.insert(
-            name: '系统期初余额($currencyCode)',
-            accountType: AccountType.equity,
-            currencyCode: currencyCode,
-            systemKey: const Value(SystemKey.openingBalance),
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
   }
 
   EntryDirection _directionForBalanceDelta({
