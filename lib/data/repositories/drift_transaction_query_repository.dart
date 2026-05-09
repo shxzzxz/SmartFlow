@@ -40,6 +40,11 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           "AND a.account_type = 'expense' THEN a.name "
           "WHEN t.business_purpose = 'dailyIncome' "
           "AND a.account_type = 'income' THEN a.name END) AS category_name, "
+          "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
+          "AND a.account_type = 'expense' THEN a.icon_key "
+          "WHEN t.business_purpose = 'dailyIncome' "
+          "AND a.account_type = 'income' THEN a.icon_key END) "
+          'AS category_icon_key, '
           "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
           "AND e.direction = 'credit' THEN a.name END) "
           'AS flow_out_account_name, '
@@ -159,6 +164,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       note: row.read<String?>('note'),
       accountNames: row.read<String>('account_names'),
       categoryName: row.read<String?>('category_name'),
+      categoryIconKey: row.read<String?>('category_icon_key'),
       flowOutAccountName: row.read<String?>('flow_out_account_name'),
       flowInAccountName: row.read<String?>('flow_in_account_name'),
     );

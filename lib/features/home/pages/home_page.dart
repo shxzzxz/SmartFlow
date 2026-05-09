@@ -9,8 +9,10 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
+import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
+import '../../../widgets/business/category_icon.dart';
 import '../../../widgets/business/finance_labels.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -199,7 +201,7 @@ class _MonthlySummaryCard extends StatelessWidget {
             .clamp(0, 100)
             .round();
 
-    return _HomeSurface(
+    return AppSurface(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.space16,
@@ -252,7 +254,7 @@ class _NewTransactionButton extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return _HomeSurface(
+    return AppSurface(
       border: true,
       child: InkWell(
         onTap: () => context.push('/transactions/new'),
@@ -348,39 +350,6 @@ class _SummaryMetric extends StatelessWidget {
   }
 }
 
-class _HomeSurface extends StatelessWidget {
-  const _HomeSurface({required this.child, this.border = false});
-
-  final Widget child;
-  final bool border;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
-        border:
-            border
-                ? Border.all(
-                  color: colors.outlineVariant.withValues(alpha: 0.55),
-                )
-                : null,
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.035),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
 class _TransactionDaySection extends StatelessWidget {
   const _TransactionDaySection({required this.group});
 
@@ -434,7 +403,7 @@ class _TransactionDaySection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.space8),
-        _HomeSurface(
+        AppSurface(
           border: true,
           child: Column(
             children: [
@@ -492,8 +461,7 @@ class _TransactionItemTile extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final visual = _transactionVisual(item, colors, financeColors);
-    final amountColor = visual.color;
+    final amountColor = _amountColor(colors, financeColors, item.businessPurpose);
     final title = _transactionPrimaryLabel(item);
 
     return InkWell(
@@ -509,7 +477,10 @@ class _TransactionItemTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _CategoryIcon(visual: visual),
+            CategoryIcon(
+              iconKey: _resolveCategoryIconKey(item),
+              fallback: _categoryIconFallback(item.businessPurpose),
+            ),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Column(
@@ -572,28 +543,6 @@ class _TransactionItemTile extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryIcon extends StatelessWidget {
-  const _CategoryIcon({required this.visual});
-
-  final _TransactionVisual visual;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 24,
-      height: 24,
-      child: Center(
-        child: SvgPicture.asset(
-          visual.iconAsset,
-          width: 24,
-          height: 24,
-          fit: BoxFit.contain,
         ),
       ),
     );
@@ -850,72 +799,30 @@ bool _needsBadge(BusinessPurpose purpose) {
   };
 }
 
-class _TransactionVisual {
-  const _TransactionVisual({required this.iconAsset, required this.color});
-
-  final String iconAsset;
-  final Color color;
-}
-
-_TransactionVisual _transactionVisual(
-  TransactionListItem item,
-  ColorScheme colors,
-  AppThemeExtension financeColors,
-) {
-  final text = [
-    item.categoryName,
-    item.counterpartyName,
-    item.note,
-    transactionPurposeLabel(item.businessPurpose),
-  ].whereType<String>().join(' ');
-
-  final iconAsset = switch (item.businessPurpose) {
-    BusinessPurpose.dailyIncome =>
-      text.contains('工资')
-          ? 'assets/icons/category/salary.svg'
-          : 'assets/icons/category/income.svg',
-    BusinessPurpose.dailyExpense => _expenseIconAsset(text),
-    BusinessPurpose.transfer => 'assets/icons/category/transfer.svg',
+String? _resolveCategoryIconKey(TransactionListItem item) {
+  return switch (item.businessPurpose) {
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.dailyIncome => item.categoryIconKey,
+    BusinessPurpose.transfer => 'transfer',
     BusinessPurpose.debtRepayment ||
-    BusinessPurpose.borrowing => 'assets/icons/category/loan.svg',
+    BusinessPurpose.borrowing => 'loan',
     BusinessPurpose.refund ||
     BusinessPurpose.reimbursementAdvance ||
     BusinessPurpose.reimbursementReceipt ||
     BusinessPurpose.reimbursementClose ||
     BusinessPurpose.openingBalance ||
-    BusinessPurpose.balanceAdjustment => 'assets/icons/category/category.svg',
+    BusinessPurpose.balanceAdjustment => null,
   };
-
-  return _TransactionVisual(
-    iconAsset: iconAsset,
-    color: _amountColor(colors, financeColors, item.businessPurpose),
-  );
 }
 
-String _expenseIconAsset(String text) {
-  if (text.contains('咖啡')) {
-    return 'assets/icons/category/coffee.svg';
-  }
-  if (text.contains('地铁') || text.contains('通勤')) {
-    return 'assets/icons/category/metro.svg';
-  }
-  if (text.contains('购物') || text.contains('超市') || text.contains('买菜')) {
-    return 'assets/icons/category/shopping.svg';
-  }
-  if (text.contains('晚餐') || text.contains('餐') || text.contains('饭')) {
-    return 'assets/icons/category/meal.svg';
-  }
-  if (text.contains('打车') || text.contains('滴滴') || text.contains('出租')) {
-    return 'assets/icons/category/taxi.svg';
-  }
-  if (text.contains('书')) {
-    return 'assets/icons/category/book.svg';
-  }
-  if (text.contains('电影')) {
-    return 'assets/icons/category/movie.svg';
-  }
-  return 'assets/icons/category/expense.svg';
+CategoryIconFallback _categoryIconFallback(BusinessPurpose purpose) {
+  return switch (purpose) {
+    BusinessPurpose.dailyIncome => CategoryIconFallback.income,
+    BusinessPurpose.dailyExpense => CategoryIconFallback.expense,
+    _ => CategoryIconFallback.generic,
+  };
 }
+
 
 String _transactionPrimaryLabel(TransactionListItem item) {
   return switch (item.businessPurpose) {
