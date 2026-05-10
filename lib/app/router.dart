@@ -9,6 +9,7 @@ import '../features/categories/pages/categories_page.dart';
 import '../features/categories/pages/category_form_page.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/placeholder/pages/placeholder_page.dart';
+import '../features/profile/pages/profile_page.dart';
 import '../features/transactions/pages/refund_form_page.dart';
 import '../features/transactions/pages/reimbursement_close_form_page.dart';
 import '../features/transactions/pages/reimbursement_receipt_form_page.dart';
@@ -36,11 +37,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/profile',
-          builder: (context, state) => const PlaceholderPage(title: '我的'),
-        ),
-        GoRoute(
-          path: '/categories',
-          builder: (context, state) => const CategoriesPage(),
+          builder: (context, state) => const ProfilePage(),
         ),
         GoRoute(
           path: '/transactions',
@@ -85,6 +82,10 @@ final appRouter = GoRouter(
       builder: (context, state) => AccountTransactionsPage(
         accountId: int.parse(state.pathParameters['id']!),
       ),
+    ),
+    GoRoute(
+      path: '/categories',
+      builder: (context, state) => const CategoriesPage(),
     ),
     GoRoute(
       path: '/categories/new',

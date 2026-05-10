@@ -149,7 +149,7 @@ const _defaultCategories = [
   _CategorySeed(
     name: '人情社交',
     type: AccountType.expense,
-    iconKey: 'gift',
+    iconKey: 'social',
     sortOrder: 10,
     children: [
       _CategorySeed(name: '请客吃饭', iconKey: 'meal', sortOrder: 11),
@@ -169,14 +169,14 @@ const _defaultCategories = [
     sortOrder: 30,
     children: [
       _CategorySeed(name: '茶叶', iconKey: 'coffee', sortOrder: 31),
-      _CategorySeed(name: '早餐', iconKey: 'meal', sortOrder: 32),
-      _CategorySeed(name: '午餐', iconKey: 'meal', sortOrder: 33),
-      _CategorySeed(name: '晚餐', iconKey: 'meal', sortOrder: 34),
-      _CategorySeed(name: '饮料酒水', iconKey: 'coffee', sortOrder: 35),
-      _CategorySeed(name: '休闲零食', iconKey: 'shopping', sortOrder: 36),
-      _CategorySeed(name: '生鲜食品', iconKey: 'meal', sortOrder: 37),
+      _CategorySeed(name: '早餐', iconKey: 'breakfast', sortOrder: 32),
+      _CategorySeed(name: '午餐', iconKey: 'lunch', sortOrder: 33),
+      _CategorySeed(name: '晚餐', iconKey: 'dinner', sortOrder: 34),
+      _CategorySeed(name: '饮料酒水', iconKey: 'drink', sortOrder: 35),
+      _CategorySeed(name: '休闲零食', iconKey: 'snack', sortOrder: 36),
+      _CategorySeed(name: '生鲜食品', iconKey: 'seafood', sortOrder: 37),
       _CategorySeed(name: '请客吃饭', iconKey: 'meal', sortOrder: 38),
-      _CategorySeed(name: '粮油调味', iconKey: 'meal', sortOrder: 39),
+      _CategorySeed(name: '粮油调味', iconKey: 'seasoning', sortOrder: 39),
     ],
   ),
   _CategorySeed(

@@ -34,6 +34,12 @@ abstract final class AppColors {
   static const categorySalary = Color(0xFFFFA940);
   static const categoryLoan = Color(0xFF8E3B46);
   static const categoryTransfer = Color(0xFF1677FF);
+  static const categoryHome = Color(0xFF8E54DE);
+  static const categorySocial = Color(0xFF2F80ED);
+  static const categorySnack = Color(0xFFBB4DE8);
+  static const categorySeafood = Color(0xFFFF3045);
+  static const categoryMedical = Color(0xFFFF3B4F);
+  static const categoryGift = Color(0xFFFF9800);
   static const categoryGenericExpense = Color(0xFFFF4D4F);
   static const categoryGenericIncome = Color(0xFF00B85C);
   static const categoryGenericNeutral = Color(0xFF8C8C8C);

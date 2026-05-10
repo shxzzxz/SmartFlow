@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 
-import '../../design_system/tokens/colors.dart';
-
 class CategoryAvatar extends StatelessWidget {
   const CategoryAvatar({
     required this.iconKey,
@@ -18,17 +16,15 @@ class CategoryAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spec = _resolveSpec(iconKey, fallback);
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: spec.background,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        spec.icon,
-        color: AppColors.neutral99,
-        size: size * 0.5,
+      child: Center(
+        child: Icon(
+          spec.icon,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          size: size * 0.75,
+        ),
       ),
     );
   }
@@ -37,61 +33,50 @@ class CategoryAvatar extends StatelessWidget {
 enum CategoryAvatarFallback { generic, expense, income, transfer }
 
 class _AvatarSpec {
-  const _AvatarSpec({required this.icon, required this.background});
+  const _AvatarSpec({required this.icon});
 
   final IconData icon;
-  final Color background;
 }
 
 const _categoryPalette = <String, _AvatarSpec>{
-  'coffee':
-      _AvatarSpec(icon: RemixIcons.cup_fill, background: AppColors.categoryFood),
-  'meal': _AvatarSpec(
-      icon: RemixIcons.restaurant_2_fill,
-      background: AppColors.categoryDining),
-  'shopping': _AvatarSpec(
-      icon: RemixIcons.shopping_bag_3_fill,
-      background: AppColors.categoryShopping),
-  'metro': _AvatarSpec(
-      icon: RemixIcons.train_fill, background: AppColors.categoryTransport),
-  'taxi': _AvatarSpec(
-      icon: RemixIcons.taxi_fill, background: AppColors.categoryTaxi),
-  'book': _AvatarSpec(
-      icon: RemixIcons.book_open_fill, background: AppColors.categoryReading),
-  'movie': _AvatarSpec(
-      icon: RemixIcons.film_fill,
-      background: AppColors.categoryEntertainment),
-  'salary': _AvatarSpec(
-      icon: RemixIcons.briefcase_4_fill, background: AppColors.categorySalary),
-  'loan': _AvatarSpec(
-      icon: RemixIcons.bank_fill, background: AppColors.categoryLoan),
-  'transfer': _AvatarSpec(
-      icon: RemixIcons.arrow_left_right_fill,
-      background: AppColors.categoryTransfer),
-  'expense': _AvatarSpec(
-      icon: RemixIcons.price_tag_3_fill,
-      background: AppColors.categoryGenericExpense),
-  'income': _AvatarSpec(
-      icon: RemixIcons.price_tag_3_fill,
-      background: AppColors.categoryGenericIncome),
-  'category': _AvatarSpec(
-      icon: RemixIcons.price_tag_3_fill,
-      background: AppColors.categoryGenericNeutral),
+  'coffee': _AvatarSpec(icon: RemixIcons.cup_fill),
+  'meal': _AvatarSpec(icon: RemixIcons.restaurant_2_fill),
+  'breakfast': _AvatarSpec(icon: RemixIcons.bowl_fill),
+  'lunch': _AvatarSpec(icon: RemixIcons.briefcase_4_fill),
+  'dinner': _AvatarSpec(icon: RemixIcons.restaurant_fill),
+  'drink': _AvatarSpec(icon: RemixIcons.goblet_fill),
+  'shopping': _AvatarSpec(icon: RemixIcons.shopping_bag_3_fill),
+  'metro': _AvatarSpec(icon: RemixIcons.train_fill),
+  'taxi': _AvatarSpec(icon: RemixIcons.taxi_fill),
+  'book': _AvatarSpec(icon: RemixIcons.book_open_fill),
+  'movie': _AvatarSpec(icon: RemixIcons.film_fill),
+  'salary': _AvatarSpec(icon: RemixIcons.briefcase_4_fill),
+  'loan': _AvatarSpec(icon: RemixIcons.bank_fill),
+  'transfer': _AvatarSpec(icon: RemixIcons.arrow_left_right_fill),
+  'home': _AvatarSpec(icon: RemixIcons.home_5_fill),
+  'social': _AvatarSpec(icon: RemixIcons.user_3_fill),
+  'gift': _AvatarSpec(icon: RemixIcons.gift_fill),
+  'health': _AvatarSpec(icon: RemixIcons.heart_pulse_fill),
+  'phone': _AvatarSpec(icon: RemixIcons.smartphone_fill),
+  'snack': _AvatarSpec(icon: RemixIcons.cake_3_fill),
+  'seafood': _AvatarSpec(icon: RemixIcons.gitlab_fill),
+  'seasoning': _AvatarSpec(icon: RemixIcons.archive_fill),
+  'expense': _AvatarSpec(icon: RemixIcons.price_tag_3_fill),
+  'income': _AvatarSpec(icon: RemixIcons.price_tag_3_fill),
+  'category': _AvatarSpec(icon: RemixIcons.price_tag_3_fill),
 };
 
 const _fallbackSpecs = <CategoryAvatarFallback, _AvatarSpec>{
   CategoryAvatarFallback.expense: _AvatarSpec(
-      icon: RemixIcons.price_tag_3_fill,
-      background: AppColors.categoryGenericExpense),
-  CategoryAvatarFallback.income: _AvatarSpec(
-      icon: RemixIcons.price_tag_3_fill,
-      background: AppColors.categoryGenericIncome),
+    icon: RemixIcons.price_tag_3_fill,
+  ),
+  CategoryAvatarFallback.income: _AvatarSpec(icon: RemixIcons.price_tag_3_fill),
   CategoryAvatarFallback.transfer: _AvatarSpec(
-      icon: RemixIcons.arrow_left_right_fill,
-      background: AppColors.categoryTransfer),
+    icon: RemixIcons.arrow_left_right_fill,
+  ),
   CategoryAvatarFallback.generic: _AvatarSpec(
-      icon: RemixIcons.price_tag_3_fill,
-      background: AppColors.categoryGenericNeutral),
+    icon: RemixIcons.price_tag_3_fill,
+  ),
 };
 
 _AvatarSpec _resolveSpec(String? iconKey, CategoryAvatarFallback fallback) {

@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
-import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/tokens/typography.dart';
-import '../../../design_system/widgets/app_page_header.dart';
-import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/category_service.dart';
-import '../../../widgets/business/account_type_tag.dart';
+import '../../../widgets/business/category_grid_picker.dart';
 import '../../../widgets/business/category_icon.dart';
 
 class CategoriesPage extends ConsumerWidget {
@@ -29,48 +27,19 @@ class CategoriesPage extends ConsumerWidget {
         body: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.space16,
-                  AppSpacing.space14,
-                  AppSpacing.space16,
-                  AppSpacing.space10,
-                ),
-                child: AppPageHeader(
-                  title: '分类',
-                  subtitle: '维护收入与支出分类',
-                  actions: [
-                    AppHeaderIconButton(
-                      icon: Icons.add_rounded,
-                      tooltip: '新建分类',
-                      onPressed: () => context.push('/categories/new'),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space16,
-                ),
-                child: AppSurface(
-                  border: true,
-                  child: TabBar(
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    tabs: const [Tab(text: '支出'), Tab(text: '收入')],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
+              const _CategoryHeader(),
+              const Divider(height: 1),
               Expanded(
                 child: TabBarView(
                   children: [
-                    _CategoryTreeList(
+                    _CategoryGridPage(
                       asyncValue: expenseAsync,
+                      type: AccountType.expense,
                       emptyLabel: '暂无支出分类',
                     ),
-                    _CategoryTreeList(
+                    _CategoryGridPage(
                       asyncValue: incomeAsync,
+                      type: AccountType.income,
                       emptyLabel: '暂无收入分类',
                     ),
                   ],
@@ -84,109 +53,121 @@ class CategoriesPage extends ConsumerWidget {
   }
 }
 
-class _CategoryTreeList extends StatelessWidget {
-  const _CategoryTreeList({required this.asyncValue, required this.emptyLabel});
-
-  final AsyncValue<List<CategoryNode>> asyncValue;
-  final String emptyLabel;
+class _CategoryHeader extends StatelessWidget {
+  const _CategoryHeader();
 
   @override
   Widget build(BuildContext context) {
-    return asyncValue.when(
-      loading: () => const _CategoryLoadingView(),
-      error: (error, stackTrace) => _CategoryErrorView(error: error),
-      data: (nodes) {
-        if (nodes.isEmpty) {
-          return _EmptyCategories(label: emptyLabel);
-        }
+    final colors = Theme.of(context).colorScheme;
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space16,
-            AppSpacing.space8,
-            AppSpacing.space16,
-            AppSpacing.space16,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space4,
+        AppSpacing.space10,
+        AppSpacing.space12,
+        0,
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => context.pop(),
+            icon: const Icon(RemixIcons.arrow_left_s_line),
+            iconSize: 30,
+            tooltip: '返回',
           ),
-          children: [
-            for (final node in nodes) ...[
-              AppSurface(
-                border: true,
-                child: ExpansionTile(
-                  initiallyExpanded: node.children.isNotEmpty,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.radiusXl),
-                  ),
-                  collapsedShape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.radiusXl),
-                  ),
-                  leading: CategoryIcon(
-                    iconKey: node.account.iconKey,
-                    size: AppSpacing.space28,
-                    fallback:
-                        node.account.type == AccountType.income
-                            ? CategoryIconFallback.income
-                            : CategoryIconFallback.expense,
-                  ),
-                  title: Text(
-                    node.account.name,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontSize: AppTypography.fontSizeMd,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  subtitle: Wrap(
-                    spacing: AppSpacing.space8,
-                    children: [AccountTypeTag(type: node.account.type)],
-                  ),
-                  children: [
-                    for (final child in node.children)
-                      ListTile(
-                        contentPadding: const EdgeInsets.only(
-                          left: AppSpacing.space48,
-                          right: AppSpacing.space16,
-                        ),
-                        leading: Icon(
-                          Icons.subdirectory_arrow_right_rounded,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        title: Text(
-                          child.name,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontSize: AppTypography.fontSizeSm),
-                        ),
-                      ),
-                  ],
-                ),
+          const Expanded(
+            child: TabBar(
+              indicatorSize: TabBarIndicatorSize.label,
+              dividerColor: Colors.transparent,
+              labelStyle: TextStyle(
+                fontSize: AppTypography.fontSizeLg,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(height: AppSpacing.space8),
-            ],
-          ],
-        );
-      },
+              unselectedLabelStyle: TextStyle(
+                fontSize: AppTypography.fontSizeLg,
+                fontWeight: FontWeight.w500,
+              ),
+              tabs: [Tab(text: '支出'), Tab(text: '收入')],
+            ),
+          ),
+          IconButton(
+            onPressed: () => context.push('/categories/new'),
+            icon: Icon(RemixIcons.add_circle_line, color: colors.onSurface),
+            tooltip: '新建分类',
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _CategoryLoadingView extends StatelessWidget {
-  const _CategoryLoadingView();
+class _CategoryGridPage extends StatefulWidget {
+  const _CategoryGridPage({
+    required this.asyncValue,
+    required this.type,
+    required this.emptyLabel,
+  });
+
+  final AsyncValue<List<CategoryNode>> asyncValue;
+  final AccountType type;
+  final String emptyLabel;
+
+  @override
+  State<_CategoryGridPage> createState() => _CategoryGridPageState();
+}
+
+class _CategoryGridPageState extends State<_CategoryGridPage> {
+  int? _selectedRootId;
+  int? _selectedCategoryId;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space8,
-        AppSpacing.space16,
-        AppSpacing.space16,
-      ),
-      children: [
-        AppSurface(
-          child: Padding(
-            padding: EdgeInsets.all(AppSpacing.space24),
-            child: LinearProgressIndicator(),
+    return widget.asyncValue.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => _CategoryErrorView(error: error),
+      data: (nodes) {
+        if (nodes.isEmpty) {
+          return _EmptyCategories(label: widget.emptyLabel, type: widget.type);
+        }
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space28,
+            AppSpacing.space24,
+            AppSpacing.space28,
+            AppSpacing.space32,
           ),
-        ),
-      ],
+          children: [
+            CategoryGridPicker(
+              nodes: nodes,
+              selectedRootId: _selectedRootId,
+              selectedCategoryId: _selectedCategoryId,
+              fallback:
+                  widget.type == AccountType.income
+                      ? CategoryIconFallback.income
+                      : CategoryIconFallback.expense,
+              emptyLabel: widget.emptyLabel,
+              onRootSelected:
+                  (account) => setState(() {
+                    _selectedRootId = account.id;
+                    _selectedCategoryId = account.id;
+                  }),
+              onChildSelected:
+                  (root, child) => setState(() {
+                    _selectedRootId = root.id;
+                    _selectedCategoryId = child.id;
+                  }),
+              onAddRoot: () => _openCategoryForm(context, widget.type),
+              onAddChild:
+                  (rootId) => _openCategoryForm(
+                    context,
+                    widget.type,
+                    parentId: rootId,
+                  ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -198,70 +179,64 @@ class _CategoryErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space8,
-        AppSpacing.space16,
-        AppSpacing.space16,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space24),
+        child: Text('分类加载失败：$error'),
       ),
-      children: [
-        AppSurface(
-          border: true,
-          child: ListTile(
-            leading: const Icon(Icons.error_outline_rounded),
-            title: const Text('分类加载失败'),
-            subtitle: Text('$error'),
-          ),
-        ),
-      ],
     );
   }
 }
 
+void _openCategoryForm(
+  BuildContext context,
+  AccountType type, {
+  int? parentId,
+}) {
+  final uri = Uri(
+    path: '/categories/new',
+    queryParameters: {
+      'type': type.name,
+      if (parentId != null) 'parentId': parentId.toString(),
+    },
+  );
+  context.push(uri.toString());
+}
+
 class _EmptyCategories extends StatelessWidget {
-  const _EmptyCategories({required this.label});
+  const _EmptyCategories({required this.label, required this.type});
 
   final String label;
+  final AccountType type;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.space16,
-        AppSpacing.space8,
-        AppSpacing.space16,
-        AppSpacing.space16,
-      ),
-      children: [
-        AppSurface(
-          border: true,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.space24),
-            child: Row(
-              children: [
-                Icon(Icons.category_outlined, color: colors.onSurfaceVariant),
-                const SizedBox(width: AppSpacing.space12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => context.push('/categories/new'),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('新建'),
-                ),
-              ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(RemixIcons.apps_2_line, color: colors.onSurfaceVariant),
+            const SizedBox(height: AppSpacing.space12),
+            Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: AppSpacing.space12),
+            FilledButton.icon(
+              onPressed: () {
+                final uri = Uri(
+                  path: '/categories/new',
+                  queryParameters: {'type': type.name},
+                );
+                context.push(uri.toString());
+              },
+              icon: const Icon(RemixIcons.add_line),
+              label: const Text('新建分类'),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

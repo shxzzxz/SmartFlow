@@ -46,22 +46,29 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            HomeHeader(visibleMonth: _visibleMonth, onMonthPressed: _pickMonth),
-            Expanded(
-              child: switch ((transactionsAsync, summaryAsync)) {
-                (AsyncData(:final value), AsyncData(value: final summary)) =>
-                  _HomeContent(transactions: value, summary: summary),
-                (AsyncError(:final error), _) ||
-                (
-                  _,
-                  AsyncError(:final error),
-                ) => Center(child: Text('加载失败：$error')),
-                _ => const Center(child: CircularProgressIndicator()),
-              },
-            ),
-          ],
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragEnd: _handleMonthSwipe,
+          child: Column(
+            children: [
+              HomeHeader(
+                visibleMonth: _visibleMonth,
+                onMonthPressed: _pickMonth,
+              ),
+              Expanded(
+                child: switch ((transactionsAsync, summaryAsync)) {
+                  (AsyncData(:final value), AsyncData(value: final summary)) =>
+                    _HomeContent(transactions: value, summary: summary),
+                  (AsyncError(:final error), _) ||
+                  (
+                    _,
+                    AsyncError(:final error),
+                  ) => Center(child: Text('加载失败：$error')),
+                  _ => const Center(child: CircularProgressIndicator()),
+                },
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -90,6 +97,19 @@ class _HomePageState extends ConsumerState<HomePage> {
       _visibleMonth = DateTime(selected.year, selected.month);
     });
   }
+
+  void _handleMonthSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 260) {
+      return;
+    }
+    setState(() {
+      _visibleMonth =
+          velocity < 0
+              ? DateTime(_visibleMonth.year, _visibleMonth.month + 1)
+              : DateTime(_visibleMonth.year, _visibleMonth.month - 1);
+    });
+  }
 }
 
 class _HomeContent extends StatelessWidget {
@@ -103,6 +123,9 @@ class _HomeContent extends StatelessWidget {
     final groups = groupTransactionsByDay(transactions);
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space16,
         0,

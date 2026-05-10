@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smartflow/data/database/demo_data_seeder.dart';
 import 'package:smartflow/data/database/default_data_seeder.dart';
 import 'package:smartflow/domain/enums/accounting_enums.dart';
 
@@ -49,6 +50,29 @@ void main() {
         ),
         hasLength(1),
       );
+    });
+
+    test('seeds demo accounts and transactions once', () async {
+      final database = createTestDatabase();
+      addTearDown(database.close);
+
+      await seedDefaultData(database);
+      await seedDemoData(database);
+      await seedDemoData(database);
+
+      final demoAccounts =
+          await (database.select(database.accounts)..where(
+            (account) =>
+                account.name.equals('支付宝余额') |
+                account.name.equals('招商银行信用卡（1234）'),
+          )).get();
+      final demoTransactions =
+          await (database.select(database.transactions)..where(
+            (transaction) => transaction.note.equals('饭后来一杯美式'),
+          )).get();
+
+      expect(demoAccounts, hasLength(2));
+      expect(demoTransactions, hasLength(1));
     });
   });
 }

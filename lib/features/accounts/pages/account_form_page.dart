@@ -10,6 +10,8 @@ import '../../../design_system/widgets/app_form_section.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/account_service.dart';
+import '../../../widgets/business/account_icon.dart';
+import '../../../widgets/business/icon_choice_grid.dart';
 
 enum _AccountKind { fund, reimbursement, liability }
 
@@ -26,6 +28,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   final _openingBalanceController = TextEditingController(text: '0');
   final _noteController = TextEditingController();
   _AccountKind _kind = _AccountKind.fund;
+  String _iconKey = _defaultAccountIconKey(_AccountKind.fund);
   bool _submitting = false;
 
   @override
@@ -59,6 +62,12 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                 showBackButton: true,
               ),
               const SizedBox(height: AppSpacing.space14),
+              IconChoiceGrid(
+                choices: _accountIconGridItems,
+                selectedKey: _iconKey,
+                onChanged: (value) => setState(() => _iconKey = value),
+              ),
+              const SizedBox(height: AppSpacing.space20),
               AppFormSection(
                 children: [
                   TextFormField(
@@ -91,7 +100,10 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                             .toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() => _kind = value);
+                        setState(() {
+                          _kind = value;
+                          _iconKey = _defaultAccountIconKey(value);
+                        });
                       }
                     },
                   ),
@@ -162,6 +174,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
             name: _nameController.text,
             type: type,
             subtype: _accountSubtypeForKind(_kind),
+            iconKey: _iconKey,
             openingBalance: Money.parse(_openingBalanceController.text),
             openingOccurredAt: DateTime.now(),
             note: _noteController.text,
@@ -204,3 +217,21 @@ AccountSubtype? _accountSubtypeForKind(_AccountKind kind) {
     _ => null,
   };
 }
+
+String _defaultAccountIconKey(_AccountKind kind) {
+  return switch (kind) {
+    _AccountKind.fund => 'alipay',
+    _AccountKind.reimbursement => 'reimburse',
+    _AccountKind.liability => 'cmb_credit_card',
+  };
+}
+
+final List<IconChoiceGridItem> _accountIconGridItems = [
+  for (final choice in accountIconChoices)
+    IconChoiceGridItem(
+      iconKey: choice.iconKey,
+      label: choice.label,
+      iconBuilder:
+          (context, size) => AccountIcon(iconKey: choice.iconKey, size: size),
+    ),
+];

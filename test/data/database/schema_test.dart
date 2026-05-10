@@ -34,10 +34,10 @@ void main() {
       );
     });
 
-    test('enables foreign key checks', () async {
+    test('does not rely on sqlite foreign key checks', () async {
       final row = await database.customSelect('PRAGMA foreign_keys').getSingle();
 
-      expect(row.read<int>('foreign_keys'), 1);
+      expect(row.read<int>('foreign_keys'), 0);
     });
 
     test('enforces total and category budget uniqueness', () async {

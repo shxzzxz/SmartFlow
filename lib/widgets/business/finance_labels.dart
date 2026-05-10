@@ -10,6 +10,19 @@ String accountTypeLabel(AccountType type) {
   };
 }
 
+String accountSubtypeLabel(AccountSubtype subtype) {
+  return switch (subtype) {
+    AccountSubtype.cash => '现金',
+    AccountSubtype.bankCard => '储蓄卡',
+    AccountSubtype.thirdParty => '第三方支付',
+    AccountSubtype.investment => '投资资产',
+    AccountSubtype.reimbursement => '报销账户',
+    AccountSubtype.creditCard => '信用卡',
+    AccountSubtype.loan => '借款',
+    AccountSubtype.consumerCredit => '消费信贷',
+  };
+}
+
 String entryDirectionLabel(EntryDirection direction) {
   return switch (direction) {
     EntryDirection.debit => '借',

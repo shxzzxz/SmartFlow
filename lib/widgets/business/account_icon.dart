@@ -7,11 +7,13 @@ class AccountIcon extends StatelessWidget {
     super.key,
     this.size = 16,
     this.fallback = AccountIconFallback.bankCard,
+    this.color,
   });
 
   final String? iconKey;
   final double size;
   final AccountIconFallback fallback;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +22,8 @@ class AccountIcon extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
+      colorFilter:
+          color == null ? null : ColorFilter.mode(color!, BlendMode.srcIn),
     );
   }
 }

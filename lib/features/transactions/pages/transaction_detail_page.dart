@@ -151,11 +151,9 @@ class _DetailBody extends ConsumerWidget {
   }
 
   void _showAccountChangeUnsupported(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('账户切换暂未支持，敬请期待下个版本'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('账户切换暂未支持，敬请期待下个版本')));
   }
 }
 
@@ -172,9 +170,10 @@ class _HeroCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final categoryName = _resolveCategoryName(detail);
     final iconKey = _resolveCategoryIconKey(detail);
-    final fallback = transaction.businessPurpose == BusinessPurpose.dailyIncome
-        ? CategoryIconFallback.income
-        : CategoryIconFallback.expense;
+    final fallback =
+        transaction.businessPurpose == BusinessPurpose.dailyIncome
+            ? CategoryIconFallback.income
+            : CategoryIconFallback.expense;
     final subtitle = _resolveHeroSubtitle(detail);
 
     return AppSurface(
@@ -186,13 +185,13 @@ class _HeroCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: colors.surfaceContainerHigh,
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(AppRadius.radiusMd),
               ),
               child: Center(
                 child: CategoryIcon(
                   iconKey: iconKey,
-                  size: 26,
+                  size: 32,
                   fallback: fallback,
                 ),
               ),
@@ -266,9 +265,10 @@ class _RefundReimbursementCard extends StatelessWidget {
           value: hasRefund ? refunded.format() : '无退款',
           valueSemantic: hasRefund ? MoneySemantic.income : null,
           enabled: hasRefund,
-          onTap: hasRefund
-              ? () => _showRefundList(context, detail.children)
-              : null,
+          onTap:
+              hasRefund
+                  ? () => _showRefundList(context, detail.children)
+                  : null,
         ),
       );
     }
@@ -276,21 +276,23 @@ class _RefundReimbursementCard extends StatelessWidget {
       final summary = detail.reimbursementSummary;
       final hasActivity =
           summary != null && summary.receivedAmount.minorUnits > 0;
-      final value = summary == null
-          ? '未报销'
-          : summary.isClosed
+      final value =
+          summary == null
+              ? '未报销'
+              : summary.isClosed
               ? '已结束 · 实收 ${summary.receivedAmount.format()}'
               : hasActivity
-                  ? '已收 ${summary.receivedAmount.format()} / 应收 ${summary.advanceAmount.format()}'
-                  : '未报销';
+              ? '已收 ${summary.receivedAmount.format()} / 应收 ${summary.advanceAmount.format()}'
+              : '未报销';
       rows.add(
         _ChevronRow(
           label: '报销详情',
           value: value,
           enabled: hasActivity,
-          onTap: hasActivity
-              ? () => _showReimbursementList(context, detail.children)
-              : null,
+          onTap:
+              hasActivity
+                  ? () => _showReimbursementList(context, detail.children)
+                  : null,
         ),
       );
     }
@@ -302,9 +304,10 @@ class _RefundReimbursementCard extends StatelessWidget {
     BuildContext context,
     List<TransactionListItem> children,
   ) {
-    final refunds = children
-        .where((c) => c.businessPurpose == BusinessPurpose.refund)
-        .toList();
+    final refunds =
+        children
+            .where((c) => c.businessPurpose == BusinessPurpose.refund)
+            .toList();
     _showChildrenSheet(context, title: '退款记录', items: refunds);
   }
 
@@ -312,13 +315,14 @@ class _RefundReimbursementCard extends StatelessWidget {
     BuildContext context,
     List<TransactionListItem> children,
   ) {
-    final receipts = children
-        .where(
-          (c) =>
-              c.businessPurpose == BusinessPurpose.reimbursementReceipt ||
-              c.businessPurpose == BusinessPurpose.reimbursementClose,
-        )
-        .toList();
+    final receipts =
+        children
+            .where(
+              (c) =>
+                  c.businessPurpose == BusinessPurpose.reimbursementReceipt ||
+                  c.businessPurpose == BusinessPurpose.reimbursementClose,
+            )
+            .toList();
     _showChildrenSheet(context, title: '报销记录', items: receipts);
   }
 }
@@ -579,9 +583,8 @@ class _ActionBar extends StatelessWidget {
         actions.add(
           _SecondaryAction(
             label: '退款',
-            onPressed: () => context.push(
-              '/transactions/${transaction.id}/refund',
-            ),
+            onPressed:
+                () => context.push('/transactions/${transaction.id}/refund'),
           ),
         );
         actions.add(
@@ -596,17 +599,19 @@ class _ActionBar extends StatelessWidget {
           actions.add(
             _SecondaryAction(
               label: '记一笔到账',
-              onPressed: () => context.push(
-                '/transactions/${transaction.id}/reimburse-receipt',
-              ),
+              onPressed:
+                  () => context.push(
+                    '/transactions/${transaction.id}/reimburse-receipt',
+                  ),
             ),
           );
           actions.add(
             _PrimaryAction(
               label: '结束报销',
-              onPressed: () => context.push(
-                '/transactions/${transaction.id}/reimburse-close',
-              ),
+              onPressed:
+                  () => context.push(
+                    '/transactions/${transaction.id}/reimburse-close',
+                  ),
             ),
           );
         } else {
@@ -649,11 +654,9 @@ class _ActionBar extends StatelessWidget {
   }
 
   void _showEditUnsupported(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('整笔编辑暂未支持，敬请期待下个版本'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('整笔编辑暂未支持，敬请期待下个版本')));
   }
 }
 
@@ -697,13 +700,14 @@ class _AccountInfo {
 _AccountInfo _resolveAccountInfo(TransactionDetailView detail) {
   final purpose = detail.transaction.businessPurpose;
   final entries = detail.entries;
-  final asset = entries
-      .where(
-        (e) =>
-            e.accountType == AccountType.asset ||
-            e.accountType == AccountType.liability,
-      )
-      .toList();
+  final asset =
+      entries
+          .where(
+            (e) =>
+                e.accountType == AccountType.asset ||
+                e.accountType == AccountType.liability,
+          )
+          .toList();
   switch (purpose) {
     case BusinessPurpose.transfer:
       final from = asset.firstWhere(
@@ -738,10 +742,7 @@ _AccountInfo _resolveAccountInfo(TransactionDetailView detail) {
       return _AccountInfo(label: '收支账户', value: outAccount.accountName);
     case BusinessPurpose.openingBalance:
     case BusinessPurpose.balanceAdjustment:
-      final acct = asset.firstWhere(
-        (_) => true,
-        orElse: () => _placeholder(),
-      );
+      final acct = asset.firstWhere((_) => true, orElse: () => _placeholder());
       return _AccountInfo(label: '账户', value: acct.accountName);
   }
 }
@@ -779,7 +780,28 @@ String? _resolveCategoryName(TransactionDetailView detail) {
 }
 
 String? _resolveCategoryIconKey(TransactionDetailView detail) {
-  return null;
+  final name = _resolveCategoryName(detail);
+  return switch (name) {
+    '茶叶' || '咖啡' => 'coffee',
+    '早餐' => 'breakfast',
+    '午餐' => 'lunch',
+    '晚餐' => 'dinner',
+    '饮料酒水' => 'drink',
+    '休闲零食' => 'snack',
+    '生鲜食品' => 'seafood',
+    '粮油调味' => 'seasoning',
+    '购物消费' || '日用品' || '衣物' => 'shopping',
+    '地铁' || '公交' || '出行交通' => 'metro',
+    '打车' => 'taxi',
+    '文化教育' || '书籍' => 'book',
+    '休闲娱乐' || '电影' => 'movie',
+    '工资' || '兼职' => 'salary',
+    '家里' || '居家生活' || '房租' || '水电' || '物业' => 'home',
+    '人情社交' => 'social',
+    '送礼人情' => 'gift',
+    '健康医疗' => 'health',
+    _ => null,
+  };
 }
 
 String? _resolveHeroSubtitle(TransactionDetailView detail) {
@@ -795,18 +817,15 @@ MoneySemantic _semanticForPurpose(BusinessPurpose purpose) {
   return switch (purpose) {
     BusinessPurpose.dailyExpense ||
     BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.debtRepayment =>
-      MoneySemantic.expense,
+    BusinessPurpose.debtRepayment => MoneySemantic.expense,
     BusinessPurpose.dailyIncome ||
     BusinessPurpose.refund ||
     BusinessPurpose.reimbursementReceipt ||
     BusinessPurpose.reimbursementClose ||
-    BusinessPurpose.borrowing =>
-      MoneySemantic.income,
+    BusinessPurpose.borrowing => MoneySemantic.income,
     BusinessPurpose.transfer => MoneySemantic.neutral,
     BusinessPurpose.openingBalance ||
-    BusinessPurpose.balanceAdjustment =>
-      MoneySemantic.neutral,
+    BusinessPurpose.balanceAdjustment => MoneySemantic.neutral,
   };
 }
 
@@ -866,7 +885,7 @@ void _showChildrenSheet(
                     semantic: _semanticForPurpose(item.businessPurpose),
                     showSign:
                         _semanticForPurpose(item.businessPurpose) ==
-                            MoneySemantic.income,
+                        MoneySemantic.income,
                   ),
                   onTap: () {
                     Navigator.of(ctx).pop();

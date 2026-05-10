@@ -14,9 +14,9 @@ import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
-import '../../../domain/services/category_service.dart';
 import '../../../domain/services/transaction_service.dart';
 import '../../../widgets/business/category_icon.dart';
+import '../../../widgets/business/category_grid_picker.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
 
@@ -77,9 +77,12 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
         ref.watch(categoryTreeProvider(AccountType.expense)).value ?? const [];
     final incomeTree =
         ref.watch(categoryTreeProvider(AccountType.income)).value ?? const [];
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final keyboardVisible = keyboardInset > 0;
 
     return Scaffold(
       backgroundColor: AppColors.neutral99,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
@@ -98,7 +101,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                 ),
                 children: [
                   if (_mode == _TransactionFormMode.expense)
-                    _CategoryPicker(
+                    CategoryGridPicker(
                       nodes: expenseTree,
                       selectedRootId: _expenseRootId,
                       selectedCategoryId: _expenseCategoryId,
@@ -124,7 +127,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                           ),
                     ),
                   if (_mode == _TransactionFormMode.income)
-                    _CategoryPicker(
+                    CategoryGridPicker(
                       nodes: incomeTree,
                       selectedRootId: _incomeRootId,
                       selectedCategoryId: _incomeCategoryId,
@@ -206,15 +209,19 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                     onExcludeBudgetChanged:
                         (value) => setState(() => _excludeBudget = value),
                   ),
-                  const SizedBox(height: AppSpacing.space6),
-                  _NumberPad(
-                    submitting: _submitting,
-                    onInput: _handleNumberInput,
-                    onBackspace: _deleteAmountDigit,
-                    onClear: _clearForNext,
-                    onCancel: () => context.pop(),
-                    onSubmit: _submit,
-                  ),
+                  if (keyboardVisible)
+                    SizedBox(height: keyboardInset)
+                  else ...[
+                    const SizedBox(height: AppSpacing.space6),
+                    _NumberPad(
+                      submitting: _submitting,
+                      onInput: _handleNumberInput,
+                      onBackspace: _deleteAmountDigit,
+                      onClear: _clearForNext,
+                      onCancel: () => context.pop(),
+                      onSubmit: _submit,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -614,336 +621,6 @@ class _ModeTabItem extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CategoryPicker extends StatelessWidget {
-  const _CategoryPicker({
-    required this.nodes,
-    required this.selectedRootId,
-    required this.selectedCategoryId,
-    required this.fallback,
-    required this.emptyLabel,
-    required this.onRootSelected,
-    required this.onChildSelected,
-    required this.onAddRoot,
-    required this.onAddChild,
-  });
-
-  final List<CategoryNode> nodes;
-  final int? selectedRootId;
-  final int? selectedCategoryId;
-  final CategoryIconFallback fallback;
-  final String emptyLabel;
-  final ValueChanged<Account> onRootSelected;
-  final void Function(Account root, Account child) onChildSelected;
-  final VoidCallback onAddRoot;
-  final ValueChanged<int> onAddChild;
-
-  @override
-  Widget build(BuildContext context) {
-    if (nodes.isEmpty) {
-      return AppSurface(
-        border: true,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  emptyLabel,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              _AddCategoryButton(label: '新增', onTap: onAddRoot),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final rows = <List<CategoryNode>>[];
-    for (var index = 0; index < nodes.length; index += 5) {
-      rows.add(nodes.skip(index).take(5).toList());
-    }
-    if (rows.last.length == 5) {
-      rows.add(const []);
-    }
-
-    return Column(
-      children: [
-        for (final row in rows) ...[
-          _CategoryRow(
-            nodes: row,
-            selectedRootId: selectedRootId,
-            selectedCategoryId: selectedCategoryId,
-            fallback: fallback,
-            onRootSelected: onRootSelected,
-            showAddRoot: row == rows.last,
-            onAddRoot: onAddRoot,
-          ),
-          if (row.any((node) => node.account.id == selectedRootId))
-            _SubcategoryPanel(
-              node: row.firstWhere((node) => node.account.id == selectedRootId),
-              selectedCategoryId: selectedCategoryId,
-              fallback: fallback,
-              onChildSelected: onChildSelected,
-              onAddChild: onAddChild,
-            ),
-          const SizedBox(height: AppSpacing.space8),
-        ],
-      ],
-    );
-  }
-}
-
-class _CategoryRow extends StatelessWidget {
-  const _CategoryRow({
-    required this.nodes,
-    required this.selectedRootId,
-    required this.selectedCategoryId,
-    required this.fallback,
-    required this.onRootSelected,
-    required this.showAddRoot,
-    required this.onAddRoot,
-  });
-
-  final List<CategoryNode> nodes;
-  final int? selectedRootId;
-  final int? selectedCategoryId;
-  final CategoryIconFallback fallback;
-  final ValueChanged<Account> onRootSelected;
-  final bool showAddRoot;
-  final VoidCallback onAddRoot;
-
-  @override
-  Widget build(BuildContext context) {
-    final filledSlots = nodes.length + (showAddRoot ? 1 : 0);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final node in nodes)
-          Expanded(
-            child: _CategoryTile(
-              category: node.account,
-              fallback: fallback,
-              selected:
-                  node.account.id == selectedCategoryId ||
-                  node.account.id == selectedRootId,
-              onTap: () => onRootSelected(node.account),
-            ),
-          ),
-        if (showAddRoot && nodes.length < 5)
-          Expanded(child: _AddCategoryTile(onTap: onAddRoot)),
-        for (var index = filledSlots; index < 5; index++) const Spacer(),
-      ],
-    );
-  }
-}
-
-class _SubcategoryPanel extends StatelessWidget {
-  const _SubcategoryPanel({
-    required this.node,
-    required this.selectedCategoryId,
-    required this.fallback,
-    required this.onChildSelected,
-    required this.onAddChild,
-  });
-
-  final CategoryNode node;
-  final int? selectedCategoryId;
-  final CategoryIconFallback fallback;
-  final void Function(Account root, Account child) onChildSelected;
-  final ValueChanged<int> onAddChild;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final slots = <Widget>[
-      for (final child in node.children)
-        _CategoryTile(
-          category: child,
-          fallback: fallback,
-          selected: child.id == selectedCategoryId,
-          onTap: () => onChildSelected(node.account, child),
-        ),
-      _AddCategoryTile(onTap: () => onAddChild(node.account.id)),
-    ];
-    final rows = <List<Widget>>[];
-    for (var index = 0; index < slots.length; index += 5) {
-      rows.add(slots.skip(index).take(5).toList());
-    }
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space8,
-      ),
-      child: Column(
-        children: [
-          for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final child in rows[rowIndex]) Expanded(child: child),
-                for (var index = rows[rowIndex].length; index < 5; index++)
-                  const Spacer(),
-              ],
-            ),
-            if (rowIndex < rows.length - 1)
-              const SizedBox(height: AppSpacing.space4),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryIconBubble extends StatelessWidget {
-  const _CategoryIconBubble({required this.child, required this.selected});
-
-  final Widget child;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.72),
-      ),
-      child: Center(
-        child: IconTheme.merge(
-          data: IconThemeData(color: selected ? colors.primary : null),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({
-    required this.category,
-    required this.fallback,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Account category;
-  final CategoryIconFallback fallback;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _CategoryIconBubble(
-              selected: selected,
-              child: CategoryIcon(
-                iconKey: category.iconKey,
-                fallback: fallback,
-                size: 24,
-                color: selected ? colors.primary : null,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              category.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: textTheme.labelSmall?.copyWith(
-                color: selected ? colors.primary : colors.onSurface,
-                fontSize: AppTypography.fontSizeXs,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AddCategoryTile extends StatelessWidget {
-  const _AddCategoryTile({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const _AddCategoryButton(label: null),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              '新增',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontSize: AppTypography.fontSizeXs,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AddCategoryButton extends StatelessWidget {
-  const _AddCategoryButton({required this.label, this.onTap});
-
-  final String? label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final button = Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-      ),
-      child: Icon(Icons.add, color: colors.onSurface),
-    );
-
-    if (label == null) {
-      return button;
-    }
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: const Icon(Icons.add),
-      label: Text(label!),
     );
   }
 }

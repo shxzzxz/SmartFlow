@@ -20,7 +20,14 @@ class CategoryIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spec = resolveCategoryIconSpec(iconKey, fallback);
-    return Icon(spec.icon, size: size, color: color ?? spec.color);
+    return Icon(
+      spec.icon,
+      size: size,
+      color:
+          color ??
+          IconTheme.of(context).color ??
+          Theme.of(context).colorScheme.onSurfaceVariant,
+    );
   }
 }
 
@@ -41,6 +48,22 @@ const _categoryIconSpecs = <String, CategoryIconSpec>{
   'meal': CategoryIconSpec(
     icon: RemixIcons.restaurant_2_fill,
     color: AppColors.categoryDining,
+  ),
+  'breakfast': CategoryIconSpec(
+    icon: RemixIcons.bowl_fill,
+    color: AppColors.categoryGift,
+  ),
+  'lunch': CategoryIconSpec(
+    icon: RemixIcons.briefcase_4_fill,
+    color: AppColors.categoryGift,
+  ),
+  'dinner': CategoryIconSpec(
+    icon: RemixIcons.restaurant_fill,
+    color: AppColors.categoryGift,
+  ),
+  'drink': CategoryIconSpec(
+    icon: RemixIcons.goblet_fill,
+    color: AppColors.categoryTransfer,
   ),
   'shopping': CategoryIconSpec(
     icon: RemixIcons.shopping_bag_3_fill,
@@ -88,19 +111,35 @@ const _categoryIconSpecs = <String, CategoryIconSpec>{
   ),
   'home': CategoryIconSpec(
     icon: RemixIcons.home_5_fill,
-    color: AppColors.categoryGenericNeutral,
+    color: AppColors.categoryHome,
+  ),
+  'social': CategoryIconSpec(
+    icon: RemixIcons.user_3_fill,
+    color: AppColors.categorySocial,
   ),
   'gift': CategoryIconSpec(
     icon: RemixIcons.gift_fill,
-    color: AppColors.categoryDining,
+    color: AppColors.categoryGift,
   ),
   'health': CategoryIconSpec(
     icon: RemixIcons.heart_pulse_fill,
-    color: AppColors.categoryGenericExpense,
+    color: AppColors.categoryMedical,
   ),
   'phone': CategoryIconSpec(
     icon: RemixIcons.smartphone_fill,
     color: AppColors.categoryGenericNeutral,
+  ),
+  'snack': CategoryIconSpec(
+    icon: RemixIcons.cake_3_fill,
+    color: AppColors.categorySnack,
+  ),
+  'seafood': CategoryIconSpec(
+    icon: RemixIcons.gitlab_fill,
+    color: AppColors.categorySeafood,
+  ),
+  'seasoning': CategoryIconSpec(
+    icon: RemixIcons.archive_fill,
+    color: AppColors.categoryHome,
   ),
 };
 
@@ -160,12 +199,20 @@ String? _normalizeIconKey(String? iconKey) {
 }
 
 const List<CategoryIconChoice> categoryIconChoices = [
+  CategoryIconChoice(iconKey: 'social', label: '人情社交'),
+  CategoryIconChoice(iconKey: 'home', label: '家里'),
+  CategoryIconChoice(iconKey: 'meal', label: '食品餐饮'),
+  CategoryIconChoice(iconKey: 'shopping', label: '购物消费'),
   CategoryIconChoice(iconKey: 'coffee', label: '咖啡'),
-  CategoryIconChoice(iconKey: 'meal', label: '餐饮'),
-  CategoryIconChoice(iconKey: 'shopping', label: '购物'),
+  CategoryIconChoice(iconKey: 'breakfast', label: '早餐'),
+  CategoryIconChoice(iconKey: 'lunch', label: '午餐'),
+  CategoryIconChoice(iconKey: 'dinner', label: '晚餐'),
+  CategoryIconChoice(iconKey: 'drink', label: '饮料酒水'),
+  CategoryIconChoice(iconKey: 'snack', label: '休闲零食'),
+  CategoryIconChoice(iconKey: 'seafood', label: '生鲜食品'),
+  CategoryIconChoice(iconKey: 'seasoning', label: '粮油调味'),
   CategoryIconChoice(iconKey: 'metro', label: '通勤'),
   CategoryIconChoice(iconKey: 'taxi', label: '打车'),
-  CategoryIconChoice(iconKey: 'home', label: '居家'),
   CategoryIconChoice(iconKey: 'gift', label: '礼物'),
   CategoryIconChoice(iconKey: 'health', label: '医疗'),
   CategoryIconChoice(iconKey: 'phone', label: '通讯'),

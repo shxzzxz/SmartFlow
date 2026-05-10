@@ -63,17 +63,10 @@ class AppShell extends StatelessWidget {
                 onTap: () => context.go('/statistics'),
               ),
               _BottomNavItem(
-                icon: RemixIcons.apps_2_line,
-                selectedIcon: RemixIcons.apps_2_fill,
-                label: '分类',
-                selected: selectedIndex == 4,
-                onTap: () => context.go('/categories'),
-              ),
-              _BottomNavItem(
                 icon: RemixIcons.user_3_line,
                 selectedIcon: RemixIcons.user_3_fill,
                 label: '我的',
-                selected: selectedIndex == 5,
+                selected: selectedIndex == 4,
                 onTap: () => context.go('/profile'),
               ),
             ],
@@ -94,11 +87,8 @@ class AppShell extends StatelessWidget {
     if (path.startsWith('/statistics')) {
       return 3;
     }
-    if (path.startsWith('/categories')) {
-      return 4;
-    }
     if (path.startsWith('/profile')) {
-      return 5;
+      return 4;
     }
     return 0;
   }
