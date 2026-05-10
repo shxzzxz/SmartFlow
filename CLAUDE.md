@@ -26,3 +26,7 @@ SmartFlow 是一款基于**复式记账法**的个人财务管理系统
 ## 构建工具
 
 - 使用 FVM 管理 Flutter 版本，所有 Flutter 命令必须通过 `fvm flutter <command>` 执行，同时通过 `fvm dart <command>` 调用 Flutter 自带的 Dart SDK
+
+## 补充规则
+
+- 坚决禁止使用数据库外键约束
