@@ -34,6 +34,7 @@ build/
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
+**/android/gradle/gradle-daemon-jvm.properties
 **/android/app/release/
 **/android/app/debug/
 *.jks
