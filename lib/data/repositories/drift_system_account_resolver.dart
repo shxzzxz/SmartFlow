@@ -35,27 +35,19 @@ class DriftSystemAccountResolver implements SystemAccountResolver {
     required String defaultName,
     required String currencyCode,
   }) async {
-    final existing = await (_database.select(_database.accounts)
-          ..where(
-            (account) =>
-                account.systemKey.equalsValue(systemKey) &
-                account.currencyCode.equals(currencyCode),
-          ))
-        .getSingleOrNull();
+    final existing =
+        await (_database.select(_database.accounts)..where(
+          (account) =>
+              account.systemKey.equalsValue(systemKey) &
+              account.currencyCode.equals(currencyCode),
+        )).getSingleOrNull();
     if (existing != null) {
       return existing.id;
     }
 
-    final now = DateTime.now();
-    return _database.into(_database.accounts).insert(
-          AccountsCompanion.insert(
-            name: defaultName,
-            accountType: accountType,
-            currencyCode: currencyCode,
-            systemKey: Value(systemKey),
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
+    throw StateError(
+      'Missing builtin account "$defaultName" '
+      '($systemKey, $accountType, $currencyCode).',
+    );
   }
 }

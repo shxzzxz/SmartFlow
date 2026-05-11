@@ -57,12 +57,13 @@ class _ReimbursementCloseFormPageState
     final receivable = _resolveReceivable(detail);
     final outstanding = summary?.outstanding;
     final actualMinor = _parseMinorOrNull(_amountController.text);
-    final gap = (outstanding != null && actualMinor != null)
-        ? Money(
-            minorUnits: actualMinor - outstanding.minorUnits,
-            currency: outstanding.currency,
-          )
-        : null;
+    final gap =
+        (outstanding != null && actualMinor != null)
+            ? Money(
+              minorUnits: actualMinor - outstanding.minorUnits,
+              currency: outstanding.currency,
+            )
+            : null;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -126,8 +127,8 @@ class _ReimbursementCloseFormPageState
                           child: Text(account.name),
                         ),
                     ],
-                    onChanged: (value) =>
-                        setState(() => _receiveAccountId = value),
+                    onChanged:
+                        (value) => setState(() => _receiveAccountId = value),
                     validator: (value) {
                       final amount = _parseMinorOrNull(_amountController.text);
                       if (amount != null && amount > 0 && value == null) {
@@ -150,15 +151,17 @@ class _ReimbursementCloseFormPageState
               SizedBox(
                 height: AppSpacing.space48,
                 child: FilledButton(
-                  onPressed: (_submitting || receivable == null)
-                      ? null
-                      : () => _submit(receivable),
-                  child: _submitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('保存'),
+                  onPressed:
+                      (_submitting || receivable == null)
+                          ? null
+                          : () => _submit(receivable),
+                  child:
+                      _submitting
+                          ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('保存'),
                 ),
               ),
             ],
@@ -210,9 +213,10 @@ class _ReimbursementCloseFormPageState
         receivableAccountId: receivableAccountId,
         receiveAccountId: _receiveAccountId ?? receivableAccountId,
         occurredAt: DateTime.now(),
-        note: _noteController.text.trim().isEmpty
-            ? null
-            : _noteController.text.trim(),
+        note:
+            _noteController.text.trim().isEmpty
+                ? null
+                : _noteController.text.trim(),
       ),
     );
     if (!mounted) return;
@@ -221,9 +225,9 @@ class _ReimbursementCloseFormPageState
       case Success():
         context.pop();
       case FailureResult(:final failure):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
 }

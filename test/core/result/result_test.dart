@@ -8,13 +8,7 @@ void main() {
       const result = Result<int>.success(42);
 
       expect(result.isSuccess, isTrue);
-      expect(
-        result.when(
-          success: (value) => value,
-          failure: (_) => 0,
-        ),
-        42,
-      );
+      expect(result.when(success: (value) => value, failure: (_) => 0), 42);
     });
 
     test('reads failure branch', () {

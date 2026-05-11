@@ -27,6 +27,10 @@ class Accounts extends Table {
   DateTimeColumn get archivedAt => dateTime().named('archived_at').nullable()();
   TextColumn get systemKey =>
       textEnum<SystemKey>().named('system_key').nullable()();
+  TextColumn get source =>
+      textEnum<AccountSource>().withDefault(
+        Constant(AccountSource.user.name),
+      )();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

@@ -124,10 +124,7 @@ class _ProfileActionRow extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(
-              RemixIcons.arrow_right_s_line,
-              color: colors.onSurfaceVariant,
-            ),
+            Icon(RemixIcons.arrow_right_s_line, color: colors.onSurfaceVariant),
           ],
         ),
       ),

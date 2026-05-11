@@ -18,88 +18,103 @@ void main() {
       service = TransactionServiceImpl(postingService);
     });
 
-    test('translates an expense command into posting details and entries', () async {
-      final result = await service.createExpense(
-        CreateExpenseCommand(
-          amount: const Money(minorUnits: 2000),
-          paidFromAccountId: 1,
-          expenseAccountId: 101,
-          occurredAt: DateTime(2026, 5),
-          counterpartyName: 'Coffee shop',
-          note: 'Latte',
-        ),
-      );
+    test(
+      'translates an expense command into posting details and entries',
+      () async {
+        final result = await service.createExpense(
+          CreateExpenseCommand(
+            amount: const Money(minorUnits: 2000),
+            paidFromAccountId: 1,
+            expenseAccountId: 101,
+            occurredAt: DateTime(2026, 5),
+            counterpartyName: 'Coffee shop',
+            note: 'Latte',
+          ),
+        );
 
-      expect(result, isA<Success<PostTransactionResult>>());
-      final command = postingService.lastCommand!;
-      expect(command.businessPurpose, BusinessPurpose.dailyExpense);
-      expect(command.primaryAmount, const Money(minorUnits: 2000));
-      expect(command.counterpartyName, 'Coffee shop');
-      expect(command.note, 'Latte');
-      expect(command.details, hasLength(1));
-      expect(command.details.single.type, TransactionDetailType.primaryExpense);
-      expect(command.details.single.amount, const Money(minorUnits: 2000));
-      expect(command.entries, hasLength(2));
-      expect(command.entries[0].accountId, 101);
-      expect(command.entries[0].direction, EntryDirection.debit);
-      expect(command.entries[0].amount, const Money(minorUnits: 2000));
-      expect(command.entries[1].accountId, 1);
-      expect(command.entries[1].direction, EntryDirection.credit);
-      expect(command.entries[1].amount, const Money(minorUnits: 2000));
-    });
+        expect(result, isA<Success<PostTransactionResult>>());
+        final command = postingService.lastCommand!;
+        expect(command.businessPurpose, BusinessPurpose.dailyExpense);
+        expect(command.primaryAmount, const Money(minorUnits: 2000));
+        expect(command.counterpartyName, 'Coffee shop');
+        expect(command.note, 'Latte');
+        expect(command.details, hasLength(1));
+        expect(
+          command.details.single.type,
+          TransactionDetailType.primaryExpense,
+        );
+        expect(command.details.single.amount, const Money(minorUnits: 2000));
+        expect(command.entries, hasLength(2));
+        expect(command.entries[0].accountId, 101);
+        expect(command.entries[0].direction, EntryDirection.debit);
+        expect(command.entries[0].amount, const Money(minorUnits: 2000));
+        expect(command.entries[1].accountId, 1);
+        expect(command.entries[1].direction, EntryDirection.credit);
+        expect(command.entries[1].amount, const Money(minorUnits: 2000));
+      },
+    );
 
-    test('translates an income command into posting details and entries', () async {
-      final result = await service.createIncome(
-        CreateIncomeCommand(
-          amount: const Money(minorUnits: 1000000),
-          receiveAccountId: 2,
-          incomeAccountId: 201,
-          occurredAt: DateTime(2026, 5),
-        ),
-      );
+    test(
+      'translates an income command into posting details and entries',
+      () async {
+        final result = await service.createIncome(
+          CreateIncomeCommand(
+            amount: const Money(minorUnits: 1000000),
+            receiveAccountId: 2,
+            incomeAccountId: 201,
+            occurredAt: DateTime(2026, 5),
+          ),
+        );
 
-      expect(result, isA<Success<PostTransactionResult>>());
-      final command = postingService.lastCommand!;
-      expect(command.businessPurpose, BusinessPurpose.dailyIncome);
-      expect(command.details.single.type, TransactionDetailType.primaryIncome);
-      expect(command.entries, hasLength(2));
-      expect(command.entries[0].accountId, 2);
-      expect(command.entries[0].direction, EntryDirection.debit);
-      expect(command.entries[1].accountId, 201);
-      expect(command.entries[1].direction, EntryDirection.credit);
-    });
+        expect(result, isA<Success<PostTransactionResult>>());
+        final command = postingService.lastCommand!;
+        expect(command.businessPurpose, BusinessPurpose.dailyIncome);
+        expect(
+          command.details.single.type,
+          TransactionDetailType.primaryIncome,
+        );
+        expect(command.entries, hasLength(2));
+        expect(command.entries[0].accountId, 2);
+        expect(command.entries[0].direction, EntryDirection.debit);
+        expect(command.entries[1].accountId, 201);
+        expect(command.entries[1].direction, EntryDirection.credit);
+      },
+    );
 
-    test('translates a transfer with fee into posting details and entries', () async {
-      final result = await service.createTransfer(
-        CreateTransferCommand(
-          amount: const Money(minorUnits: 100000),
-          fromAccountId: 2,
-          toAccountId: 1,
-          feeAmount: const Money(minorUnits: 200),
-          feeExpenseAccountId: 103,
-          occurredAt: DateTime(2026, 5),
-        ),
-      );
+    test(
+      'translates a transfer with fee into posting details and entries',
+      () async {
+        final result = await service.createTransfer(
+          CreateTransferCommand(
+            amount: const Money(minorUnits: 100000),
+            fromAccountId: 2,
+            toAccountId: 1,
+            feeAmount: const Money(minorUnits: 200),
+            feeExpenseAccountId: 103,
+            occurredAt: DateTime(2026, 5),
+          ),
+        );
 
-      expect(result, isA<Success<PostTransactionResult>>());
-      final command = postingService.lastCommand!;
-      expect(command.businessPurpose, BusinessPurpose.transfer);
-      expect(command.primaryAmount, const Money(minorUnits: 100000));
-      expect(command.details.map((detail) => detail.type), [
-        TransactionDetailType.transferMain,
-        TransactionDetailType.transferFee,
-      ]);
-      expect(command.entries, hasLength(3));
-      expect(command.entries[0].accountId, 1);
-      expect(command.entries[0].direction, EntryDirection.debit);
-      expect(command.entries[0].amount, const Money(minorUnits: 100000));
-      expect(command.entries[1].accountId, 103);
-      expect(command.entries[1].direction, EntryDirection.debit);
-      expect(command.entries[1].amount, const Money(minorUnits: 200));
-      expect(command.entries[2].accountId, 2);
-      expect(command.entries[2].direction, EntryDirection.credit);
-      expect(command.entries[2].amount, const Money(minorUnits: 100200));
-    });
+        expect(result, isA<Success<PostTransactionResult>>());
+        final command = postingService.lastCommand!;
+        expect(command.businessPurpose, BusinessPurpose.transfer);
+        expect(command.primaryAmount, const Money(minorUnits: 100000));
+        expect(command.details.map((detail) => detail.type), [
+          TransactionDetailType.transferMain,
+          TransactionDetailType.transferFee,
+        ]);
+        expect(command.entries, hasLength(3));
+        expect(command.entries[0].accountId, 1);
+        expect(command.entries[0].direction, EntryDirection.debit);
+        expect(command.entries[0].amount, const Money(minorUnits: 100000));
+        expect(command.entries[1].accountId, 103);
+        expect(command.entries[1].direction, EntryDirection.debit);
+        expect(command.entries[1].amount, const Money(minorUnits: 200));
+        expect(command.entries[2].accountId, 2);
+        expect(command.entries[2].direction, EntryDirection.credit);
+        expect(command.entries[2].amount, const Money(minorUnits: 100200));
+      },
+    );
 
     test('rejects a positive transfer fee without a fee account', () async {
       final result = await service.createTransfer(
@@ -149,10 +164,7 @@ class _RecordingPostingService implements PostingService {
   ) async {
     lastCommand = command;
     return const Result.success(
-      PostTransactionResult(
-        transactionId: 1,
-        rootTransactionId: 1,
-      ),
+      PostTransactionResult(transactionId: 1, rootTransactionId: 1),
     );
   }
 }
@@ -191,10 +203,7 @@ class _FakeAccountRepository implements AccountRepository {
   }
 }
 
-Account _account({
-  required int id,
-  required AccountType type,
-}) {
+Account _account({required int id, required AccountType type}) {
   return Account(
     id: id,
     name: 'Account $id',

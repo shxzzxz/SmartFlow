@@ -17,9 +17,9 @@ class DriftPostingRepository implements PostingRepository {
       return const [];
     }
 
-    final rows = await (_database.select(_database.accounts)
-          ..where((account) => account.id.isIn(ids)))
-        .get();
+    final rows =
+        await (_database.select(_database.accounts)
+          ..where((account) => account.id.isIn(ids))).get();
 
     return rows.map(_mapAccount).toList();
   }
@@ -63,8 +63,7 @@ class DriftPostingRepository implements PostingRepository {
       final rootTransactionId = command.rootTransactionId ?? transactionId;
       if (command.rootTransactionId == null) {
         await (_database.update(_database.transactions)
-              ..where((transaction) => transaction.id.equals(transactionId)))
-            .write(
+          ..where((transaction) => transaction.id.equals(transactionId))).write(
           TransactionsCompanion(
             rootTransactionId: Value(rootTransactionId),
             updatedAt: Value(now),
@@ -136,18 +135,20 @@ class DriftPostingRepository implements PostingRepository {
       return;
     }
     await (_database.update(_database.transactions)
-          ..where((t) => t.id.equals(transactionId)))
-        .write(
+      ..where((t) => t.id.equals(transactionId))).write(
       TransactionsCompanion(
-        note: note == null
-            ? const Value.absent()
-            : Value(note.isEmpty ? null : note),
-        isExcludedFromStats: isExcludedFromStats == null
-            ? const Value.absent()
-            : Value(isExcludedFromStats),
-        isExcludedFromBudget: isExcludedFromBudget == null
-            ? const Value.absent()
-            : Value(isExcludedFromBudget),
+        note:
+            note == null
+                ? const Value.absent()
+                : Value(note.isEmpty ? null : note),
+        isExcludedFromStats:
+            isExcludedFromStats == null
+                ? const Value.absent()
+                : Value(isExcludedFromStats),
+        isExcludedFromBudget:
+            isExcludedFromBudget == null
+                ? const Value.absent()
+                : Value(isExcludedFromBudget),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -161,24 +162,23 @@ class DriftPostingRepository implements PostingRepository {
       subtype: row.accountSubtype,
       parentId: row.parentId,
       currencyCode: row.currencyCode,
-      balance: Money(
-        minorUnits: row.balanceMinor,
-        currency: row.currencyCode,
-      ),
+      balance: Money(minorUnits: row.balanceMinor, currency: row.currencyCode),
       iconKey: row.iconKey,
       note: row.note,
-      creditLimit: row.creditLimitMinor == null
-          ? null
-          : Money(
-              minorUnits: row.creditLimitMinor!,
-              currency: row.currencyCode,
-            ),
+      creditLimit:
+          row.creditLimitMinor == null
+              ? null
+              : Money(
+                minorUnits: row.creditLimitMinor!,
+                currency: row.currencyCode,
+              ),
       billingDay: row.billingDay,
       repaymentDay: row.repaymentDay,
       sortOrder: row.sortOrder,
       isHidden: row.isHidden,
       archivedAt: row.archivedAt,
       systemKey: row.systemKey,
+      source: row.source,
     );
   }
 }

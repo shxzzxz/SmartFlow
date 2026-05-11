@@ -12,17 +12,20 @@ import '../database/app_database.dart';
 import 'drift_system_account_resolver.dart';
 
 class DriftAccountRepository implements AccountRepository, CategoryRepository {
-  DriftAccountRepository(this._database, {SystemAccountResolver? systemAccounts})
-    : _systemAccounts = systemAccounts ?? DriftSystemAccountResolver(_database);
+  DriftAccountRepository(
+    this._database, {
+    SystemAccountResolver? systemAccounts,
+  }) : _systemAccounts =
+           systemAccounts ?? DriftSystemAccountResolver(_database);
 
   final AppDatabase _database;
   final SystemAccountResolver _systemAccounts;
 
   @override
   Future<domain.Account?> findAccountById(int id) async {
-    final row = await (_database.select(_database.accounts)
-          ..where((account) => account.id.equals(id)))
-        .getSingleOrNull();
+    final row =
+        await (_database.select(_database.accounts)
+          ..where((account) => account.id.equals(id))).getSingleOrNull();
     return row == null ? null : _mapAccount(row);
   }
 
@@ -32,23 +35,25 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
       return const [];
     }
 
-    final rows = await (_database.select(_database.accounts)
-          ..where((account) => account.id.isIn(ids)))
-        .get();
+    final rows =
+        await (_database.select(_database.accounts)
+          ..where((account) => account.id.isIn(ids))).get();
     return rows.map(_mapAccount).toList();
   }
 
   @override
   Stream<List<domain.Account>> watchAccounts(Set<AccountType> types) {
-    final query = _database.select(_database.accounts)
-      ..where(
-        (account) =>
-            account.archivedAt.isNull() & account.accountType.isInValues(types),
-      )
-      ..orderBy([
-        (account) => OrderingTerm.asc(account.sortOrder),
-        (account) => OrderingTerm.asc(account.name),
-      ]);
+    final query =
+        _database.select(_database.accounts)
+          ..where(
+            (account) =>
+                account.archivedAt.isNull() &
+                account.accountType.isInValues(types),
+          )
+          ..orderBy([
+            (account) => OrderingTerm.asc(account.sortOrder),
+            (account) => OrderingTerm.asc(account.name),
+          ]);
 
     return query.watch().map((rows) => rows.map(_mapAccount).toList());
   }
@@ -57,7 +62,9 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
   Future<domain.Account> createAccount(CreateAccountCommand command) {
     return _database.transaction(() async {
       final now = DateTime.now();
-      final accountId = await _database.into(_database.accounts).insert(
+      final accountId = await _database
+          .into(_database.accounts)
+          .insert(
             AccountsCompanion.insert(
               name: command.name.trim(),
               accountType: command.type,
@@ -71,6 +78,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
               repaymentDay: Value(command.repaymentDay),
               sortOrder: Value(command.sortOrder),
               isHidden: Value(command.isHidden),
+              source: const Value(AccountSource.user),
               createdAt: Value(now),
               updatedAt: Value(now),
             ),
@@ -86,9 +94,9 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
         );
       }
 
-      final row = await (_database.select(_database.accounts)
-            ..where((account) => account.id.equals(accountId)))
-          .getSingle();
+      final row =
+          await (_database.select(_database.accounts)
+            ..where((account) => account.id.equals(accountId))).getSingle();
       return _mapAccount(row);
     });
   }
@@ -97,8 +105,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
   Future<void> updateAccount(EditAccountCommand command) async {
     final now = DateTime.now();
     await (_database.update(_database.accounts)
-          ..where((account) => account.id.equals(command.id)))
-        .write(
+      ..where((account) => account.id.equals(command.id))).write(
       AccountsCompanion(
         name: Value(command.name.trim()),
         accountSubtype: Value(command.subtype),
@@ -116,31 +123,32 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
 
   @override
   Future<domain.Account?> findCategoryById(int id) async {
-    final row = await (_database.select(_database.accounts)
-          ..where(
-            (account) =>
-                account.id.equals(id) &
-                account.accountType.isInValues({
-                  AccountType.income,
-                  AccountType.expense,
-                }),
-          ))
-        .getSingleOrNull();
+    final row =
+        await (_database.select(_database.accounts)..where(
+          (account) =>
+              account.id.equals(id) &
+              account.accountType.isInValues({
+                AccountType.income,
+                AccountType.expense,
+              }),
+        )).getSingleOrNull();
     return row == null ? null : _mapAccount(row);
   }
 
   @override
   Stream<List<domain.Account>> watchCategories(AccountType type) {
-    final query = _database.select(_database.accounts)
-      ..where(
-        (account) =>
-            account.archivedAt.isNull() & account.accountType.equalsValue(type),
-      )
-      ..orderBy([
-        (account) => OrderingTerm.asc(account.parentId),
-        (account) => OrderingTerm.asc(account.sortOrder),
-        (account) => OrderingTerm.asc(account.name),
-      ]);
+    final query =
+        _database.select(_database.accounts)
+          ..where(
+            (account) =>
+                account.archivedAt.isNull() &
+                account.accountType.equalsValue(type),
+          )
+          ..orderBy([
+            (account) => OrderingTerm.asc(account.parentId),
+            (account) => OrderingTerm.asc(account.sortOrder),
+            (account) => OrderingTerm.asc(account.name),
+          ]);
 
     return query.watch().map((rows) => rows.map(_mapAccount).toList());
   }
@@ -148,7 +156,9 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
   @override
   Future<domain.Account> createCategory(CreateCategoryCommand command) async {
     final now = DateTime.now();
-    final id = await _database.into(_database.accounts).insert(
+    final id = await _database
+        .into(_database.accounts)
+        .insert(
           AccountsCompanion.insert(
             name: command.name.trim(),
             accountType: command.type,
@@ -157,13 +167,14 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
             iconKey: Value(_blankToNull(command.iconKey)),
             note: Value(_blankToNull(command.note)),
             sortOrder: Value(command.sortOrder),
+            source: const Value(AccountSource.user),
             createdAt: Value(now),
             updatedAt: Value(now),
           ),
         );
-    final row = await (_database.select(_database.accounts)
-          ..where((account) => account.id.equals(id)))
-        .getSingle();
+    final row =
+        await (_database.select(_database.accounts)
+          ..where((account) => account.id.equals(id))).getSingle();
     return _mapAccount(row);
   }
 
@@ -182,11 +193,14 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
       accountType: accountType,
       deltaMinor: amount.minorUnits,
     );
-    final openingDirection = targetDirection == EntryDirection.debit
-        ? EntryDirection.credit
-        : EntryDirection.debit;
+    final openingDirection =
+        targetDirection == EntryDirection.debit
+            ? EntryDirection.credit
+            : EntryDirection.debit;
 
-    final transactionId = await _database.into(_database.transactions).insert(
+    final transactionId = await _database
+        .into(_database.transactions)
+        .insert(
           TransactionsCompanion.insert(
             businessPurpose: BusinessPurpose.openingBalance,
             occurredAt: occurredAt,
@@ -200,8 +214,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
           ),
         );
     await (_database.update(_database.transactions)
-          ..where((transaction) => transaction.id.equals(transactionId)))
-        .write(
+      ..where((transaction) => transaction.id.equals(transactionId))).write(
       TransactionsCompanion(
         rootTransactionId: Value(transactionId),
         updatedAt: Value(now),
@@ -267,11 +280,7 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
     return increase ? EntryDirection.credit : EntryDirection.debit;
   }
 
-  Future<void> _addBalanceDelta(
-    int accountId,
-    int deltaMinor,
-    DateTime now,
-  ) {
+  Future<void> _addBalanceDelta(int accountId, int deltaMinor, DateTime now) {
     return _database.customUpdate(
       'UPDATE accounts '
       'SET balance_minor = balance_minor + ?, updated_at = ? '
@@ -293,24 +302,23 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
       subtype: row.accountSubtype,
       parentId: row.parentId,
       currencyCode: row.currencyCode,
-      balance: Money(
-        minorUnits: row.balanceMinor,
-        currency: row.currencyCode,
-      ),
+      balance: Money(minorUnits: row.balanceMinor, currency: row.currencyCode),
       iconKey: row.iconKey,
       note: row.note,
-      creditLimit: row.creditLimitMinor == null
-          ? null
-          : Money(
-              minorUnits: row.creditLimitMinor!,
-              currency: row.currencyCode,
-            ),
+      creditLimit:
+          row.creditLimitMinor == null
+              ? null
+              : Money(
+                minorUnits: row.creditLimitMinor!,
+                currency: row.currencyCode,
+              ),
       billingDay: row.billingDay,
       repaymentDay: row.repaymentDay,
       sortOrder: row.sortOrder,
       isHidden: row.isHidden,
       archivedAt: row.archivedAt,
       systemKey: row.systemKey,
+      source: row.source,
     );
   }
 

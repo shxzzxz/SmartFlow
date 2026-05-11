@@ -1,38 +1,23 @@
 import 'package:decimal/decimal.dart';
 
 class Money implements Comparable<Money> {
-  const Money({
-    required this.minorUnits,
-    this.currency = defaultCurrency,
-  });
+  const Money({required this.minorUnits, this.currency = defaultCurrency});
 
   factory Money.zero({String currency = defaultCurrency}) {
     return Money(minorUnits: 0, currency: currency);
   }
 
-  factory Money.fromMajor(
-    Decimal amount, {
-    String currency = defaultCurrency,
-  }) {
+  factory Money.fromMajor(Decimal amount, {String currency = defaultCurrency}) {
     final minor = amount.shift(2);
     if (!minor.isInteger) {
       throw FormatException('Money only supports cent precision: $amount');
     }
 
-    return Money(
-      minorUnits: minor.toBigInt().toInt(),
-      currency: currency,
-    );
+    return Money(minorUnits: minor.toBigInt().toInt(), currency: currency);
   }
 
-  factory Money.parse(
-    String amount, {
-    String currency = defaultCurrency,
-  }) {
-    return Money.fromMajor(
-      Decimal.parse(amount.trim()),
-      currency: currency,
-    );
+  factory Money.parse(String amount, {String currency = defaultCurrency}) {
+    return Money.fromMajor(Decimal.parse(amount.trim()), currency: currency);
   }
 
   static const defaultCurrency = 'CNY';
@@ -44,18 +29,12 @@ class Money implements Comparable<Money> {
 
   Money operator +(Money other) {
     _checkSameCurrency(other);
-    return Money(
-      minorUnits: minorUnits + other.minorUnits,
-      currency: currency,
-    );
+    return Money(minorUnits: minorUnits + other.minorUnits, currency: currency);
   }
 
   Money operator -(Money other) {
     _checkSameCurrency(other);
-    return Money(
-      minorUnits: minorUnits - other.minorUnits,
-      currency: currency,
-    );
+    return Money(minorUnits: minorUnits - other.minorUnits, currency: currency);
   }
 
   Money operator -() {

@@ -301,82 +301,86 @@ void main() {
       expect(await _balanceOf(database, foodId), 0);
     });
 
-    test('allows negative detail and entry amounts for reversal records', () async {
-      final walletId = await _insertAccount(
-        database,
-        name: 'Wallet',
-        type: AccountType.asset,
-      );
-      final foodId = await _insertAccount(
-        database,
-        name: 'Food',
-        type: AccountType.expense,
-      );
-      final originalResult = await service.post(
-        PostTransactionCommand(
-          businessPurpose: BusinessPurpose.dailyExpense,
-          occurredAt: DateTime(2026, 5),
-          primaryAmount: const Money(minorUnits: 2000),
-          details: const [
-            PostTransactionDetailInput(
-              lineNo: 1,
-              type: TransactionDetailType.primaryExpense,
-              amount: Money(minorUnits: 2000),
-            ),
-          ],
-          entries: [
-            PostEntryInput(
-              accountId: foodId,
-              direction: EntryDirection.debit,
-              amount: const Money(minorUnits: 2000),
-            ),
-            PostEntryInput(
-              accountId: walletId,
-              direction: EntryDirection.credit,
-              amount: const Money(minorUnits: 2000),
-            ),
-          ],
-        ),
-      );
-      final original = (originalResult as Success<PostTransactionResult>).value;
+    test(
+      'allows negative detail and entry amounts for reversal records',
+      () async {
+        final walletId = await _insertAccount(
+          database,
+          name: 'Wallet',
+          type: AccountType.asset,
+        );
+        final foodId = await _insertAccount(
+          database,
+          name: 'Food',
+          type: AccountType.expense,
+        );
+        final originalResult = await service.post(
+          PostTransactionCommand(
+            businessPurpose: BusinessPurpose.dailyExpense,
+            occurredAt: DateTime(2026, 5),
+            primaryAmount: const Money(minorUnits: 2000),
+            details: const [
+              PostTransactionDetailInput(
+                lineNo: 1,
+                type: TransactionDetailType.primaryExpense,
+                amount: Money(minorUnits: 2000),
+              ),
+            ],
+            entries: [
+              PostEntryInput(
+                accountId: foodId,
+                direction: EntryDirection.debit,
+                amount: const Money(minorUnits: 2000),
+              ),
+              PostEntryInput(
+                accountId: walletId,
+                direction: EntryDirection.credit,
+                amount: const Money(minorUnits: 2000),
+              ),
+            ],
+          ),
+        );
+        final original =
+            (originalResult as Success<PostTransactionResult>).value;
 
-      final reversalResult = await service.post(
-        PostTransactionCommand(
-          businessPurpose: BusinessPurpose.dailyExpense,
-          occurredAt: DateTime(2026, 5),
-          primaryAmount: const Money(minorUnits: 2000),
-          rootTransactionId: original.rootTransactionId,
-          mutationKind: MutationKind.reversal,
-          mutationPreviousTransactionId: original.transactionId,
-          mutationReason: MutationReason.correction,
-          businessState: BusinessState.compensation,
-          details: const [
-            PostTransactionDetailInput(
-              lineNo: 1,
-              type: TransactionDetailType.primaryExpense,
-              amount: Money(minorUnits: -2000),
-            ),
-          ],
-          entries: [
-            PostEntryInput(
-              accountId: foodId,
-              direction: EntryDirection.debit,
-              amount: const Money(minorUnits: -2000),
-            ),
-            PostEntryInput(
-              accountId: walletId,
-              direction: EntryDirection.credit,
-              amount: const Money(minorUnits: -2000),
-            ),
-          ],
-        ),
-      );
+        final reversalResult = await service.post(
+          PostTransactionCommand(
+            businessPurpose: BusinessPurpose.dailyExpense,
+            occurredAt: DateTime(2026, 5),
+            primaryAmount: const Money(minorUnits: 2000),
+            rootTransactionId: original.rootTransactionId,
+            mutationKind: MutationKind.reversal,
+            mutationPreviousTransactionId: original.transactionId,
+            mutationReason: MutationReason.correction,
+            businessState: BusinessState.compensation,
+            details: const [
+              PostTransactionDetailInput(
+                lineNo: 1,
+                type: TransactionDetailType.primaryExpense,
+                amount: Money(minorUnits: -2000),
+              ),
+            ],
+            entries: [
+              PostEntryInput(
+                accountId: foodId,
+                direction: EntryDirection.debit,
+                amount: const Money(minorUnits: -2000),
+              ),
+              PostEntryInput(
+                accountId: walletId,
+                direction: EntryDirection.credit,
+                amount: const Money(minorUnits: -2000),
+              ),
+            ],
+          ),
+        );
 
-      expect(reversalResult, isA<Success<PostTransactionResult>>());
-      expect(await _balanceOf(database, walletId), 0);
-      expect(await _balanceOf(database, foodId), 0);
-      await _expectStoredBalancesMatchEntries(database);
-    });
+        expect(reversalResult, isA<Success<PostTransactionResult>>());
+        expect(await _balanceOf(database, walletId), 0);
+        expect(await _balanceOf(database, foodId), 0);
+        await _expectStoredBalancesMatchEntries(database);
+      },
+    );
 
     test('rejects reversal records with invalid state', () async {
       final walletId = await _insertAccount(
@@ -488,7 +492,9 @@ Future<int> _insertAccount(
   required AccountType type,
   int balanceMinor = 0,
 }) {
-  return database.into(database.accounts).insert(
+  return database
+      .into(database.accounts)
+      .insert(
         AccountsCompanion.insert(
           name: name,
           accountType: type,
@@ -499,24 +505,24 @@ Future<int> _insertAccount(
 }
 
 Future<int> _balanceOf(AppDatabase database, int accountId) async {
-  final row = await (database.select(database.accounts)
-        ..where((account) => account.id.equals(accountId)))
-      .getSingle();
+  final row =
+      await (database.select(database.accounts)
+        ..where((account) => account.id.equals(accountId))).getSingle();
   return row.balanceMinor;
 }
 
 Future<int> _countRows(AppDatabase database, String tableName) async {
-  final row = await database
-      .customSelect('SELECT COUNT(*) AS count FROM $tableName')
-      .getSingle();
+  final row =
+      await database
+          .customSelect('SELECT COUNT(*) AS count FROM $tableName')
+          .getSingle();
   return row.read<int>('count');
 }
 
 Future<void> _expectStoredBalancesMatchEntries(AppDatabase database) async {
   final accounts = await database.select(database.accounts).get();
   final accountTypes = {
-    for (final account in accounts)
-      account.id: account.accountType,
+    for (final account in accounts) account.id: account.accountType,
   };
   final derivedBalances = {for (final account in accounts) account.id: 0};
   final entries = await database.select(database.entries).get();

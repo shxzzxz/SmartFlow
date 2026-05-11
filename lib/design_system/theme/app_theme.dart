@@ -17,10 +17,7 @@ abstract final class AppTheme {
     return _theme(colors, AppThemeExtension.dark());
   }
 
-  static ThemeData _theme(
-    ColorScheme colors,
-    AppThemeExtension extension,
-  ) {
+  static ThemeData _theme(ColorScheme colors, AppThemeExtension extension) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colors,

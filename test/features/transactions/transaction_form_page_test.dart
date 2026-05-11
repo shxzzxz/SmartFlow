@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/data/database/default_data_seeder.dart';
 import 'package:smartflow/data/database/database_provider.dart';
 import 'package:smartflow/features/transactions/pages/transaction_form_page.dart';
 
@@ -13,7 +12,6 @@ void main() {
   ) async {
     final database = createTestDatabase();
     addTearDown(database.close);
-    await seedDefaultData(database);
 
     await tester.pumpWidget(
       ProviderScope(

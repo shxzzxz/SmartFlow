@@ -191,6 +191,16 @@ class $AccountsTable extends Accounts
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       ).withConverter<SystemKey?>($AccountsTable.$convertersystemKeyn);
+  @override
+  late final GeneratedColumnWithTypeConverter<AccountSource, String> source =
+      GeneratedColumn<String>(
+        'source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(AccountSource.user.name),
+      ).withConverter<AccountSource>($AccountsTable.$convertersource);
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -233,6 +243,7 @@ class $AccountsTable extends Accounts
     isHidden,
     archivedAt,
     systemKey,
+    source,
     createdAt,
     updatedAt,
   ];
@@ -436,6 +447,12 @@ class $AccountsTable extends Accounts
           data['${effectivePrefix}system_key'],
         ),
       ),
+      source: $AccountsTable.$convertersource.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source'],
+        )!,
+      ),
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -468,6 +485,8 @@ class $AccountsTable extends Accounts
       const EnumNameConverter<SystemKey>(SystemKey.values);
   static JsonTypeConverter2<SystemKey?, String?, String?> $convertersystemKeyn =
       JsonTypeConverter2.asNullable($convertersystemKey);
+  static JsonTypeConverter2<AccountSource, String, String> $convertersource =
+      const EnumNameConverter<AccountSource>(AccountSource.values);
 }
 
 class AccountRow extends DataClass implements Insertable<AccountRow> {
@@ -487,6 +506,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final bool isHidden;
   final DateTime? archivedAt;
   final SystemKey? systemKey;
+  final AccountSource source;
   final DateTime createdAt;
   final DateTime updatedAt;
   const AccountRow({
@@ -506,6 +526,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.isHidden,
     this.archivedAt,
     this.systemKey,
+    required this.source,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -552,6 +573,11 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     if (!nullToAbsent || systemKey != null) {
       map['system_key'] = Variable<String>(
         $AccountsTable.$convertersystemKeyn.toSql(systemKey),
+      );
+    }
+    {
+      map['source'] = Variable<String>(
+        $AccountsTable.$convertersource.toSql(source),
       );
     }
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -601,6 +627,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           systemKey == null && nullToAbsent
               ? const Value.absent()
               : Value(systemKey),
+      source: Value(source),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -634,6 +661,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       systemKey: $AccountsTable.$convertersystemKeyn.fromJson(
         serializer.fromJson<String?>(json['systemKey']),
       ),
+      source: $AccountsTable.$convertersource.fromJson(
+        serializer.fromJson<String>(json['source']),
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -664,6 +694,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'systemKey': serializer.toJson<String?>(
         $AccountsTable.$convertersystemKeyn.toJson(systemKey),
       ),
+      'source': serializer.toJson<String>(
+        $AccountsTable.$convertersource.toJson(source),
+      ),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -686,6 +719,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     bool? isHidden,
     Value<DateTime?> archivedAt = const Value.absent(),
     Value<SystemKey?> systemKey = const Value.absent(),
+    AccountSource? source,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => AccountRow(
@@ -709,6 +743,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     isHidden: isHidden ?? this.isHidden,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
     systemKey: systemKey.present ? systemKey.value : this.systemKey,
+    source: source ?? this.source,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -748,6 +783,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       archivedAt:
           data.archivedAt.present ? data.archivedAt.value : this.archivedAt,
       systemKey: data.systemKey.present ? data.systemKey.value : this.systemKey,
+      source: data.source.present ? data.source.value : this.source,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -772,6 +808,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('isHidden: $isHidden, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('systemKey: $systemKey, ')
+          ..write('source: $source, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -796,6 +833,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     isHidden,
     archivedAt,
     systemKey,
+    source,
     createdAt,
     updatedAt,
   );
@@ -819,6 +857,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.isHidden == this.isHidden &&
           other.archivedAt == this.archivedAt &&
           other.systemKey == this.systemKey &&
+          other.source == this.source &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -840,6 +879,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<bool> isHidden;
   final Value<DateTime?> archivedAt;
   final Value<SystemKey?> systemKey;
+  final Value<AccountSource> source;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const AccountsCompanion({
@@ -859,6 +899,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.isHidden = const Value.absent(),
     this.archivedAt = const Value.absent(),
     this.systemKey = const Value.absent(),
+    this.source = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -879,6 +920,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.isHidden = const Value.absent(),
     this.archivedAt = const Value.absent(),
     this.systemKey = const Value.absent(),
+    this.source = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -901,6 +943,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<bool>? isHidden,
     Expression<DateTime>? archivedAt,
     Expression<String>? systemKey,
+    Expression<String>? source,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -921,6 +964,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (isHidden != null) 'is_hidden': isHidden,
       if (archivedAt != null) 'archived_at': archivedAt,
       if (systemKey != null) 'system_key': systemKey,
+      if (source != null) 'source': source,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -943,6 +987,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<bool>? isHidden,
     Value<DateTime?>? archivedAt,
     Value<SystemKey?>? systemKey,
+    Value<AccountSource>? source,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -963,6 +1008,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       isHidden: isHidden ?? this.isHidden,
       archivedAt: archivedAt ?? this.archivedAt,
       systemKey: systemKey ?? this.systemKey,
+      source: source ?? this.source,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1025,6 +1071,11 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
         $AccountsTable.$convertersystemKeyn.toSql(systemKey.value),
       );
     }
+    if (source.present) {
+      map['source'] = Variable<String>(
+        $AccountsTable.$convertersource.toSql(source.value),
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1053,8 +1104,276 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('isHidden: $isHidden, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('systemKey: $systemKey, ')
+          ..write('source: $source, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AppMetadataTable extends AppMetadata
+    with TableInfo<$AppMetadataTable, AppMetadataRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppMetadataTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 120,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_metadata';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AppMetadataRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  AppMetadataRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppMetadataRow(
+      key:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}key'],
+          )!,
+      value:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}value'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $AppMetadataTable createAlias(String alias) {
+    return $AppMetadataTable(attachedDatabase, alias);
+  }
+}
+
+class AppMetadataRow extends DataClass implements Insertable<AppMetadataRow> {
+  final String key;
+  final String value;
+  final DateTime updatedAt;
+  const AppMetadataRow({
+    required this.key,
+    required this.value,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AppMetadataCompanion toCompanion(bool nullToAbsent) {
+    return AppMetadataCompanion(
+      key: Value(key),
+      value: Value(value),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AppMetadataRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppMetadataRow(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AppMetadataRow copyWith({String? key, String? value, DateTime? updatedAt}) =>
+      AppMetadataRow(
+        key: key ?? this.key,
+        value: value ?? this.value,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  AppMetadataRow copyWithCompanion(AppMetadataCompanion data) {
+    return AppMetadataRow(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppMetadataRow(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppMetadataRow &&
+          other.key == this.key &&
+          other.value == this.value &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AppMetadataCompanion extends UpdateCompanion<AppMetadataRow> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AppMetadataCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppMetadataCompanion.insert({
+    required String key,
+    required String value,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<AppMetadataRow> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppMetadataCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AppMetadataCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppMetadataCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -3695,6 +4014,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $AccountsTable accounts = $AccountsTable(this);
+  late final $AppMetadataTable appMetadata = $AppMetadataTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $TransactionDetailsTable transactionDetails =
       $TransactionDetailsTable(this);
@@ -3706,6 +4026,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     accounts,
+    appMetadata,
     transactions,
     transactionDetails,
     entries,
@@ -3731,6 +4052,7 @@ typedef $$AccountsTableCreateCompanionBuilder =
       Value<bool> isHidden,
       Value<DateTime?> archivedAt,
       Value<SystemKey?> systemKey,
+      Value<AccountSource> source,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -3752,6 +4074,7 @@ typedef $$AccountsTableUpdateCompanionBuilder =
       Value<bool> isHidden,
       Value<DateTime?> archivedAt,
       Value<SystemKey?> systemKey,
+      Value<AccountSource> source,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -3847,6 +4170,12 @@ class $$AccountsTableFilterComposer
         column: $table.systemKey,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnWithTypeConverterFilters<AccountSource, AccountSource, String>
+  get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
@@ -3948,6 +4277,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4034,6 +4368,9 @@ class $$AccountsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<SystemKey?, String> get systemKey =>
       $composableBuilder(column: $table.systemKey, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<AccountSource, String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -4088,6 +4425,7 @@ class $$AccountsTableTableManager
                 Value<bool> isHidden = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
                 Value<SystemKey?> systemKey = const Value.absent(),
+                Value<AccountSource> source = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AccountsCompanion(
@@ -4107,6 +4445,7 @@ class $$AccountsTableTableManager
                 isHidden: isHidden,
                 archivedAt: archivedAt,
                 systemKey: systemKey,
+                source: source,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -4128,6 +4467,7 @@ class $$AccountsTableTableManager
                 Value<bool> isHidden = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
                 Value<SystemKey?> systemKey = const Value.absent(),
+                Value<AccountSource> source = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => AccountsCompanion.insert(
@@ -4147,6 +4487,7 @@ class $$AccountsTableTableManager
                 isHidden: isHidden,
                 archivedAt: archivedAt,
                 systemKey: systemKey,
+                source: source,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -4177,6 +4518,176 @@ typedef $$AccountsTableProcessedTableManager =
       $$AccountsTableUpdateCompanionBuilder,
       (AccountRow, BaseReferences<_$AppDatabase, $AccountsTable, AccountRow>),
       AccountRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AppMetadataTableCreateCompanionBuilder =
+    AppMetadataCompanion Function({
+      required String key,
+      required String value,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AppMetadataTableUpdateCompanionBuilder =
+    AppMetadataCompanion Function({
+      Value<String> key,
+      Value<String> value,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AppMetadataTableFilterComposer
+    extends Composer<_$AppDatabase, $AppMetadataTable> {
+  $$AppMetadataTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppMetadataTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppMetadataTable> {
+  $$AppMetadataTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppMetadataTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppMetadataTable> {
+  $$AppMetadataTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AppMetadataTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AppMetadataTable,
+          AppMetadataRow,
+          $$AppMetadataTableFilterComposer,
+          $$AppMetadataTableOrderingComposer,
+          $$AppMetadataTableAnnotationComposer,
+          $$AppMetadataTableCreateCompanionBuilder,
+          $$AppMetadataTableUpdateCompanionBuilder,
+          (
+            AppMetadataRow,
+            BaseReferences<_$AppDatabase, $AppMetadataTable, AppMetadataRow>,
+          ),
+          AppMetadataRow,
+          PrefetchHooks Function()
+        > {
+  $$AppMetadataTableTableManager(_$AppDatabase db, $AppMetadataTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$AppMetadataTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$AppMetadataTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$AppMetadataTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppMetadataCompanion(
+                key: key,
+                value: value,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String value,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppMetadataCompanion.insert(
+                key: key,
+                value: value,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppMetadataTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AppMetadataTable,
+      AppMetadataRow,
+      $$AppMetadataTableFilterComposer,
+      $$AppMetadataTableOrderingComposer,
+      $$AppMetadataTableAnnotationComposer,
+      $$AppMetadataTableCreateCompanionBuilder,
+      $$AppMetadataTableUpdateCompanionBuilder,
+      (
+        AppMetadataRow,
+        BaseReferences<_$AppDatabase, $AppMetadataTable, AppMetadataRow>,
+      ),
+      AppMetadataRow,
       PrefetchHooks Function()
     >;
 typedef $$TransactionsTableCreateCompanionBuilder =
@@ -5442,6 +5953,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$AccountsTableTableManager get accounts =>
       $$AccountsTableTableManager(_db, _db.accounts);
+  $$AppMetadataTableTableManager get appMetadata =>
+      $$AppMetadataTableTableManager(_db, _db.appMetadata);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$TransactionDetailsTableTableManager get transactionDetails =>

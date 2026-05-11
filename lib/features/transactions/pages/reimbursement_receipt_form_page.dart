@@ -72,9 +72,7 @@ class _ReimbursementReceiptFormPageState
               if (summary != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-                  child: Text(
-                    '剩余应收：${summary.outstanding.format()}',
-                  ),
+                  child: Text('剩余应收：${summary.outstanding.format()}'),
                 ),
               AppFormSection(
                 children: [
@@ -105,8 +103,8 @@ class _ReimbursementReceiptFormPageState
                           child: Text(account.name),
                         ),
                     ],
-                    onChanged: (value) =>
-                        setState(() => _receiveAccountId = value),
+                    onChanged:
+                        (value) => setState(() => _receiveAccountId = value),
                     validator: (value) => value == null ? '请选择账户' : null,
                   ),
                   TextFormField(
@@ -123,15 +121,17 @@ class _ReimbursementReceiptFormPageState
               SizedBox(
                 height: AppSpacing.space48,
                 child: FilledButton(
-                  onPressed: (_submitting || receivable == null)
-                      ? null
-                      : () => _submit(receivable),
-                  child: _submitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('保存'),
+                  onPressed:
+                      (_submitting || receivable == null)
+                          ? null
+                          : () => _submit(receivable),
+                  child:
+                      _submitting
+                          ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('保存'),
                 ),
               ),
             ],
@@ -174,9 +174,10 @@ class _ReimbursementReceiptFormPageState
         receivableAccountId: receivableAccountId,
         receiveAccountId: _receiveAccountId!,
         occurredAt: DateTime.now(),
-        note: _noteController.text.trim().isEmpty
-            ? null
-            : _noteController.text.trim(),
+        note:
+            _noteController.text.trim().isEmpty
+                ? null
+                : _noteController.text.trim(),
       ),
     );
     if (!mounted) return;
@@ -185,9 +186,9 @@ class _ReimbursementReceiptFormPageState
       case Success():
         context.pop();
       case FailureResult(:final failure):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
 }

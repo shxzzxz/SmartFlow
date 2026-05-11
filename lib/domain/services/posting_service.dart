@@ -24,9 +24,12 @@ class PostingServiceImpl implements PostingService {
         return Result.failure(failure);
       }
 
-      final accountIds = command.entries.map((entry) => entry.accountId).toSet();
+      final accountIds =
+          command.entries.map((entry) => entry.accountId).toSet();
       final accounts = await _repository.findAccountsByIds(accountIds);
-      final accountsById = {for (final account in accounts) account.id: account};
+      final accountsById = {
+        for (final account in accounts) account.id: account,
+      };
 
       for (final accountId in accountIds) {
         final account = accountsById[accountId];
@@ -70,11 +73,12 @@ class PostingServiceImpl implements PostingService {
                 direction: entry.direction,
                 amountMinor: entry.amount.minorUnits,
               ),
-          ifAbsent: () => balanceDeltaMinor(
-            accountType: account.type,
-            direction: entry.direction,
-            amountMinor: entry.amount.minorUnits,
-          ),
+          ifAbsent:
+              () => balanceDeltaMinor(
+                accountType: account.type,
+                direction: entry.direction,
+                amountMinor: entry.amount.minorUnits,
+              ),
         );
       }
 
@@ -131,7 +135,8 @@ class PostingServiceImpl implements PostingService {
       if (!moneyMatchesCurrency(detail.amount, command.currencyCode)) {
         return const Failure(
           code: 'detail_currency_mismatch',
-          message: 'Detail amount currency does not match transaction currency.',
+          message:
+              'Detail amount currency does not match transaction currency.',
         );
       }
       if (!_amountSignIsValid(

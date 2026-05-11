@@ -135,10 +135,7 @@ class CreateCategoryCommand {
 }
 
 class CategoryNode {
-  const CategoryNode({
-    required this.account,
-    this.children = const [],
-  });
+  const CategoryNode({required this.account, this.children = const []});
 
   final Account account;
   final List<Account> children;

@@ -1,10 +1,4 @@
-enum AccountType {
-  asset,
-  liability,
-  equity,
-  income,
-  expense;
-}
+enum AccountType { asset, liability, equity, income, expense }
 
 enum AccountSubtype {
   cash,
@@ -14,13 +8,10 @@ enum AccountSubtype {
   reimbursement,
   creditCard,
   loan,
-  consumerCredit;
+  consumerCredit,
 }
 
-enum EntryDirection {
-  debit,
-  credit;
-}
+enum EntryDirection { debit, credit }
 
 enum BusinessPurpose {
   dailyExpense,
@@ -33,26 +24,14 @@ enum BusinessPurpose {
   debtRepayment,
   borrowing,
   openingBalance,
-  balanceAdjustment;
+  balanceAdjustment,
 }
 
-enum MutationKind {
-  original,
-  correction,
-  reversal;
-}
+enum MutationKind { original, correction, reversal }
 
-enum MutationReason {
-  correction,
-  delete;
-}
+enum MutationReason { correction, delete }
 
-enum BusinessState {
-  current,
-  replaced,
-  canceled,
-  compensation;
-}
+enum BusinessState { current, replaced, canceled, compensation }
 
 enum TransactionDetailType {
   primaryExpense,
@@ -70,17 +49,19 @@ enum TransactionDetailType {
   repaymentFee,
   borrowingPrincipal,
   openingBalanceMain,
-  balanceAdjustmentMain;
+  balanceAdjustmentMain,
 }
 
-enum SourceKind {
-  manual,
-  import,
-  auto;
-}
+enum SourceKind { manual, import, auto }
 
 enum SystemKey {
   openingBalance,
   reimbursementGapIncome,
-  importFallback;
+  debtInterestExpense,
+  debtFeeExpense,
+  lendingExpense,
+  borrowingIncome,
+  importFallback,
 }
+
+enum AccountSource { builtin, user, import }

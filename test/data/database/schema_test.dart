@@ -18,30 +18,38 @@ void main() {
     });
 
     test('creates core accounting tables', () async {
-      final rows = await database
-          .customSelect(
-            "SELECT name FROM sqlite_master "
-            "WHERE type = 'table' AND name IN "
-            "('accounts', 'transactions', 'transaction_details', "
-            "'entries', 'budgets') "
-            "ORDER BY name",
-          )
-          .get();
+      final rows =
+          await database
+              .customSelect(
+                "SELECT name FROM sqlite_master "
+                "WHERE type = 'table' AND name IN "
+                "('accounts', 'app_metadata', 'transactions', 'transaction_details', "
+                "'entries', 'budgets') "
+                "ORDER BY name",
+              )
+              .get();
 
-      expect(
-        rows.map((row) => row.read<String>('name')),
-        ['accounts', 'budgets', 'entries', 'transaction_details', 'transactions'],
-      );
+      expect(rows.map((row) => row.read<String>('name')), [
+        'accounts',
+        'app_metadata',
+        'budgets',
+        'entries',
+        'transaction_details',
+        'transactions',
+      ]);
     });
 
     test('does not rely on sqlite foreign key checks', () async {
-      final row = await database.customSelect('PRAGMA foreign_keys').getSingle();
+      final row =
+          await database.customSelect('PRAGMA foreign_keys').getSingle();
 
       expect(row.read<int>('foreign_keys'), 0);
     });
 
     test('enforces total and category budget uniqueness', () async {
-      final accountId = await database.into(database.accounts).insert(
+      final accountId = await database
+          .into(database.accounts)
+          .insert(
             AccountsCompanion.insert(
               name: 'Food',
               accountType: AccountType.expense,
@@ -49,7 +57,9 @@ void main() {
             ),
           );
 
-      await database.into(database.budgets).insert(
+      await database
+          .into(database.budgets)
+          .insert(
             BudgetsCompanion.insert(
               monthKey: 202605,
               accountId: Value(null),
@@ -57,7 +67,9 @@ void main() {
               currencyCode: 'CNY',
             ),
           );
-      await database.into(database.budgets).insert(
+      await database
+          .into(database.budgets)
+          .insert(
             BudgetsCompanion.insert(
               monthKey: 202605,
               accountId: Value(accountId),
@@ -67,7 +79,9 @@ void main() {
           );
 
       expect(
-        () => database.into(database.budgets).insert(
+        () => database
+            .into(database.budgets)
+            .insert(
               BudgetsCompanion.insert(
                 monthKey: 202605,
                 accountId: Value(null),
@@ -78,7 +92,9 @@ void main() {
         throwsA(isA<Exception>()),
       );
       expect(
-        () => database.into(database.budgets).insert(
+        () => database
+            .into(database.budgets)
+            .insert(
               BudgetsCompanion.insert(
                 monthKey: 202605,
                 accountId: Value(accountId),

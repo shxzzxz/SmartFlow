@@ -1,8 +1,5 @@
 class MonthKey implements Comparable<MonthKey> {
-  MonthKey({
-    required this.year,
-    required this.month,
-  }) {
+  MonthKey({required this.year, required this.month}) {
     if (month < 1 || month > 12) {
       throw ArgumentError.value(
         month,

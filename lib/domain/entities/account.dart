@@ -19,6 +19,7 @@ class Account {
     this.isHidden = false,
     this.archivedAt,
     this.systemKey,
+    this.source = AccountSource.user,
   });
 
   final int id;
@@ -37,4 +38,5 @@ class Account {
   final bool isHidden;
   final DateTime? archivedAt;
   final SystemKey? systemKey;
+  final AccountSource source;
 }

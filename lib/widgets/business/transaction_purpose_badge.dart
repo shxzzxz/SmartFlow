@@ -5,10 +5,7 @@ import '../../domain/enums/accounting_enums.dart';
 import 'finance_labels.dart';
 
 class TransactionPurposeBadge extends StatelessWidget {
-  const TransactionPurposeBadge({
-    required this.purpose,
-    super.key,
-  });
+  const TransactionPurposeBadge({required this.purpose, super.key});
 
   final BusinessPurpose purpose;
 

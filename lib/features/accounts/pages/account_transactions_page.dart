@@ -8,10 +8,7 @@ import '../../../widgets/business/money_text.dart';
 import '../../../widgets/business/transaction_purpose_badge.dart';
 
 class AccountTransactionsPage extends ConsumerWidget {
-  const AccountTransactionsPage({
-    required this.accountId,
-    super.key,
-  });
+  const AccountTransactionsPage({required this.accountId, super.key});
 
   final int accountId;
 
@@ -34,8 +31,8 @@ class AccountTransactionsPage extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.space16),
             itemCount: items.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(height: AppSpacing.space8),
+            separatorBuilder:
+                (_, _) => const SizedBox(height: AppSpacing.space8),
             itemBuilder: (context, index) {
               final item = items[index];
               return Card(

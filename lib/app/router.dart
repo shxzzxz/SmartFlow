@@ -51,27 +51,31 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/transactions/:id',
-      builder: (context, state) => TransactionDetailPage(
-        transactionId: int.parse(state.pathParameters['id']!),
-      ),
+      builder:
+          (context, state) => TransactionDetailPage(
+            transactionId: int.parse(state.pathParameters['id']!),
+          ),
     ),
     GoRoute(
       path: '/transactions/:id/refund',
-      builder: (context, state) => RefundFormPage(
-        parentTransactionId: int.parse(state.pathParameters['id']!),
-      ),
+      builder:
+          (context, state) => RefundFormPage(
+            parentTransactionId: int.parse(state.pathParameters['id']!),
+          ),
     ),
     GoRoute(
       path: '/transactions/:id/reimburse-receipt',
-      builder: (context, state) => ReimbursementReceiptFormPage(
-        advanceTransactionId: int.parse(state.pathParameters['id']!),
-      ),
+      builder:
+          (context, state) => ReimbursementReceiptFormPage(
+            advanceTransactionId: int.parse(state.pathParameters['id']!),
+          ),
     ),
     GoRoute(
       path: '/transactions/:id/reimburse-close',
-      builder: (context, state) => ReimbursementCloseFormPage(
-        advanceTransactionId: int.parse(state.pathParameters['id']!),
-      ),
+      builder:
+          (context, state) => ReimbursementCloseFormPage(
+            advanceTransactionId: int.parse(state.pathParameters['id']!),
+          ),
     ),
     GoRoute(
       path: '/accounts/new',
@@ -79,9 +83,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/accounts/:id',
-      builder: (context, state) => AccountTransactionsPage(
-        accountId: int.parse(state.pathParameters['id']!),
-      ),
+      builder:
+          (context, state) => AccountTransactionsPage(
+            accountId: int.parse(state.pathParameters['id']!),
+          ),
     ),
     GoRoute(
       path: '/categories',

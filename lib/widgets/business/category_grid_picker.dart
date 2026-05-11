@@ -232,7 +232,7 @@ class _AddCategoryTile extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
       child: BusinessIconTile(
         extent: 64,
         borderRadius: AppRadius.radiusMd,

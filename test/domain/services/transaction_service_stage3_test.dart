@@ -57,15 +57,17 @@ void main() {
         '餐饮',
         AccountType.expense,
       );
-      final expense = (await service.createExpense(
-            CreateExpenseCommand(
-              amount: const Money(minorUnits: 6800),
-              paidFromAccountId: wallet.id,
-              expenseAccountId: food.id,
-              occurredAt: DateTime(2026, 5, 1),
-            ),
-          ) as Success<PostTransactionResult>)
-          .value;
+      final expense =
+          (await service.createExpense(
+                    CreateExpenseCommand(
+                      amount: const Money(minorUnits: 6800),
+                      paidFromAccountId: wallet.id,
+                      expenseAccountId: food.id,
+                      occurredAt: DateTime(2026, 5, 1),
+                    ),
+                  )
+                  as Success<PostTransactionResult>)
+              .value;
 
       final refund = await service.createRefund(
         CreateRefundCommand(
@@ -93,15 +95,17 @@ void main() {
         '餐饮',
         AccountType.expense,
       );
-      final expense = (await service.createExpense(
-            CreateExpenseCommand(
-              amount: const Money(minorUnits: 1000),
-              paidFromAccountId: wallet.id,
-              expenseAccountId: food.id,
-              occurredAt: DateTime(2026, 5, 1),
-            ),
-          ) as Success<PostTransactionResult>)
-          .value;
+      final expense =
+          (await service.createExpense(
+                    CreateExpenseCommand(
+                      amount: const Money(minorUnits: 1000),
+                      paidFromAccountId: wallet.id,
+                      expenseAccountId: food.id,
+                      occurredAt: DateTime(2026, 5, 1),
+                    ),
+                  )
+                  as Success<PostTransactionResult>)
+              .value;
 
       final result = await service.createRefund(
         CreateRefundCommand(
@@ -112,7 +116,10 @@ void main() {
         ),
       );
       expect(result, isA<FailureResult<PostTransactionResult>>());
-      expect((result as FailureResult).failure.code, 'refund_exceeds_remaining');
+      expect(
+        (result as FailureResult).failure.code,
+        'refund_exceeds_remaining',
+      );
     });
 
     test('reimbursement advance + receipt + close (over-receive)', () async {
@@ -125,16 +132,18 @@ void main() {
         AccountType.expense,
       );
 
-      final advance = (await service.createReimbursementAdvance(
-            CreateReimbursementAdvanceCommand(
-              amount: const Money(minorUnits: 200000),
-              receivableAccountId: receivable.id,
-              paidFromAccountId: card.id,
-              expenseCategoryId: travel.id,
-              occurredAt: DateTime(2026, 5, 1),
-            ),
-          ) as Success<PostTransactionResult>)
-          .value;
+      final advance =
+          (await service.createReimbursementAdvance(
+                    CreateReimbursementAdvanceCommand(
+                      amount: const Money(minorUnits: 200000),
+                      receivableAccountId: receivable.id,
+                      paidFromAccountId: card.id,
+                      expenseCategoryId: travel.id,
+                      occurredAt: DateTime(2026, 5, 1),
+                    ),
+                  )
+                  as Success<PostTransactionResult>)
+              .value;
 
       final receipt = await service.createReimbursementReceipt(
         CreateReimbursementReceiptCommand(
@@ -179,43 +188,47 @@ void main() {
       expect(await _balance(database, gapAccountId), 10000);
     });
 
-    test('reimbursement close with under-receive uses original expense category',
-        () async {
-      final card = await _createLiability(accountService, '信用卡');
-      final bank = await _createAsset(accountService, '招行');
-      final receivable = await _createAsset(accountService, '公司报销');
-      final electricity = await _createCategory(
-        categoryService,
-        '电费',
-        AccountType.expense,
-      );
+    test(
+      'reimbursement close with under-receive uses original expense category',
+      () async {
+        final card = await _createLiability(accountService, '信用卡');
+        final bank = await _createAsset(accountService, '招行');
+        final receivable = await _createAsset(accountService, '公司报销');
+        final electricity = await _createCategory(
+          categoryService,
+          '电费',
+          AccountType.expense,
+        );
 
-      final advance = (await service.createReimbursementAdvance(
-            CreateReimbursementAdvanceCommand(
-              amount: const Money(minorUnits: 150000),
-              receivableAccountId: receivable.id,
-              paidFromAccountId: card.id,
-              expenseCategoryId: electricity.id,
-              occurredAt: DateTime(2026, 5, 1),
-            ),
-          ) as Success<PostTransactionResult>)
-          .value;
+        final advance =
+            (await service.createReimbursementAdvance(
+                      CreateReimbursementAdvanceCommand(
+                        amount: const Money(minorUnits: 150000),
+                        receivableAccountId: receivable.id,
+                        paidFromAccountId: card.id,
+                        expenseCategoryId: electricity.id,
+                        occurredAt: DateTime(2026, 5, 1),
+                      ),
+                    )
+                    as Success<PostTransactionResult>)
+                .value;
 
-      final close = await service.closeReimbursement(
-        CloseReimbursementCommand(
-          actualReceivedAmount: const Money(minorUnits: 140000),
-          advanceTransactionId: advance.transactionId,
-          receivableAccountId: receivable.id,
-          receiveAccountId: bank.id,
-          occurredAt: DateTime(2026, 5, 5),
-        ),
-      );
-      expect(close, isA<Success<PostTransactionResult>>());
+        final close = await service.closeReimbursement(
+          CloseReimbursementCommand(
+            actualReceivedAmount: const Money(minorUnits: 140000),
+            advanceTransactionId: advance.transactionId,
+            receivableAccountId: receivable.id,
+            receiveAccountId: bank.id,
+            occurredAt: DateTime(2026, 5, 5),
+          ),
+        );
+        expect(close, isA<Success<PostTransactionResult>>());
 
-      expect(await _balance(database, electricity.id), 10000);
-      expect(await _balance(database, bank.id), 140000);
-      expect(await _balance(database, receivable.id), 0);
-    });
+        expect(await _balance(database, electricity.id), 10000);
+        expect(await _balance(database, bank.id), 140000);
+        expect(await _balance(database, receivable.id), 0);
+      },
+    );
 
     test('receipt after close is rejected', () async {
       final card = await _createLiability(accountService, '信用卡');
@@ -226,16 +239,18 @@ void main() {
         '差旅',
         AccountType.expense,
       );
-      final advance = (await service.createReimbursementAdvance(
-            CreateReimbursementAdvanceCommand(
-              amount: const Money(minorUnits: 100000),
-              receivableAccountId: receivable.id,
-              paidFromAccountId: card.id,
-              expenseCategoryId: cat.id,
-              occurredAt: DateTime(2026, 5, 1),
-            ),
-          ) as Success<PostTransactionResult>)
-          .value;
+      final advance =
+          (await service.createReimbursementAdvance(
+                    CreateReimbursementAdvanceCommand(
+                      amount: const Money(minorUnits: 100000),
+                      receivableAccountId: receivable.id,
+                      paidFromAccountId: card.id,
+                      expenseCategoryId: cat.id,
+                      occurredAt: DateTime(2026, 5, 1),
+                    ),
+                  )
+                  as Success<PostTransactionResult>)
+              .value;
       await service.closeReimbursement(
         CloseReimbursementCommand(
           actualReceivedAmount: const Money(minorUnits: 100000),
@@ -256,8 +271,10 @@ void main() {
         ),
       );
       expect(retry, isA<FailureResult<PostTransactionResult>>());
-      expect((retry as FailureResult).failure.code,
-          'reimbursement_already_closed');
+      expect(
+        (retry as FailureResult).failure.code,
+        'reimbursement_already_closed',
+      );
     });
 
     test('repayment splits principal and interest', () async {
@@ -286,22 +303,25 @@ void main() {
       expect(await _balance(database, interest.id), 3000);
     });
 
-    test('borrowing without cash account uses opening balance equity', () async {
-      final card = await _createLiability(accountService, '亲友借款');
+    test(
+      'borrowing without cash account uses opening balance equity',
+      () async {
+        final card = await _createLiability(accountService, '亲友借款');
 
-      final result = await service.createBorrowing(
-        CreateBorrowingCommand(
-          amount: const Money(minorUnits: 1000000),
-          liabilityAccountId: card.id,
-          occurredAt: DateTime(2026, 5, 1),
-        ),
-      );
-      expect(result, isA<Success<PostTransactionResult>>());
+        final result = await service.createBorrowing(
+          CreateBorrowingCommand(
+            amount: const Money(minorUnits: 1000000),
+            liabilityAccountId: card.id,
+            occurredAt: DateTime(2026, 5, 1),
+          ),
+        );
+        expect(result, isA<Success<PostTransactionResult>>());
 
-      final equityId = await systemAccounts.resolveOpeningBalance();
-      expect(await _balance(database, card.id), 1000000);
-      expect(await _balance(database, equityId), -1000000);
-    });
+        final equityId = await systemAccounts.resolveOpeningBalance();
+        expect(await _balance(database, card.id), 1000000);
+        expect(await _balance(database, equityId), -1000000);
+      },
+    );
 
     test('balance adjustment computes delta and uses opening equity', () async {
       final fund = await _createAsset(
@@ -329,15 +349,17 @@ void main() {
         '餐饮',
         AccountType.expense,
       );
-      final expense = (await service.createExpense(
-            CreateExpenseCommand(
-              amount: const Money(minorUnits: 1000),
-              paidFromAccountId: wallet.id,
-              expenseAccountId: food.id,
-              occurredAt: DateTime(2026, 5, 1),
-            ),
-          ) as Success<PostTransactionResult>)
-          .value;
+      final expense =
+          (await service.createExpense(
+                    CreateExpenseCommand(
+                      amount: const Money(minorUnits: 1000),
+                      paidFromAccountId: wallet.id,
+                      expenseAccountId: food.id,
+                      occurredAt: DateTime(2026, 5, 1),
+                    ),
+                  )
+                  as Success<PostTransactionResult>)
+              .value;
       await service.createRefund(
         CreateRefundCommand(
           amount: const Money(minorUnits: 200),
@@ -347,17 +369,19 @@ void main() {
         ),
       );
 
-      final list = await queryService
-          .watchTransactions(const TransactionListQuery())
-          .first;
+      final list =
+          await queryService
+              .watchTransactions(const TransactionListQuery())
+              .first;
       expect(
         list.where((it) => it.businessPurpose == BusinessPurpose.refund),
         isEmpty,
       );
 
-      final detail = await queryService
-          .watchTransactionDetail(expense.transactionId)
-          .first;
+      final detail =
+          await queryService
+              .watchTransactionDetail(expense.transactionId)
+              .first;
       expect(detail!.children, hasLength(1));
       expect(detail.children.single.businessPurpose, BusinessPurpose.refund);
       expect(detail.refundedTotal!.minorUnits, 200);
@@ -380,10 +404,7 @@ Future<dynamic> _createAsset(
   return (result as Success).value;
 }
 
-Future<dynamic> _createLiability(
-  AccountService service,
-  String name,
-) async {
+Future<dynamic> _createLiability(AccountService service, String name) async {
   final result = await service.createAccount(
     CreateAccountCommand(name: name, type: AccountType.liability),
   );
@@ -402,8 +423,8 @@ Future<dynamic> _createCategory(
 }
 
 Future<int> _balance(AppDatabase database, int accountId) async {
-  final row = await (database.select(database.accounts)
-        ..where((account) => account.id.equals(accountId)))
-      .getSingle();
+  final row =
+      await (database.select(database.accounts)
+        ..where((account) => account.id.equals(accountId))).getSingle();
   return row.balanceMinor;
 }

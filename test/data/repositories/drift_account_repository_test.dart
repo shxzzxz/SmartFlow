@@ -99,9 +99,8 @@ void main() {
 
       final tree = await service.watchCategoryTree(AccountType.expense).first;
 
-      expect(tree, hasLength(1));
-      expect(tree.single.account.name, '餐饮');
-      expect(tree.single.children.single.name, '咖啡');
+      final node = tree.singleWhere((node) => node.account.name == '餐饮');
+      expect(node.children.single.name, '咖啡');
     });
   });
 }

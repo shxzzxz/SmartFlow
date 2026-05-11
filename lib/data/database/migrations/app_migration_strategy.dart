@@ -1,6 +1,9 @@
 import 'package:drift/drift.dart';
 
-MigrationStrategy buildMigrationStrategy(GeneratedDatabase database) {
+import '../app_database.dart';
+import '../builtin_data.dart';
+
+MigrationStrategy buildMigrationStrategy(AppDatabase database) {
   return MigrationStrategy(
     onCreate: (migrator) async {
       await migrator.createAll();
@@ -36,6 +39,17 @@ MigrationStrategy buildMigrationStrategy(GeneratedDatabase database) {
         'CREATE INDEX entries_account_transaction_idx '
         'ON entries (account_id, transaction_id)',
       );
+      await ensureBuiltinData(database);
+    },
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.createTable(database.appMetadata);
+        await migrator.addColumn(database.accounts, database.accounts.source);
+        await ensureBuiltinData(database);
+      }
+    },
+    beforeOpen: (_) async {
+      await ensureBuiltinData(database);
     },
   );
 }

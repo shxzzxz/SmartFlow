@@ -1,9 +1,5 @@
 class Failure {
-  const Failure({
-    required this.message,
-    this.code,
-    this.cause,
-  });
+  const Failure({required this.message, this.code, this.cause});
 
   final String message;
   final String? code;

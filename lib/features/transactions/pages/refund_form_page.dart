@@ -44,7 +44,8 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
 
     final remaining = detailAsync.value?.let((detail) {
       final amount = detail.transaction.primaryAmount;
-      final refunded = detail.refundedTotal ??
+      final refunded =
+          detail.refundedTotal ??
           Money(minorUnits: 0, currency: amount.currency);
       return amount - refunded;
     });
@@ -102,8 +103,8 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
                           child: Text(account.name),
                         ),
                     ],
-                    onChanged: (value) =>
-                        setState(() => _refundToAccountId = value),
+                    onChanged:
+                        (value) => setState(() => _refundToAccountId = value),
                     validator: (value) => value == null ? '请选择账户' : null,
                   ),
                   TextFormField(
@@ -121,12 +122,13 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
                 height: AppSpacing.space48,
                 child: FilledButton(
                   onPressed: _submitting ? null : _submit,
-                  child: _submitting
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('保存'),
+                  child:
+                      _submitting
+                          ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Text('保存'),
                 ),
               ),
             ],
@@ -157,9 +159,10 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         parentTransactionId: widget.parentTransactionId,
         refundToAccountId: _refundToAccountId!,
         occurredAt: DateTime.now(),
-        note: _noteController.text.trim().isEmpty
-            ? null
-            : _noteController.text.trim(),
+        note:
+            _noteController.text.trim().isEmpty
+                ? null
+                : _noteController.text.trim(),
       ),
     );
     if (!mounted) return;
@@ -168,9 +171,9 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
       case Success():
         context.pop();
       case FailureResult(:final failure):
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
 }

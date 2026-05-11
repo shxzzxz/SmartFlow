@@ -63,10 +63,10 @@ class TransactionServiceImpl implements TransactionService {
     TransactionQueryRepository? transactionQueryRepository,
     SystemAccountResolver? systemAccountResolver,
     PostingRepository? postingRepository,
-  })  : _accountRepository = accountRepository,
-        _queryRepository = transactionQueryRepository,
-        _systemAccounts = systemAccountResolver,
-        _postingRepository = postingRepository;
+  }) : _accountRepository = accountRepository,
+       _queryRepository = transactionQueryRepository,
+       _systemAccounts = systemAccountResolver,
+       _postingRepository = postingRepository;
 
   final PostingService _postingService;
   final AccountRepository? _accountRepository;
@@ -79,10 +79,7 @@ class TransactionServiceImpl implements TransactionService {
     CreateExpenseCommand command,
   ) async {
     final roleFailure = await _validateAccountRoles({
-      command.paidFromAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
+      command.paidFromAccountId: {AccountType.asset, AccountType.liability},
       command.expenseAccountId: {AccountType.expense},
     });
     if (roleFailure != null) {
@@ -127,10 +124,7 @@ class TransactionServiceImpl implements TransactionService {
     CreateIncomeCommand command,
   ) async {
     final roleFailure = await _validateAccountRoles({
-      command.receiveAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
+      command.receiveAccountId: {AccountType.asset, AccountType.liability},
       command.incomeAccountId: {AccountType.income},
     });
     if (roleFailure != null) {
@@ -192,14 +186,8 @@ class TransactionServiceImpl implements TransactionService {
     final hasFee = feeAmount != null && feeAmount.minorUnits > 0;
     final totalPaid = hasFee ? command.amount + feeAmount : command.amount;
     final accountRoles = <int, Set<AccountType>>{
-      command.fromAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
-      command.toAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
+      command.fromAccountId: {AccountType.asset, AccountType.liability},
+      command.toAccountId: {AccountType.asset, AccountType.liability},
       if (hasFee) feeExpenseAccountId!: {AccountType.expense},
     };
     final roleFailure = await _validateAccountRoles(accountRoles);
@@ -315,8 +303,9 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final originalExpenseAccountId =
-        await _findExpenseAccountIdInParentEntries(parentId: parent.id);
+    final originalExpenseAccountId = await _findExpenseAccountIdInParentEntries(
+      parentId: parent.id,
+    );
     if (originalExpenseAccountId == null) {
       return const Result.failure(
         Failure(
@@ -327,10 +316,7 @@ class TransactionServiceImpl implements TransactionService {
     }
 
     final roleFailure = await _validateAccountRoles({
-      command.refundToAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
+      command.refundToAccountId: {AccountType.asset, AccountType.liability},
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -385,10 +371,7 @@ class TransactionServiceImpl implements TransactionService {
     }
     final roleFailure = await _validateAccountRoles({
       command.receivableAccountId: {AccountType.asset},
-      command.paidFromAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
+      command.paidFromAccountId: {AccountType.asset, AccountType.liability},
       command.expenseCategoryId: {AccountType.expense},
     });
     if (roleFailure != null) {
@@ -442,7 +425,9 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
     final query = _requireQueryRepository();
-    final advance = await query.findTransactionById(command.advanceTransactionId);
+    final advance = await query.findTransactionById(
+      command.advanceTransactionId,
+    );
     final advanceFailure = _validateAdvance(advance, command.amount.currency);
     if (advanceFailure != null) {
       return Result.failure(advanceFailure);
@@ -476,10 +461,7 @@ class TransactionServiceImpl implements TransactionService {
     }
 
     final roleFailure = await _validateAccountRoles({
-      command.receiveAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
+      command.receiveAccountId: {AccountType.asset, AccountType.liability},
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -534,7 +516,9 @@ class TransactionServiceImpl implements TransactionService {
     }
     final query = _requireQueryRepository();
     final resolver = _requireSystemAccountResolver();
-    final advance = await query.findTransactionById(command.advanceTransactionId);
+    final advance = await query.findTransactionById(
+      command.advanceTransactionId,
+    );
     final advanceFailure = _validateAdvance(
       advance,
       command.actualReceivedAmount.currency,
@@ -609,8 +593,7 @@ class TransactionServiceImpl implements TransactionService {
         return const Result.failure(
           Failure(
             code: 'reimbursement_close_expense_missing',
-            message:
-                'Original reimbursement expense category is not recorded.',
+            message: 'Original reimbursement expense category is not recorded.',
           ),
         );
       }
@@ -625,10 +608,7 @@ class TransactionServiceImpl implements TransactionService {
 
     final roleFailure = await _validateAccountRoles({
       if (actual.minorUnits > 0)
-        command.receiveAccountId: {
-          AccountType.asset,
-          AccountType.liability,
-        },
+        command.receiveAccountId: {AccountType.asset, AccountType.liability},
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -707,16 +687,14 @@ class TransactionServiceImpl implements TransactionService {
 
     final hasInterest = interest != null && interest.minorUnits > 0;
     final hasFee = fee != null && fee.minorUnits > 0;
-    final totalPaid = principal +
+    final totalPaid =
+        principal +
         (hasInterest ? interest : Money.zero(currency: principal.currency)) +
         (hasFee ? fee : Money.zero(currency: principal.currency));
 
     final roleFailure = await _validateAccountRoles({
       command.liabilityAccountId: {AccountType.liability},
-      command.paidFromAccountId: {
-        AccountType.asset,
-        AccountType.liability,
-      },
+      command.paidFromAccountId: {AccountType.asset, AccountType.liability},
       if (hasInterest) command.interestExpenseAccountId!: {AccountType.expense},
       if (hasFee) command.feeExpenseAccountId!: {AccountType.expense},
     });
@@ -809,11 +787,12 @@ class TransactionServiceImpl implements TransactionService {
       return Result.failure(roleFailure);
     }
 
-    final debitAccountId = useSystemEquity
-        ? await _requireSystemAccountResolver().resolveOpeningBalance(
-            currencyCode: command.amount.currency,
-          )
-        : receiveAccountId;
+    final debitAccountId =
+        useSystemEquity
+            ? await _requireSystemAccountResolver().resolveOpeningBalance(
+              currencyCode: command.amount.currency,
+            )
+            : receiveAccountId;
 
     return _postingService.post(
       PostTransactionCommand(
@@ -864,10 +843,7 @@ class TransactionServiceImpl implements TransactionService {
     final account = await repository.findAccountById(command.accountId);
     if (account == null) {
       return const Result.failure(
-        Failure(
-          code: 'account_not_found',
-          message: 'Account does not exist.',
-        ),
+        Failure(code: 'account_not_found', message: 'Account does not exist.'),
       );
     }
     if (account.archivedAt != null) {
@@ -883,7 +859,8 @@ class TransactionServiceImpl implements TransactionService {
       return const Result.failure(
         Failure(
           code: 'account_not_adjustable',
-          message: 'Only asset and liability accounts support balance adjustment.',
+          message:
+              'Only asset and liability accounts support balance adjustment.',
         ),
       );
     }
@@ -896,7 +873,8 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final deltaMinor = command.targetBalance.minorUnits - account.balance.minorUnits;
+    final deltaMinor =
+        command.targetBalance.minorUnits - account.balance.minorUnits;
     if (deltaMinor == 0) {
       return const Result.failure(
         Failure(
@@ -912,17 +890,17 @@ class TransactionServiceImpl implements TransactionService {
     );
     final increasesOnDebit = account.type == AccountType.asset;
     final increase = deltaMinor > 0;
-    final accountDirection = increasesOnDebit
-        ? (increase ? EntryDirection.debit : EntryDirection.credit)
-        : (increase ? EntryDirection.credit : EntryDirection.debit);
-    final equityDirection = accountDirection == EntryDirection.debit
-        ? EntryDirection.credit
-        : EntryDirection.debit;
+    final accountDirection =
+        increasesOnDebit
+            ? (increase ? EntryDirection.debit : EntryDirection.credit)
+            : (increase ? EntryDirection.credit : EntryDirection.debit);
+    final equityDirection =
+        accountDirection == EntryDirection.debit
+            ? EntryDirection.credit
+            : EntryDirection.debit;
 
-    final equityAccountId =
-        await _requireSystemAccountResolver().resolveOpeningBalance(
-      currencyCode: amount.currency,
-    );
+    final equityAccountId = await _requireSystemAccountResolver()
+        .resolveOpeningBalance(currencyCode: amount.currency);
 
     return _postingService.post(
       PostTransactionCommand(
@@ -971,13 +949,16 @@ class TransactionServiceImpl implements TransactionService {
       return const Result.failure(
         Failure(
           code: 'posting_repository_unavailable',
-          message: 'PostingRepository is required to update transaction metadata.',
+          message:
+              'PostingRepository is required to update transaction metadata.',
         ),
       );
     }
     final query = _queryRepository;
     if (query != null) {
-      final transaction = await query.findTransactionById(command.transactionId);
+      final transaction = await query.findTransactionById(
+        command.transactionId,
+      );
       if (transaction == null) {
         return const Result.failure(
           Failure(
@@ -1006,10 +987,7 @@ class TransactionServiceImpl implements TransactionService {
     }
   }
 
-  Failure? _validateAdvance(
-    Transaction? advance,
-    String currencyCode,
-  ) {
+  Failure? _validateAdvance(Transaction? advance, String currencyCode) {
     if (advance == null) {
       return const Failure(
         code: 'reimbursement_advance_not_found',
@@ -1068,9 +1046,7 @@ class TransactionServiceImpl implements TransactionService {
   SystemAccountResolver _requireSystemAccountResolver() {
     final resolver = _systemAccounts;
     if (resolver == null) {
-      throw StateError(
-        'SystemAccountResolver is required for this operation.',
-      );
+      throw StateError('SystemAccountResolver is required for this operation.');
     }
     return resolver;
   }
@@ -1189,9 +1165,9 @@ class CreateTransferCommand {
       return feeExpenseAccountId == null
           ? null
           : const Failure(
-              code: 'transfer_fee_amount_required',
-              message: 'Transfer fee amount is required when fee account is set.',
-            );
+            code: 'transfer_fee_amount_required',
+            message: 'Transfer fee amount is required when fee account is set.',
+          );
     }
 
     if (feeAmount!.currency != amount.currency) {
@@ -1210,14 +1186,15 @@ class CreateTransferCommand {
       return feeExpenseAccountId == null
           ? null
           : const Failure(
-              code: 'transfer_fee_positive_required',
-              message: 'Transfer fee must be positive when fee account is set.',
-            );
+            code: 'transfer_fee_positive_required',
+            message: 'Transfer fee must be positive when fee account is set.',
+          );
     }
     if (feeExpenseAccountId == null) {
       return const Failure(
         code: 'transfer_fee_account_required',
-        message: 'Transfer fee account is required when fee amount is positive.',
+        message:
+            'Transfer fee account is required when fee amount is positive.',
       );
     }
 
