@@ -13,6 +13,7 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
+import '../../../widgets/business/business_icon_bubble.dart';
 import '../../../widgets/business/category_icon.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
@@ -181,19 +182,11 @@ class _HeroCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-              ),
-              child: Center(
-                child: CategoryIcon(
-                  iconKey: iconKey,
-                  size: 32,
-                  fallback: fallback,
-                ),
+            BusinessIconBubble(
+              child: CategoryIcon(
+                iconKey: iconKey,
+                size: 28,
+                fallback: fallback,
               ),
             ),
             const SizedBox(width: AppSpacing.space12),

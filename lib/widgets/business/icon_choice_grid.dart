@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../design_system/tokens/radius.dart';
 import '../../design_system/tokens/spacing.dart';
-import '../../design_system/tokens/typography.dart';
+import 'business_icon_bubble.dart';
 
 class IconChoiceGrid extends StatelessWidget {
   const IconChoiceGrid({
@@ -12,10 +12,10 @@ class IconChoiceGrid extends StatelessWidget {
     super.key,
     this.crossAxisCount = 5,
     this.maxVisibleRows = 4,
-    this.iconSize = 32,
-    this.bubbleSize = 44,
-    this.tileMainExtent = 70,
-    this.mainAxisSpacing = AppSpacing.space8,
+    this.iconSize = 28,
+    this.bubbleSize = 32,
+    this.tileMainExtent = 64,
+    this.mainAxisSpacing = AppSpacing.space0,
     this.crossAxisSpacing = AppSpacing.space16,
     this.bubbleColor,
     this.selectedBubbleColor,
@@ -68,6 +68,7 @@ class IconChoiceGrid extends StatelessWidget {
             selected: choice.iconKey == selectedKey,
             iconSize: iconSize,
             bubbleSize: bubbleSize,
+            tileMainExtent: tileMainExtent,
             bubbleColor: bubbleColor,
             selectedBubbleColor: selectedBubbleColor,
             onTap: () => onChanged(choice.iconKey),
@@ -98,6 +99,7 @@ class _IconChoiceTile extends StatelessWidget {
     required this.selected,
     required this.iconSize,
     required this.bubbleSize,
+    required this.tileMainExtent,
     required this.bubbleColor,
     required this.selectedBubbleColor,
     required this.onTap,
@@ -107,49 +109,24 @@ class _IconChoiceTile extends StatelessWidget {
   final bool selected;
   final double iconSize;
   final double bubbleSize;
+  final double tileMainExtent;
   final Color? bubbleColor;
   final Color? selectedBubbleColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return InkWell(
+    return BusinessIconTile(
+      extent: tileMainExtent,
+      borderRadius: AppRadius.radiusLg,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusLg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: bubbleSize,
-            height: bubbleSize,
-            decoration: BoxDecoration(
-              color:
-                  selected
-                      ? selectedBubbleColor ??
-                          bubbleColor ??
-                          colors.primary.withValues(alpha: 0.12)
-                      : bubbleColor ?? Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-            child: Center(child: choice.iconBuilder(context, iconSize)),
-          ),
-          const SizedBox(height: AppSpacing.space6),
-          Text(
-            choice.label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodyMedium?.copyWith(
-              color: colors.onSurface,
-              fontSize: AppTypography.fontSizeXs,
-              fontWeight: FontWeight.w600,
-              height: 1.15,
-            ),
-          ),
-        ],
+      child: BusinessIconBubble(
+        size: bubbleSize,
+        selected: selected,
+        label: choice.label,
+        bubbleColor: bubbleColor,
+        selectedBubbleColor: selectedBubbleColor,
+        child: choice.iconBuilder(context, iconSize),
       ),
     );
   }

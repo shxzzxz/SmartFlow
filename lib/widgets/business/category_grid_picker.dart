@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../design_system/tokens/radius.dart';
 import '../../design_system/tokens/spacing.dart';
-import '../../design_system/tokens/typography.dart';
 import '../../design_system/widgets/app_surface.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/services/category_service.dart';
+import 'business_icon_bubble.dart';
 import 'category_icon.dart';
 
 class CategoryGridPicker extends StatelessWidget {
@@ -202,36 +202,6 @@ class _SubcategoryPanel extends StatelessWidget {
   }
 }
 
-class _CategoryIconBubble extends StatelessWidget {
-  const _CategoryIconBubble({required this.child, required this.selected});
-
-  final Widget child;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color:
-            selected
-                ? colors.primary.withValues(alpha: 0.12)
-                : Colors.transparent,
-      ),
-      child: Center(
-        child: IconTheme.merge(
-          data: IconThemeData(color: colors.onSurfaceVariant),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.category,
@@ -247,39 +217,21 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _CategoryIconBubble(
-              selected: selected,
-              child: CategoryIcon(
-                iconKey: category.iconKey,
-                fallback: fallback,
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              category.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: textTheme.labelSmall?.copyWith(
-                color: colors.onSurface,
-                fontSize: AppTypography.fontSizeXs,
-                fontWeight: FontWeight.w600,
-                height: 1.12,
-              ),
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
+      child: BusinessIconTile(
+        extent: 64,
+        borderRadius: AppRadius.radiusMd,
+        onTap: onTap,
+        child: BusinessIconBubble(
+          selected: selected,
+          label: category.name,
+          labelSpacing: AppSpacing.space4,
+          child: CategoryIcon(
+            iconKey: category.iconKey,
+            fallback: fallback,
+            size: 28,
+          ),
         ),
       ),
     );
@@ -295,31 +247,16 @@ class _AddCategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.transparent,
-              ),
-              child: Icon(Icons.add, color: colors.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              '新增',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontSize: AppTypography.fontSizeXs,
-              ),
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+      child: BusinessIconTile(
+        extent: 64,
+        borderRadius: AppRadius.radiusMd,
+        onTap: onTap,
+        child: BusinessIconBubble(
+          label: '新增',
+          labelSpacing: AppSpacing.space4,
+          child: Icon(Icons.add, color: colors.onSurfaceVariant),
         ),
       ),
     );

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:remixicon/remixicon.dart';
 
+import 'business_icon_bubble.dart';
+
 class CategoryAvatar extends StatelessWidget {
   const CategoryAvatar({
     required this.iconKey,
     super.key,
-    this.size = 40,
+    this.size = 32,
     this.fallback = CategoryAvatarFallback.generic,
   });
 
@@ -16,16 +18,9 @@ class CategoryAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spec = _resolveSpec(iconKey, fallback);
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Center(
-        child: Icon(
-          spec.icon,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          size: size * 0.75,
-        ),
-      ),
+    return BusinessIconBubble(
+      size: size,
+      child: Icon(spec.icon, size: size * 0.7),
     );
   }
 }

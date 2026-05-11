@@ -708,10 +708,10 @@ packages:
     dependency: "direct main"
     description:
       name: remixicon
-      sha256: "9a0e6a67d622a1d6ddc5e5cff4898f9711ec8880fc2ebeb720f6e0bc268ea905"
+      sha256: "4b8e334b78b0fbf05fb7abe1b48f3c3df9e4a11ab767e3f3e7f1cc36dc1e046e"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.4.1"
+    version: "4.9.3"
   riverpod:
     dependency: transitive
     description:
