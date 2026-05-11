@@ -10,7 +10,7 @@ import '../../../design_system/widgets/app_form_section.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/account_service.dart';
-import '../../../widgets/business/account_icon.dart';
+import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/icon_choice_grid.dart';
 
 enum _AccountKind { fund, reimbursement, liability }
@@ -227,11 +227,11 @@ String _defaultAccountIconKey(_AccountKind kind) {
 }
 
 final List<IconChoiceGridItem> _accountIconGridItems = [
-  for (final choice in accountIconChoices)
+  for (final spec in businessIconSpecsForUsage(BusinessIconUsage.account))
     IconChoiceGridItem(
-      iconKey: choice.iconKey,
-      label: choice.label,
+      iconKey: spec.iconKey,
+      label: spec.label,
       iconBuilder:
-          (context, size) => AccountIcon(iconKey: choice.iconKey, size: size),
+          (context, size) => BusinessIcon(iconKey: spec.iconKey, size: size),
     ),
 ];

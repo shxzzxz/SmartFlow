@@ -4,7 +4,6 @@ import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
-import '../../../widgets/business/category_avatar.dart';
 import '../../../widgets/business/finance_labels.dart';
 
 /// 主交易行展示用的纯计算函数。
@@ -24,20 +23,6 @@ String? resolveCategoryIconKey(TransactionListItem item) {
     BusinessPurpose.reimbursementClose ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment => null,
-  };
-}
-
-CategoryAvatarFallback categoryAvatarFallback(BusinessPurpose purpose) {
-  return switch (purpose) {
-    BusinessPurpose.dailyIncome ||
-    BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.borrowing => CategoryAvatarFallback.income,
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.debtRepayment => CategoryAvatarFallback.expense,
-    BusinessPurpose.transfer => CategoryAvatarFallback.transfer,
-    _ => CategoryAvatarFallback.generic,
   };
 }
 

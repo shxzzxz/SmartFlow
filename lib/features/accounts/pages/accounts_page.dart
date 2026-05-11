@@ -11,7 +11,7 @@ import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
-import '../../../widgets/business/account_icon.dart';
+import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/business_icon_bubble.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
@@ -471,13 +471,9 @@ class _AccountRow extends StatelessWidget {
           children: [
             BusinessIconBubble(
               size: AppSpacing.space32,
-              child: AccountIcon(
+              child: BusinessIcon(
                 iconKey: account.iconKey,
                 size: AppSpacing.space28,
-                fallback:
-                    account.subtype == AccountSubtype.cash
-                        ? AccountIconFallback.cash
-                        : AccountIconFallback.bankCard,
               ),
             ),
             const SizedBox(width: AppSpacing.space14),

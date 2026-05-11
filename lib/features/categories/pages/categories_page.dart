@@ -9,7 +9,6 @@ import '../../../design_system/tokens/typography.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/category_service.dart';
 import '../../../widgets/business/category_grid_picker.dart';
-import '../../../widgets/business/category_icon.dart';
 
 class CategoriesPage extends ConsumerWidget {
   const CategoriesPage({super.key});
@@ -142,10 +141,6 @@ class _CategoryGridPageState extends State<_CategoryGridPage> {
               nodes: nodes,
               selectedRootId: _selectedRootId,
               selectedCategoryId: _selectedCategoryId,
-              fallback:
-                  widget.type == AccountType.income
-                      ? CategoryIconFallback.income
-                      : CategoryIconFallback.expense,
               emptyLabel: widget.emptyLabel,
               onRootSelected:
                   (account) => setState(() {
@@ -159,11 +154,8 @@ class _CategoryGridPageState extends State<_CategoryGridPage> {
                   }),
               onAddRoot: () => _openCategoryForm(context, widget.type),
               onAddChild:
-                  (rootId) => _openCategoryForm(
-                    context,
-                    widget.type,
-                    parentId: rootId,
-                  ),
+                  (rootId) =>
+                      _openCategoryForm(context, widget.type, parentId: rootId),
             ),
           ],
         );

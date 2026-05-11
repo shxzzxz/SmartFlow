@@ -11,7 +11,7 @@ import '../../../design_system/tokens/typography.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/category_service.dart';
-import '../../../widgets/business/category_icon.dart';
+import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/icon_choice_grid.dart';
 
 class CategoryFormPage extends ConsumerStatefulWidget {
@@ -42,7 +42,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     super.initState();
     _type = widget.initialType;
     _parentId = widget.initialParentId;
-    _iconKey = categoryIconChoices.first.iconKey;
+    _iconKey = _defaultIconKeyForType(_type);
   }
 
   @override
@@ -87,7 +87,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                   ),
                   children: [
                     IconChoiceGrid(
-                      choices: _categoryIconGridItems,
+                      choices: _categoryIconGridItemsForType(_type),
                       selectedKey: _iconKey,
                       onChanged: (value) => setState(() => _iconKey = value),
                     ),
@@ -207,10 +207,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
     setState(() {
       _type = type;
       _parentId = null;
-      _iconKey =
-          type == AccountType.income
-              ? 'salary'
-              : categoryIconChoices.first.iconKey;
+      _iconKey = _defaultIconKeyForType(type);
     });
   }
 
@@ -422,12 +419,24 @@ class _PlainFormRow extends StatelessWidget {
   }
 }
 
-final List<IconChoiceGridItem> _categoryIconGridItems = [
-  for (final choice in categoryIconChoices)
-    IconChoiceGridItem(
-      iconKey: choice.iconKey,
-      label: choice.label,
-      iconBuilder:
-          (context, size) => CategoryIcon(iconKey: choice.iconKey, size: size),
-    ),
-];
+BusinessIconUsage _iconUsageForType(AccountType type) {
+  return type == AccountType.income
+      ? BusinessIconUsage.incomeCategory
+      : BusinessIconUsage.expenseCategory;
+}
+
+String _defaultIconKeyForType(AccountType type) {
+  return businessIconSpecsForUsage(_iconUsageForType(type)).first.iconKey;
+}
+
+List<IconChoiceGridItem> _categoryIconGridItemsForType(AccountType type) {
+  return [
+    for (final spec in businessIconSpecsForUsage(_iconUsageForType(type)))
+      IconChoiceGridItem(
+        iconKey: spec.iconKey,
+        label: spec.label,
+        iconBuilder:
+            (context, size) => BusinessIcon(iconKey: spec.iconKey, size: size),
+      ),
+  ];
+}

@@ -13,8 +13,8 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
+import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/business_icon_bubble.dart';
-import '../../../widgets/business/category_icon.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
 
@@ -34,7 +34,7 @@ class TransactionDetailPage extends ConsumerWidget {
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(RemixIcons.more_2_fill),
+            icon: const Icon(RemixIcons.more_2_line),
             tooltip: '更多',
           ),
         ],
@@ -171,10 +171,6 @@ class _HeroCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final categoryName = _resolveCategoryName(detail);
     final iconKey = _resolveCategoryIconKey(detail);
-    final fallback =
-        transaction.businessPurpose == BusinessPurpose.dailyIncome
-            ? CategoryIconFallback.income
-            : CategoryIconFallback.expense;
     final subtitle = _resolveHeroSubtitle(detail);
 
     return AppSurface(
@@ -182,13 +178,7 @@ class _HeroCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Row(
           children: [
-            BusinessIconBubble(
-              child: CategoryIcon(
-                iconKey: iconKey,
-                size: 28,
-                fallback: fallback,
-              ),
-            ),
+            BusinessIconBubble(child: BusinessIcon(iconKey: iconKey, size: 28)),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Column(

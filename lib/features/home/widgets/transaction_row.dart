@@ -9,7 +9,7 @@ import '../../../design_system/tokens/typography.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
-import '../../../widgets/business/account_icon.dart';
+import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/category_avatar.dart';
 import '../view_models/transaction_row_presentation.dart';
 import 'transaction_progress_badges.dart';
@@ -44,10 +44,7 @@ class TransactionRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CategoryAvatar(
-              iconKey: resolveCategoryIconKey(item),
-              fallback: categoryAvatarFallback(item.businessPurpose),
-            ),
+            CategoryAvatar(iconKey: resolveCategoryIconKey(item)),
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Column(
@@ -143,7 +140,7 @@ class _AccountLine extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        AccountIcon(iconKey: iconKey, size: 12),
+        BusinessIcon(iconKey: iconKey, size: 12),
         const SizedBox(width: AppSpacing.space4),
         Flexible(
           child: Text(

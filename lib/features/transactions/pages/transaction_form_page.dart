@@ -15,7 +15,6 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_service.dart';
-import '../../../widgets/business/category_icon.dart';
 import '../../../widgets/business/category_grid_picker.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
@@ -105,7 +104,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                       nodes: expenseTree,
                       selectedRootId: _expenseRootId,
                       selectedCategoryId: _expenseCategoryId,
-                      fallback: CategoryIconFallback.expense,
                       emptyLabel: '尚未创建支出分类',
                       onRootSelected: (account) {
                         setState(() {
@@ -131,7 +129,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                       nodes: incomeTree,
                       selectedRootId: _incomeRootId,
                       selectedCategoryId: _incomeCategoryId,
-                      fallback: CategoryIconFallback.income,
                       emptyLabel: '尚未创建收入分类',
                       onRootSelected: (account) {
                         setState(() {

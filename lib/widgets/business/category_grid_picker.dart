@@ -5,15 +5,14 @@ import '../../design_system/tokens/spacing.dart';
 import '../../design_system/widgets/app_surface.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/services/category_service.dart';
+import 'business_icon.dart';
 import 'business_icon_bubble.dart';
-import 'category_icon.dart';
 
 class CategoryGridPicker extends StatelessWidget {
   const CategoryGridPicker({
     required this.nodes,
     required this.selectedRootId,
     required this.selectedCategoryId,
-    required this.fallback,
     required this.emptyLabel,
     required this.onRootSelected,
     required this.onChildSelected,
@@ -25,7 +24,6 @@ class CategoryGridPicker extends StatelessWidget {
   final List<CategoryNode> nodes;
   final int? selectedRootId;
   final int? selectedCategoryId;
-  final CategoryIconFallback fallback;
   final String emptyLabel;
   final ValueChanged<Account> onRootSelected;
   final void Function(Account root, Account child) onChildSelected;
@@ -75,7 +73,6 @@ class CategoryGridPicker extends StatelessWidget {
             nodes: row,
             selectedRootId: selectedRootId,
             selectedCategoryId: selectedCategoryId,
-            fallback: fallback,
             onRootSelected: onRootSelected,
             showAddRoot: row == rows.last,
             onAddRoot: onAddRoot,
@@ -84,7 +81,6 @@ class CategoryGridPicker extends StatelessWidget {
             _SubcategoryPanel(
               node: row.firstWhere((node) => node.account.id == selectedRootId),
               selectedCategoryId: selectedCategoryId,
-              fallback: fallback,
               onChildSelected: onChildSelected,
               onAddChild: onAddChild,
             ),
@@ -100,7 +96,6 @@ class _CategoryRow extends StatelessWidget {
     required this.nodes,
     required this.selectedRootId,
     required this.selectedCategoryId,
-    required this.fallback,
     required this.onRootSelected,
     required this.showAddRoot,
     required this.onAddRoot,
@@ -109,7 +104,6 @@ class _CategoryRow extends StatelessWidget {
   final List<CategoryNode> nodes;
   final int? selectedRootId;
   final int? selectedCategoryId;
-  final CategoryIconFallback fallback;
   final ValueChanged<Account> onRootSelected;
   final bool showAddRoot;
   final VoidCallback onAddRoot;
@@ -124,7 +118,6 @@ class _CategoryRow extends StatelessWidget {
           Expanded(
             child: _CategoryTile(
               category: node.account,
-              fallback: fallback,
               selected:
                   node.account.id == selectedCategoryId ||
                   node.account.id == selectedRootId,
@@ -143,14 +136,12 @@ class _SubcategoryPanel extends StatelessWidget {
   const _SubcategoryPanel({
     required this.node,
     required this.selectedCategoryId,
-    required this.fallback,
     required this.onChildSelected,
     required this.onAddChild,
   });
 
   final CategoryNode node;
   final int? selectedCategoryId;
-  final CategoryIconFallback fallback;
   final void Function(Account root, Account child) onChildSelected;
   final ValueChanged<int> onAddChild;
 
@@ -161,7 +152,6 @@ class _SubcategoryPanel extends StatelessWidget {
       for (final child in node.children)
         _CategoryTile(
           category: child,
-          fallback: fallback,
           selected: child.id == selectedCategoryId,
           onTap: () => onChildSelected(node.account, child),
         ),
@@ -205,13 +195,11 @@ class _SubcategoryPanel extends StatelessWidget {
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.category,
-    required this.fallback,
     required this.selected,
     required this.onTap,
   });
 
   final Account category;
-  final CategoryIconFallback fallback;
   final bool selected;
   final VoidCallback onTap;
 
@@ -227,11 +215,7 @@ class _CategoryTile extends StatelessWidget {
           selected: selected,
           label: category.name,
           labelSpacing: AppSpacing.space4,
-          child: CategoryIcon(
-            iconKey: category.iconKey,
-            fallback: fallback,
-            size: 28,
-          ),
+          child: BusinessIcon(iconKey: category.iconKey, size: 28),
         ),
       ),
     );
