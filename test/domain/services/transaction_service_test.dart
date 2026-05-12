@@ -167,6 +167,17 @@ class _RecordingPostingService implements PostingService {
       PostTransactionResult(transactionId: 1, rootTransactionId: 1),
     );
   }
+
+  @override
+  Future<Result<List<PostTransactionResult>>> postMutation({
+    required List<TransactionStateUpdate> stateUpdates,
+    required List<PostTransactionCommand> commands,
+  }) async {
+    lastCommand = commands.isEmpty ? null : commands.last;
+    return const Result.success([
+      PostTransactionResult(transactionId: 1, rootTransactionId: 1),
+    ]);
+  }
 }
 
 class _FakeAccountRepository implements AccountRepository {

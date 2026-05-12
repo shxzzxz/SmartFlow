@@ -33,7 +33,7 @@ class TransactionDetailPage extends ConsumerWidget {
         title: const Text('交易详情'),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () => _confirmDelete(context, ref),
             icon: const Icon(RemixIcons.more_2_line),
             tooltip: '更多',
           ),
@@ -49,6 +49,41 @@ class TransactionDetailPage extends ConsumerWidget {
           return _DetailBody(detail: detail);
         },
       ),
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('删除交易'),
+            content: const Text('删除后会写入冲销记录，历史链路仍可追溯。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true) return;
+    final result = await ref
+        .read(transactionServiceProvider)
+        .deleteTransaction(
+          DeleteTransactionCommand(transactionId: transactionId),
+        );
+    if (!context.mounted) return;
+    result.when(
+      success: (_) => context.pop(),
+      failure:
+          (failure) => ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('删除失败：${failure.message}'))),
     );
   }
 }
@@ -95,6 +130,10 @@ class _DetailBody extends ConsumerWidget {
                 onAccountTap: () => _showAccountChangeUnsupported(context),
                 onNoteTap: () => _editNote(context, ref),
               ),
+              if (detail.history.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space12),
+                _HistoryCard(detail: detail),
+              ],
               const SizedBox(height: AppSpacing.space12),
               _ExclusionCard(detail: detail),
             ],
@@ -359,6 +398,30 @@ class _PrimaryMetaCard extends StatelessWidget {
   }
 }
 
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.detail});
+
+  final TransactionDetailView detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return _RowCard(
+      rows: [
+        _ChevronRow(
+          label: '历史链路',
+          value: '${detail.history.length} 条记录',
+          onTap:
+              () => _showChildrenSheet(
+                context,
+                title: '历史链路',
+                items: detail.history,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ExclusionCard extends ConsumerWidget {
   const _ExclusionCard({required this.detail});
 
@@ -374,11 +437,12 @@ class _ExclusionCard extends ConsumerWidget {
           value: transaction.isExcludedFromStats,
           onChanged: (next) => _toggleExcludeStats(context, ref, next),
         ),
-        _SwitchRow(
-          label: '不计入预算',
-          value: transaction.isExcludedFromBudget,
-          onChanged: (next) => _toggleExcludeBudget(context, ref, next),
-        ),
+        if (transaction.businessPurpose != BusinessPurpose.dailyIncome)
+          _SwitchRow(
+            label: '不计入预算',
+            value: transaction.isExcludedFromBudget,
+            onChanged: (next) => _toggleExcludeBudget(context, ref, next),
+          ),
       ],
     );
   }
@@ -542,7 +606,29 @@ class _SwitchRow extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Switch(value: value, onChanged: onChanged),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            trackOutlineColor: WidgetStateProperty.resolveWith(
+              (states) =>
+                  states.contains(WidgetState.selected)
+                      ? colors.primary
+                      : colors.outlineVariant,
+            ),
+            trackColor: WidgetStateProperty.resolveWith(
+              (states) =>
+                  states.contains(WidgetState.selected)
+                      ? colors.primary.withValues(alpha: 0.24)
+                      : colors.surfaceContainerHighest,
+            ),
+            thumbColor: WidgetStateProperty.resolveWith(
+              (states) =>
+                  states.contains(WidgetState.selected)
+                      ? colors.primary
+                      : colors.surface,
+            ),
+          ),
         ],
       ),
     );
@@ -573,7 +659,8 @@ class _ActionBar extends StatelessWidget {
         actions.add(
           _PrimaryAction(
             label: '编辑',
-            onPressed: () => _showEditUnsupported(context),
+            onPressed:
+                () => context.push('/transactions/${transaction.id}/edit'),
           ),
         );
         break;
@@ -581,30 +668,39 @@ class _ActionBar extends StatelessWidget {
         if (!closed) {
           actions.add(
             _SecondaryAction(
-              label: '记一笔到账',
+              label: '退款',
               onPressed:
-                  () => context.push(
-                    '/transactions/${transaction.id}/reimburse-receipt',
-                  ),
-            ),
-          );
-          actions.add(
-            _PrimaryAction(
-              label: '结束报销',
-              onPressed:
-                  () => context.push(
-                    '/transactions/${transaction.id}/reimburse-close',
-                  ),
-            ),
-          );
-        } else {
-          actions.add(
-            _PrimaryAction(
-              label: '编辑',
-              onPressed: () => _showEditUnsupported(context),
+                  () => context.push('/transactions/${transaction.id}/refund'),
             ),
           );
         }
+        actions.add(
+          _SecondaryAction(
+            label: '报销',
+            onPressed:
+                closed
+                    ? () => _showReimbursementClosed(context)
+                    : () => _showReimbursementActions(context, transaction.id),
+          ),
+        );
+        actions.add(
+          _PrimaryAction(
+            label: '编辑',
+            onPressed:
+                () => context.push('/transactions/${transaction.id}/edit'),
+          ),
+        );
+        break;
+      case BusinessPurpose.dailyIncome:
+      case BusinessPurpose.transfer:
+      case BusinessPurpose.borrowing:
+        actions.add(
+          _PrimaryAction(
+            label: '编辑',
+            onPressed:
+                () => context.push('/transactions/${transaction.id}/edit'),
+          ),
+        );
         break;
       default:
         actions.add(
@@ -636,10 +732,49 @@ class _ActionBar extends StatelessWidget {
     );
   }
 
+  void _showReimbursementClosed(BuildContext context) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('报销已结束')));
+  }
+
+  void _showReimbursementActions(BuildContext context, int transactionId) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text('记一笔到账'),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    context.push(
+                      '/transactions/$transactionId/reimburse-receipt',
+                    );
+                  },
+                ),
+                ListTile(
+                  title: const Text('结束报销'),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    context.push(
+                      '/transactions/$transactionId/reimburse-close',
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
   void _showEditUnsupported(BuildContext context) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('整笔编辑暂未支持，敬请期待下个版本')));
+    ).showSnackBar(const SnackBar(content: Text('该交易类型暂不支持编辑')));
   }
 }
 
@@ -737,10 +872,14 @@ EntryLineView _placeholder() {
     accountType: AccountType.asset,
     direction: EntryDirection.debit,
     amount: Money.zero(),
+    accountIconKey: null,
   );
 }
 
 String? _resolveCategoryName(TransactionDetailView detail) {
+  if (detail.categoryName != null && detail.categoryName!.isNotEmpty) {
+    return detail.categoryName;
+  }
   final purpose = detail.transaction.businessPurpose;
   if (purpose == BusinessPurpose.dailyExpense ||
       purpose == BusinessPurpose.refund) {
@@ -763,6 +902,9 @@ String? _resolveCategoryName(TransactionDetailView detail) {
 }
 
 String? _resolveCategoryIconKey(TransactionDetailView detail) {
+  if (detail.categoryIconKey != null && detail.categoryIconKey!.isNotEmpty) {
+    return detail.categoryIconKey;
+  }
   final name = _resolveCategoryName(detail);
   return switch (name) {
     '茶叶' || '咖啡' => 'coffee',

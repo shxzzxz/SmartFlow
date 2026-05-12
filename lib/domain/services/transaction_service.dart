@@ -9,6 +9,7 @@ import '../repositories/system_account_resolver.dart';
 import '../repositories/transaction_query_repository.dart';
 import 'posting_command.dart';
 import 'posting_service.dart';
+import 'transaction_query_service.dart';
 
 abstract interface class TransactionService {
   Future<Result<PostTransactionResult>> createExpense(
@@ -50,6 +51,12 @@ abstract interface class TransactionService {
   Future<Result<PostTransactionResult>> adjustBalance(
     AdjustBalanceCommand command,
   );
+
+  Future<Result<PostTransactionResult>> correctTransaction(
+    CorrectTransactionCommand command,
+  );
+
+  Future<Result<void>> deleteTransaction(DeleteTransactionCommand command);
 
   Future<Result<void>> updateTransactionMetadata(
     UpdateTransactionMetadataCommand command,
@@ -262,13 +269,27 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    if (parent.businessPurpose != BusinessPurpose.dailyExpense) {
+    if (parent.businessPurpose != BusinessPurpose.dailyExpense &&
+        parent.businessPurpose != BusinessPurpose.reimbursementAdvance) {
       return const Result.failure(
         Failure(
           code: 'refund_parent_not_expense',
-          message: 'Refund can only be applied to a daily expense.',
+          message: 'Refund can only be applied to an expense transaction.',
         ),
       );
+    }
+    if (parent.businessPurpose == BusinessPurpose.reimbursementAdvance) {
+      final summary = await query.getReimbursementSummary(
+        parent.rootTransactionId,
+      );
+      if (summary?.isClosed ?? false) {
+        return const Result.failure(
+          Failure(
+            code: 'refund_parent_reimbursement_closed',
+            message: 'Refund is not supported after reimbursement is closed.',
+          ),
+        );
+      }
     }
     if (parent.businessState != BusinessState.current) {
       return const Result.failure(
@@ -303,14 +324,16 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final originalExpenseAccountId = await _findExpenseAccountIdInParentEntries(
-      parentId: parent.id,
-    );
-    if (originalExpenseAccountId == null) {
+    final refundCreditAccountId =
+        await _findRefundCreditAccountIdInParentEntries(
+          parentId: parent.id,
+          parentPurpose: parent.businessPurpose,
+        );
+    if (refundCreditAccountId == null) {
       return const Result.failure(
         Failure(
           code: 'refund_expense_account_not_found',
-          message: 'Original expense category cannot be located.',
+          message: 'Original refund target account cannot be located.',
         ),
       );
     }
@@ -348,7 +371,7 @@ class TransactionServiceImpl implements TransactionService {
             amount: command.amount,
           ),
           PostEntryInput(
-            accountId: originalExpenseAccountId,
+            accountId: refundCreditAccountId,
             direction: EntryDirection.credit,
             amount: command.amount,
           ),
@@ -936,6 +959,147 @@ class TransactionServiceImpl implements TransactionService {
   }
 
   @override
+  Future<Result<PostTransactionResult>> correctTransaction(
+    CorrectTransactionCommand command,
+  ) async {
+    final query = _requireQueryRepository();
+    final original =
+        await query.watchTransactionDetail(command.transactionId).first;
+    if (original == null) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_found',
+          message: 'Transaction not found.',
+        ),
+      );
+    }
+    if (original.transaction.businessState != BusinessState.current) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_current',
+          message: 'Only current transactions can be corrected.',
+        ),
+      );
+    }
+    if (!_supportsFormCorrection(original.transaction.businessPurpose)) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_correction_unsupported',
+          message: 'This transaction type cannot be edited in this form.',
+        ),
+      );
+    }
+
+    if (original.children.isNotEmpty) {
+      final structure = _replacementStructure(command);
+      if (!_matchesOriginalStructure(original, structure)) {
+        return const Result.failure(
+          Failure(
+            code: 'transaction_has_children',
+            message:
+                'Transactions with child records can only update metadata.',
+          ),
+        );
+      }
+      final metadata = await updateTransactionMetadata(
+        UpdateTransactionMetadataCommand(
+          transactionId: command.transactionId,
+          note: command.note,
+          isExcludedFromStats: command.isExcludedFromStats,
+          isExcludedFromBudget: command.isExcludedFromBudget,
+        ),
+      );
+      return metadata.when(
+        success:
+            (_) => Result.success(
+              PostTransactionResult(
+                transactionId: original.transaction.id,
+                rootTransactionId: original.transaction.rootTransactionId,
+              ),
+            ),
+        failure: Result.failure,
+      );
+    }
+
+    final replacement = await _buildReplacementCommand(command, original);
+    switch (replacement) {
+      case FailureResult(:final failure):
+        return Result.failure(failure);
+      case Success(:final value):
+        final reversal = _buildReversalCommand(
+          original,
+          reason: MutationReason.correction,
+        );
+        final result = await _postingService.postMutation(
+          stateUpdates: [
+            TransactionStateUpdate(
+              transactionId: original.transaction.id,
+              businessState: BusinessState.replaced,
+            ),
+          ],
+          commands: [reversal, value],
+        );
+        return result.when(
+          success: (results) => Result.success(results.last),
+          failure: Result.failure,
+        );
+    }
+  }
+
+  @override
+  Future<Result<void>> deleteTransaction(
+    DeleteTransactionCommand command,
+  ) async {
+    final query = _requireQueryRepository();
+    final target =
+        await query.watchTransactionDetail(command.transactionId).first;
+    if (target == null) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_found',
+          message: 'Transaction not found.',
+        ),
+      );
+    }
+    if (target.transaction.businessState != BusinessState.current) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_current',
+          message: 'Only current transactions can be deleted.',
+        ),
+      );
+    }
+
+    final detailsToCancel = <TransactionDetailView>[];
+    for (final child in target.children) {
+      final childDetail = await query.watchTransactionDetail(child.id).first;
+      if (childDetail != null &&
+          childDetail.transaction.businessState == BusinessState.current) {
+        detailsToCancel.add(childDetail);
+      }
+    }
+    detailsToCancel.add(target);
+
+    final result = await _postingService.postMutation(
+      stateUpdates: [
+        for (final detail in detailsToCancel)
+          TransactionStateUpdate(
+            transactionId: detail.transaction.id,
+            businessState: BusinessState.canceled,
+          ),
+      ],
+      commands: [
+        for (final detail in detailsToCancel)
+          _buildReversalCommand(detail, reason: MutationReason.delete),
+      ],
+    );
+    return result.when(
+      success: (_) => const Result.success(null),
+      failure: Result.failure,
+    );
+  }
+
+  @override
   Future<Result<void>> updateTransactionMetadata(
     UpdateTransactionMetadataCommand command,
   ) async {
@@ -987,6 +1151,303 @@ class TransactionServiceImpl implements TransactionService {
     }
   }
 
+  bool _supportsFormCorrection(BusinessPurpose purpose) {
+    return switch (purpose) {
+      BusinessPurpose.dailyExpense ||
+      BusinessPurpose.dailyIncome ||
+      BusinessPurpose.transfer ||
+      BusinessPurpose.reimbursementAdvance ||
+      BusinessPurpose.borrowing => true,
+      _ => false,
+    };
+  }
+
+  PostTransactionCommand _buildReversalCommand(
+    TransactionDetailView detail, {
+    required MutationReason reason,
+  }) {
+    final transaction = detail.transaction;
+    return PostTransactionCommand(
+      businessPurpose: transaction.businessPurpose,
+      occurredAt: DateTime.now(),
+      currencyCode: transaction.currencyCode,
+      primaryAmount: -transaction.primaryAmount,
+      counterpartyName: transaction.counterpartyName,
+      note: transaction.note,
+      rootTransactionId: transaction.rootTransactionId,
+      parentTransactionId: transaction.parentTransactionId,
+      reimbursementExpenseAccountId: transaction.reimbursementExpenseAccountId,
+      mutationKind: MutationKind.reversal,
+      mutationPreviousTransactionId: transaction.id,
+      mutationReason: reason,
+      businessState: BusinessState.compensation,
+      isExcludedFromStats: transaction.isExcludedFromStats,
+      isExcludedFromBudget: transaction.isExcludedFromBudget,
+      sourceKind: transaction.sourceKind,
+      details: [
+        for (final line in detail.details)
+          PostTransactionDetailInput(
+            lineNo: line.lineNo,
+            type: line.type,
+            amount: -line.amount,
+          ),
+      ],
+      entries: [
+        for (final entry in detail.entries)
+          PostEntryInput(
+            accountId: entry.accountId,
+            direction: entry.direction,
+            amount: -entry.amount,
+          ),
+      ],
+    );
+  }
+
+  Future<Result<PostTransactionCommand>> _buildReplacementCommand(
+    CorrectTransactionCommand command,
+    TransactionDetailView original,
+  ) async {
+    final base = _replacementStructure(command);
+    final roleFailure = await _validateReplacementRoles(base);
+    if (roleFailure != null) {
+      return Result.failure(roleFailure);
+    }
+
+    final transaction = original.transaction;
+    final amount = command.amount;
+    if (amount.minorUnits <= 0) {
+      return const Result.failure(
+        Failure(
+          code: 'replacement_amount_not_positive',
+          message: 'Replacement amount must be positive.',
+        ),
+      );
+    }
+
+    return Result.success(
+      PostTransactionCommand(
+        businessPurpose: command.businessPurpose,
+        occurredAt: command.occurredAt,
+        currencyCode: amount.currency,
+        primaryAmount: amount,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        rootTransactionId: transaction.rootTransactionId,
+        parentTransactionId: transaction.parentTransactionId,
+        reimbursementExpenseAccountId:
+            command.businessPurpose == BusinessPurpose.reimbursementAdvance
+                ? base.expenseAccountId
+                : null,
+        mutationKind: MutationKind.correction,
+        mutationPreviousTransactionId: transaction.id,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+        sourceKind: transaction.sourceKind,
+        details: _replacementDetails(command.businessPurpose, amount),
+        entries: _replacementEntries(command.businessPurpose, base, amount),
+      ),
+    );
+  }
+
+  Future<Failure?> _validateReplacementRoles(_ReplacementStructure structure) {
+    return switch (structure.businessPurpose) {
+      BusinessPurpose.dailyExpense => _validateAccountRoles({
+        structure.paidFromAccountId!: {
+          AccountType.asset,
+          AccountType.liability,
+        },
+        structure.expenseAccountId!: {AccountType.expense},
+      }),
+      BusinessPurpose.reimbursementAdvance => _validateAccountRoles({
+        structure.receivableAccountId!: {AccountType.asset},
+        structure.paidFromAccountId!: {
+          AccountType.asset,
+          AccountType.liability,
+        },
+        structure.expenseAccountId!: {AccountType.expense},
+      }),
+      BusinessPurpose.dailyIncome => _validateAccountRoles({
+        structure.receiveAccountId!: {AccountType.asset, AccountType.liability},
+        structure.incomeAccountId!: {AccountType.income},
+      }),
+      BusinessPurpose.transfer => _validateAccountRoles({
+        structure.fromAccountId!: {AccountType.asset, AccountType.liability},
+        structure.toAccountId!: {AccountType.asset, AccountType.liability},
+      }),
+      BusinessPurpose.borrowing => _validateAccountRoles({
+        structure.liabilityAccountId!: {AccountType.liability},
+        if (structure.receiveAccountId != null)
+          structure.receiveAccountId!: {
+            AccountType.asset,
+            AccountType.liability,
+          },
+      }),
+      _ => Future.value(
+        const Failure(
+          code: 'replacement_purpose_unsupported',
+          message: 'Replacement transaction type is unsupported.',
+        ),
+      ),
+    };
+  }
+
+  List<PostTransactionDetailInput> _replacementDetails(
+    BusinessPurpose purpose,
+    Money amount,
+  ) {
+    final type = switch (purpose) {
+      BusinessPurpose.dailyExpense => TransactionDetailType.primaryExpense,
+      BusinessPurpose.dailyIncome => TransactionDetailType.primaryIncome,
+      BusinessPurpose.transfer => TransactionDetailType.transferMain,
+      BusinessPurpose.reimbursementAdvance =>
+        TransactionDetailType.reimbursementAdvanceMain,
+      BusinessPurpose.borrowing => TransactionDetailType.borrowingPrincipal,
+      _ => TransactionDetailType.primaryExpense,
+    };
+    return [PostTransactionDetailInput(lineNo: 1, type: type, amount: amount)];
+  }
+
+  List<PostEntryInput> _replacementEntries(
+    BusinessPurpose purpose,
+    _ReplacementStructure structure,
+    Money amount,
+  ) {
+    return switch (purpose) {
+      BusinessPurpose.dailyExpense => [
+        PostEntryInput(
+          accountId: structure.expenseAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.paidFromAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
+      BusinessPurpose.reimbursementAdvance => [
+        PostEntryInput(
+          accountId: structure.receivableAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.paidFromAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
+      BusinessPurpose.dailyIncome => [
+        PostEntryInput(
+          accountId: structure.receiveAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.incomeAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
+      BusinessPurpose.transfer => [
+        PostEntryInput(
+          accountId: structure.toAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.fromAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
+      BusinessPurpose.borrowing => [
+        PostEntryInput(
+          accountId: structure.receiveAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.liabilityAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
+      _ => const [],
+    };
+  }
+
+  _ReplacementStructure _replacementStructure(
+    CorrectTransactionCommand command,
+  ) {
+    return _ReplacementStructure(
+      businessPurpose: command.businessPurpose,
+      paidFromAccountId: command.paidFromAccountId,
+      expenseAccountId: command.expenseAccountId,
+      receivableAccountId: command.receivableAccountId,
+      receiveAccountId: command.receiveAccountId,
+      incomeAccountId: command.incomeAccountId,
+      fromAccountId: command.fromAccountId,
+      toAccountId: command.toAccountId,
+      liabilityAccountId: command.liabilityAccountId,
+    );
+  }
+
+  bool _matchesOriginalStructure(
+    TransactionDetailView original,
+    _ReplacementStructure replacement,
+  ) {
+    final transaction = original.transaction;
+    if (transaction.businessPurpose != replacement.businessPurpose) {
+      return false;
+    }
+    final entries = original.entries;
+    int? firstAccount(AccountType type, EntryDirection direction) {
+      for (final entry in entries) {
+        if (entry.accountType == type && entry.direction == direction) {
+          return entry.accountId;
+        }
+      }
+      return null;
+    }
+
+    int? firstAsset(EntryDirection direction) {
+      for (final entry in entries) {
+        if ((entry.accountType == AccountType.asset ||
+                entry.accountType == AccountType.liability) &&
+            entry.direction == direction) {
+          return entry.accountId;
+        }
+      }
+      return null;
+    }
+
+    return switch (transaction.businessPurpose) {
+      BusinessPurpose.dailyExpense =>
+        replacement.expenseAccountId ==
+                firstAccount(AccountType.expense, EntryDirection.debit) &&
+            replacement.paidFromAccountId == firstAsset(EntryDirection.credit),
+      BusinessPurpose.reimbursementAdvance =>
+        replacement.expenseAccountId ==
+                transaction.reimbursementExpenseAccountId &&
+            replacement.receivableAccountId ==
+                firstAsset(EntryDirection.debit) &&
+            replacement.paidFromAccountId == firstAsset(EntryDirection.credit),
+      BusinessPurpose.dailyIncome =>
+        replacement.incomeAccountId ==
+                firstAccount(AccountType.income, EntryDirection.credit) &&
+            replacement.receiveAccountId == firstAsset(EntryDirection.debit),
+      BusinessPurpose.transfer =>
+        replacement.fromAccountId == firstAsset(EntryDirection.credit) &&
+            replacement.toAccountId == firstAsset(EntryDirection.debit),
+      BusinessPurpose.borrowing =>
+        replacement.liabilityAccountId ==
+                firstAccount(AccountType.liability, EntryDirection.credit) &&
+            replacement.receiveAccountId == firstAsset(EntryDirection.debit),
+      _ => false,
+    };
+  }
+
   Failure? _validateAdvance(Transaction? advance, String currencyCode) {
     if (advance == null) {
       return const Failure(
@@ -1015,8 +1476,9 @@ class TransactionServiceImpl implements TransactionService {
     return null;
   }
 
-  Future<int?> _findExpenseAccountIdInParentEntries({
+  Future<int?> _findRefundCreditAccountIdInParentEntries({
     required int parentId,
+    required BusinessPurpose parentPurpose,
   }) async {
     final query = _queryRepository;
     if (query == null) {
@@ -1025,8 +1487,15 @@ class TransactionServiceImpl implements TransactionService {
     final view = await query.watchTransactionDetail(parentId).first;
     if (view == null) return null;
     for (final entry in view.entries) {
-      if (entry.accountType == AccountType.expense &&
-          entry.direction == EntryDirection.debit) {
+      final isDailyExpenseTarget =
+          parentPurpose == BusinessPurpose.dailyExpense &&
+          entry.accountType == AccountType.expense &&
+          entry.direction == EntryDirection.debit;
+      final isAdvanceTarget =
+          parentPurpose == BusinessPurpose.reimbursementAdvance &&
+          entry.accountType == AccountType.asset &&
+          entry.direction == EntryDirection.debit;
+      if (isDailyExpenseTarget || isAdvanceTarget) {
         return entry.accountId;
       }
     }
@@ -1366,6 +1835,74 @@ class AdjustBalanceCommand {
   final String? note;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
+}
+
+class CorrectTransactionCommand {
+  const CorrectTransactionCommand({
+    required this.transactionId,
+    required this.businessPurpose,
+    required this.amount,
+    required this.occurredAt,
+    this.paidFromAccountId,
+    this.expenseAccountId,
+    this.receivableAccountId,
+    this.receiveAccountId,
+    this.incomeAccountId,
+    this.fromAccountId,
+    this.toAccountId,
+    this.liabilityAccountId,
+    this.counterpartyName,
+    this.note,
+    this.isExcludedFromStats = false,
+    this.isExcludedFromBudget = false,
+  });
+
+  final int transactionId;
+  final BusinessPurpose businessPurpose;
+  final Money amount;
+  final DateTime occurredAt;
+  final int? paidFromAccountId;
+  final int? expenseAccountId;
+  final int? receivableAccountId;
+  final int? receiveAccountId;
+  final int? incomeAccountId;
+  final int? fromAccountId;
+  final int? toAccountId;
+  final int? liabilityAccountId;
+  final String? counterpartyName;
+  final String? note;
+  final bool isExcludedFromStats;
+  final bool isExcludedFromBudget;
+}
+
+class DeleteTransactionCommand {
+  const DeleteTransactionCommand({required this.transactionId});
+
+  final int transactionId;
+}
+
+class _ReplacementStructure {
+  const _ReplacementStructure({
+    required this.businessPurpose,
+    this.paidFromAccountId,
+    this.expenseAccountId,
+    this.receivableAccountId,
+    this.receiveAccountId,
+    this.incomeAccountId,
+    this.fromAccountId,
+    this.toAccountId,
+    this.liabilityAccountId,
+  });
+
+  final BusinessPurpose businessPurpose;
+  final int? paidFromAccountId;
+  final int? expenseAccountId;
+  final int? receivableAccountId;
+  final int? receiveAccountId;
+  final int? incomeAccountId;
+  final int? fromAccountId;
+  final int? toAccountId;
+  final int? liabilityAccountId;
 }
 
 class UpdateTransactionMetadataCommand {

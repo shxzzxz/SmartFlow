@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
@@ -14,6 +15,9 @@ import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/services/category_service.dart';
+import '../../../domain/services/posting_command.dart';
+import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/category_grid_picker.dart';
@@ -23,7 +27,9 @@ import '../../../widgets/business/money_text.dart';
 enum _TransactionFormMode { expense, income, transfer, borrowing }
 
 class TransactionFormPage extends ConsumerStatefulWidget {
-  const TransactionFormPage({super.key});
+  const TransactionFormPage({this.editTransactionId, super.key});
+
+  final int? editTransactionId;
 
   @override
   ConsumerState<TransactionFormPage> createState() =>
@@ -39,6 +45,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   bool _submitting = false;
   bool _excludeStats = false;
   bool _excludeBudget = false;
+  bool _editInitialized = false;
 
   int? _expenseCategoryId;
   int? _expenseRootId;
@@ -56,9 +63,89 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     super.dispose();
   }
 
+  void _applyEditData(
+    TransactionDetailView detail,
+    List<CategoryNode> expenseTree,
+    List<CategoryNode> incomeTree,
+  ) {
+    final transaction = detail.transaction;
+    _amountController.text = transaction.primaryAmount.format();
+    _noteController.text = transaction.note ?? '';
+    _occurredAt = transaction.occurredAt;
+    _excludeStats = transaction.isExcludedFromStats;
+    _excludeBudget = transaction.isExcludedFromBudget;
+
+    switch (transaction.businessPurpose) {
+      case BusinessPurpose.dailyExpense:
+        _mode = _TransactionFormMode.expense;
+        _expenseCategoryId = _firstAccountId(
+          detail,
+          AccountType.expense,
+          EntryDirection.debit,
+        );
+        _expenseRootId = _rootCategoryId(expenseTree, _expenseCategoryId);
+        _fromAccountId = _firstSettlementId(detail, EntryDirection.credit);
+      case BusinessPurpose.reimbursementAdvance:
+        _mode = _TransactionFormMode.expense;
+        _expenseCategoryId = transaction.reimbursementExpenseAccountId;
+        _expenseRootId = _rootCategoryId(expenseTree, _expenseCategoryId);
+        _fromAccountId = _firstSettlementId(detail, EntryDirection.credit);
+        _reimbursementAccountId = _firstSettlementId(
+          detail,
+          EntryDirection.debit,
+        );
+      case BusinessPurpose.dailyIncome:
+        _mode = _TransactionFormMode.income;
+        _incomeCategoryId = _firstAccountId(
+          detail,
+          AccountType.income,
+          EntryDirection.credit,
+        );
+        _incomeRootId = _rootCategoryId(incomeTree, _incomeCategoryId);
+        _toAccountId = _firstSettlementId(detail, EntryDirection.debit);
+      case BusinessPurpose.transfer:
+        _mode = _TransactionFormMode.transfer;
+        _fromAccountId = _firstSettlementId(detail, EntryDirection.credit);
+        _toAccountId = _firstSettlementId(detail, EntryDirection.debit);
+        _excludeStats = false;
+        _excludeBudget = false;
+      case BusinessPurpose.borrowing:
+        _mode = _TransactionFormMode.borrowing;
+        _liabilityAccountId = _firstAccountId(
+          detail,
+          AccountType.liability,
+          EntryDirection.credit,
+        );
+        _toAccountId = _firstSettlementId(detail, EntryDirection.debit);
+        _excludeStats = false;
+        _excludeBudget = false;
+      default:
+        break;
+    }
+    _editInitialized = true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+    final accountsAsync = ref.watch(accountListProvider);
+    final expenseTreeAsync = ref.watch(
+      categoryTreeProvider(AccountType.expense),
+    );
+    final incomeTreeAsync = ref.watch(categoryTreeProvider(AccountType.income));
+    final editTransactionId = widget.editTransactionId;
+    final editDetailAsync =
+        editTransactionId == null
+            ? null
+            : ref.watch(transactionDetailProvider(editTransactionId));
+    if (editTransactionId != null &&
+        (!accountsAsync.hasValue ||
+            !expenseTreeAsync.hasValue ||
+            !incomeTreeAsync.hasValue ||
+            !(editDetailAsync?.hasValue ?? false))) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final accounts = accountsAsync.value ?? const <Account>[];
     final moneyAccounts =
         accounts.where(_isSelectableSettlementAccount).toList();
     final fundAccounts = accounts.where(_isSelectableFundAccount).toList();
@@ -68,10 +155,15 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             .toList();
     final reimbursementAccounts =
         accounts.where(_isSelectableReimbursementAccount).toList();
-    final expenseTree =
-        ref.watch(categoryTreeProvider(AccountType.expense)).value ?? const [];
-    final incomeTree =
-        ref.watch(categoryTreeProvider(AccountType.income)).value ?? const [];
+    final expenseTree = expenseTreeAsync.value ?? const [];
+    final incomeTree = incomeTreeAsync.value ?? const [];
+    final editDetail = editDetailAsync?.value;
+    if (editTransactionId != null && editDetail == null) {
+      return const Scaffold(body: Center(child: Text('交易不存在')));
+    }
+    if (!_editInitialized && editDetail != null) {
+      _applyEditData(editDetail, expenseTree, incomeTree);
+    }
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final keyboardVisible = keyboardInset > 0;
 
@@ -83,6 +175,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           children: [
             _TopBar(
               mode: _mode,
+              editing: widget.editTransactionId != null,
               onBack: () => context.pop(),
               onModeChanged: _switchMode,
             ),
@@ -367,6 +460,164 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
     setState(() => _submitting = true);
     final Result result;
+    final editTransactionId = widget.editTransactionId;
+    if (editTransactionId != null) {
+      result = await _submitCorrection(
+        service: service,
+        transactionId: editTransactionId,
+        amount: amount,
+        note: note,
+        moneyAccounts: moneyAccounts,
+        fundAccounts: fundAccounts,
+        liabilityAccounts: liabilityAccounts,
+        reimbursementAccounts: reimbursementAccounts,
+      );
+    } else {
+      switch (_mode) {
+        case _TransactionFormMode.expense:
+          final expenseCategoryId = _expenseCategoryId;
+          final paidFromAccountId = _effectiveId(_fromAccountId, moneyAccounts);
+          if (expenseCategoryId == null) {
+            setState(() => _submitting = false);
+            _showError('请选择支出分类');
+            return;
+          }
+          if (paidFromAccountId == null) {
+            setState(() => _submitting = false);
+            _showError('请选择支出账户');
+            return;
+          }
+          final reimbursementAccountId = _selectedId(
+            _reimbursementAccountId,
+            reimbursementAccounts,
+          );
+          if (reimbursementAccountId == null) {
+            result = await service.createExpense(
+              CreateExpenseCommand(
+                amount: amount,
+                paidFromAccountId: paidFromAccountId,
+                expenseAccountId: expenseCategoryId,
+                occurredAt: _occurredAt,
+                note: note,
+                isExcludedFromStats: _excludeStats,
+                isExcludedFromBudget: _excludeBudget,
+              ),
+            );
+          } else {
+            result = await service.createReimbursementAdvance(
+              CreateReimbursementAdvanceCommand(
+                amount: amount,
+                receivableAccountId: reimbursementAccountId,
+                paidFromAccountId: paidFromAccountId,
+                expenseCategoryId: expenseCategoryId,
+                occurredAt: _occurredAt,
+                note: note,
+                isExcludedFromStats: _excludeStats,
+                isExcludedFromBudget: _excludeBudget,
+              ),
+            );
+          }
+        case _TransactionFormMode.income:
+          final incomeCategoryId = _incomeCategoryId;
+          final receiveAccountId = _effectiveId(_toAccountId, moneyAccounts);
+          if (incomeCategoryId == null) {
+            setState(() => _submitting = false);
+            _showError('请选择收入分类');
+            return;
+          }
+          if (receiveAccountId == null) {
+            setState(() => _submitting = false);
+            _showError('请选择收入账户');
+            return;
+          }
+          result = await service.createIncome(
+            CreateIncomeCommand(
+              amount: amount,
+              receiveAccountId: receiveAccountId,
+              incomeAccountId: incomeCategoryId,
+              occurredAt: _occurredAt,
+              note: note,
+              isExcludedFromStats: _excludeStats,
+              isExcludedFromBudget: false,
+            ),
+          );
+        case _TransactionFormMode.transfer:
+          final fromAccountId = _effectiveId(_fromAccountId, moneyAccounts);
+          final toAccountId = _effectiveId(_toAccountId, moneyAccounts);
+          if (fromAccountId == null || toAccountId == null) {
+            setState(() => _submitting = false);
+            _showError('请选择转出和转入账户');
+            return;
+          }
+          result = await service.createTransfer(
+            CreateTransferCommand(
+              amount: amount,
+              fromAccountId: fromAccountId,
+              toAccountId: toAccountId,
+              occurredAt: _occurredAt,
+              note: note,
+              isExcludedFromStats: false,
+              isExcludedFromBudget: false,
+            ),
+          );
+        case _TransactionFormMode.borrowing:
+          final liabilityAccountId = _effectiveId(
+            _liabilityAccountId,
+            liabilityAccounts,
+          );
+          final receiveAccountId = _effectiveId(_toAccountId, fundAccounts);
+          if (liabilityAccountId == null) {
+            setState(() => _submitting = false);
+            _showError('请选择借出账户');
+            return;
+          }
+          if (receiveAccountId == null) {
+            setState(() => _submitting = false);
+            _showError('请选择借入账户');
+            return;
+          }
+          result = await service.createBorrowing(
+            CreateBorrowingCommand(
+              amount: amount,
+              liabilityAccountId: liabilityAccountId,
+              receiveAccountId: receiveAccountId,
+              occurredAt: _occurredAt,
+              note: note,
+              isExcludedFromStats: false,
+              isExcludedFromBudget: false,
+            ),
+          );
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+    setState(() => _submitting = false);
+
+    switch (result) {
+      case Success(:final value):
+        if (value is PostTransactionResult &&
+            widget.editTransactionId != null) {
+          context.go('/transactions/${value.transactionId}');
+        } else {
+          context.pop();
+        }
+      case FailureResult(:final failure):
+        _showError(failure.message);
+    }
+  }
+
+  Future<Result<PostTransactionResult>> _submitCorrection({
+    required TransactionService service,
+    required int transactionId,
+    required Money amount,
+    required String? note,
+    required List<Account> moneyAccounts,
+    required List<Account> fundAccounts,
+    required List<Account> liabilityAccounts,
+    required List<Account> reimbursementAccounts,
+  }) async {
     switch (_mode) {
       case _TransactionFormMode.expense:
         final expenseCategoryId = _expenseCategoryId;
@@ -374,58 +625,51 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
         if (expenseCategoryId == null) {
           setState(() => _submitting = false);
           _showError('请选择支出分类');
-          return;
+          return const Result.failure(Failure(message: '请选择支出分类'));
         }
         if (paidFromAccountId == null) {
           setState(() => _submitting = false);
           _showError('请选择支出账户');
-          return;
+          return const Result.failure(Failure(message: '请选择支出账户'));
         }
         final reimbursementAccountId = _selectedId(
           _reimbursementAccountId,
           reimbursementAccounts,
         );
-        if (reimbursementAccountId == null) {
-          result = await service.createExpense(
-            CreateExpenseCommand(
-              amount: amount,
-              paidFromAccountId: paidFromAccountId,
-              expenseAccountId: expenseCategoryId,
-              occurredAt: _occurredAt,
-              note: note,
-              isExcludedFromStats: _excludeStats,
-              isExcludedFromBudget: _excludeBudget,
-            ),
-          );
-        } else {
-          result = await service.createReimbursementAdvance(
-            CreateReimbursementAdvanceCommand(
-              amount: amount,
-              receivableAccountId: reimbursementAccountId,
-              paidFromAccountId: paidFromAccountId,
-              expenseCategoryId: expenseCategoryId,
-              occurredAt: _occurredAt,
-              note: note,
-              isExcludedFromStats: _excludeStats,
-              isExcludedFromBudget: _excludeBudget,
-            ),
-          );
-        }
+        return service.correctTransaction(
+          CorrectTransactionCommand(
+            transactionId: transactionId,
+            businessPurpose:
+                reimbursementAccountId == null
+                    ? BusinessPurpose.dailyExpense
+                    : BusinessPurpose.reimbursementAdvance,
+            amount: amount,
+            paidFromAccountId: paidFromAccountId,
+            expenseAccountId: expenseCategoryId,
+            receivableAccountId: reimbursementAccountId,
+            occurredAt: _occurredAt,
+            note: note,
+            isExcludedFromStats: _excludeStats,
+            isExcludedFromBudget: _excludeBudget,
+          ),
+        );
       case _TransactionFormMode.income:
         final incomeCategoryId = _incomeCategoryId;
         final receiveAccountId = _effectiveId(_toAccountId, moneyAccounts);
         if (incomeCategoryId == null) {
           setState(() => _submitting = false);
           _showError('请选择收入分类');
-          return;
+          return const Result.failure(Failure(message: '请选择收入分类'));
         }
         if (receiveAccountId == null) {
           setState(() => _submitting = false);
           _showError('请选择收入账户');
-          return;
+          return const Result.failure(Failure(message: '请选择收入账户'));
         }
-        result = await service.createIncome(
-          CreateIncomeCommand(
+        return service.correctTransaction(
+          CorrectTransactionCommand(
+            transactionId: transactionId,
+            businessPurpose: BusinessPurpose.dailyIncome,
             amount: amount,
             receiveAccountId: receiveAccountId,
             incomeAccountId: incomeCategoryId,
@@ -441,10 +685,12 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
         if (fromAccountId == null || toAccountId == null) {
           setState(() => _submitting = false);
           _showError('请选择转出和转入账户');
-          return;
+          return const Result.failure(Failure(message: '请选择转出和转入账户'));
         }
-        result = await service.createTransfer(
-          CreateTransferCommand(
+        return service.correctTransaction(
+          CorrectTransactionCommand(
+            transactionId: transactionId,
+            businessPurpose: BusinessPurpose.transfer,
             amount: amount,
             fromAccountId: fromAccountId,
             toAccountId: toAccountId,
@@ -460,18 +706,15 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           liabilityAccounts,
         );
         final receiveAccountId = _effectiveId(_toAccountId, fundAccounts);
-        if (liabilityAccountId == null) {
+        if (liabilityAccountId == null || receiveAccountId == null) {
           setState(() => _submitting = false);
-          _showError('请选择借出账户');
-          return;
+          _showError('请选择借出和借入账户');
+          return const Result.failure(Failure(message: '请选择借出和借入账户'));
         }
-        if (receiveAccountId == null) {
-          setState(() => _submitting = false);
-          _showError('请选择借入账户');
-          return;
-        }
-        result = await service.createBorrowing(
-          CreateBorrowingCommand(
+        return service.correctTransaction(
+          CorrectTransactionCommand(
+            transactionId: transactionId,
+            businessPurpose: BusinessPurpose.borrowing,
             amount: amount,
             liabilityAccountId: liabilityAccountId,
             receiveAccountId: receiveAccountId,
@@ -481,18 +724,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             isExcludedFromBudget: false,
           ),
         );
-    }
-
-    if (!mounted) {
-      return;
-    }
-    setState(() => _submitting = false);
-
-    switch (result) {
-      case Success():
-        context.pop();
-      case FailureResult(:final failure):
-        _showError(failure.message);
     }
   }
 
@@ -540,6 +771,44 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
+
+  int? _firstAccountId(
+    TransactionDetailView detail,
+    AccountType type,
+    EntryDirection direction,
+  ) {
+    for (final entry in detail.entries) {
+      if (entry.accountType == type && entry.direction == direction) {
+        return entry.accountId;
+      }
+    }
+    return null;
+  }
+
+  int? _firstSettlementId(
+    TransactionDetailView detail,
+    EntryDirection direction,
+  ) {
+    for (final entry in detail.entries) {
+      if ((entry.accountType == AccountType.asset ||
+              entry.accountType == AccountType.liability) &&
+          entry.direction == direction) {
+        return entry.accountId;
+      }
+    }
+    return null;
+  }
+
+  int? _rootCategoryId(List<CategoryNode> tree, int? categoryId) {
+    if (categoryId == null) return null;
+    for (final node in tree) {
+      if (node.account.id == categoryId) return node.account.id;
+      for (final child in node.children) {
+        if (child.id == categoryId) return node.account.id;
+      }
+    }
+    return categoryId;
+  }
 }
 
 bool _isSelectableSettlementAccount(Account account) {
@@ -574,11 +843,13 @@ Account? _effectiveAccount(int? selectedId, List<Account> options) {
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.mode,
+    required this.editing,
     required this.onBack,
     required this.onModeChanged,
   });
 
   final _TransactionFormMode mode;
+  final bool editing;
   final VoidCallback onBack;
   final ValueChanged<_TransactionFormMode> onModeChanged;
 
@@ -598,7 +869,18 @@ class _TopBar extends StatelessWidget {
             icon: const Icon(Icons.arrow_back_ios_new),
             tooltip: '返回',
           ),
-          Expanded(child: _ModeTabs(mode: mode, onChanged: onModeChanged)),
+          Expanded(
+            child:
+                editing
+                    ? Center(
+                      child: Text(
+                        '编辑${_modeLabel(mode)}',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    )
+                    : _ModeTabs(mode: mode, onChanged: onModeChanged),
+          ),
           const SizedBox(width: AppSpacing.space48),
         ],
       ),

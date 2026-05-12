@@ -76,3 +76,23 @@ class PostTransactionResult {
   final int transactionId;
   final int rootTransactionId;
 }
+
+class TransactionStateUpdate {
+  const TransactionStateUpdate({
+    required this.transactionId,
+    required this.businessState,
+  });
+
+  final int transactionId;
+  final BusinessState businessState;
+}
+
+class PostTransactionMutation {
+  const PostTransactionMutation({
+    required this.command,
+    required this.balanceDeltasMinor,
+  });
+
+  final PostTransactionCommand command;
+  final Map<int, int> balanceDeltasMinor;
+}

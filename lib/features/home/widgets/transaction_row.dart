@@ -35,7 +35,7 @@ class TransactionRow extends StatelessWidget {
     final hasBadges = _hasBadges(item);
 
     return InkWell(
-      onTap: () => context.push('/transactions/${item.id}'),
+      onTap: () => _openTransaction(context, item),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space16,
@@ -111,6 +111,18 @@ class TransactionRow extends StatelessWidget {
       ),
     );
   }
+}
+
+void _openTransaction(BuildContext context, TransactionListItem item) {
+  final path = switch (item.businessPurpose) {
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.reimbursementAdvance => '/transactions/${item.id}',
+    BusinessPurpose.transfer ||
+    BusinessPurpose.borrowing => '/transactions/${item.id}/edit',
+    _ => '/transactions/${item.id}',
+  };
+  context.push(path);
 }
 
 bool _hasBadges(TransactionListItem item) {

@@ -9,6 +9,11 @@ abstract interface class PostingRepository {
     required Map<int, int> balanceDeltasMinor,
   });
 
+  Future<List<PostTransactionResult>> mutateTransactions({
+    required List<TransactionStateUpdate> stateUpdates,
+    required List<PostTransactionMutation> posts,
+  });
+
   Future<void> updateTransactionMetadata({
     required int transactionId,
     String? note,

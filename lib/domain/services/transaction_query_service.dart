@@ -189,6 +189,9 @@ class TransactionDetailView {
     required this.details,
     required this.entries,
     this.children = const [],
+    this.history = const [],
+    this.categoryName,
+    this.categoryIconKey,
     this.refundedTotal,
     this.reimbursementSummary,
   });
@@ -197,6 +200,9 @@ class TransactionDetailView {
   final List<TransactionDetailLineView> details;
   final List<EntryLineView> entries;
   final List<TransactionListItem> children;
+  final List<TransactionListItem> history;
+  final String? categoryName;
+  final String? categoryIconKey;
   final Money? refundedTotal;
   final ReimbursementSummary? reimbursementSummary;
 }
@@ -220,6 +226,7 @@ class EntryLineView {
     required this.accountType,
     required this.direction,
     required this.amount,
+    this.accountIconKey,
   });
 
   final int accountId;
@@ -227,6 +234,7 @@ class EntryLineView {
   final AccountType accountType;
   final EntryDirection direction;
   final Money amount;
+  final String? accountIconKey;
 }
 
 class ReimbursementSummary {

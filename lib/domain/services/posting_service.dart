@@ -7,6 +7,11 @@ import 'posting_command.dart';
 
 abstract interface class PostingService {
   Future<Result<PostTransactionResult>> post(PostTransactionCommand command);
+
+  Future<Result<List<PostTransactionResult>>> postMutation({
+    required List<TransactionStateUpdate> stateUpdates,
+    required List<PostTransactionCommand> commands,
+  });
 }
 
 class PostingServiceImpl implements PostingService {
@@ -19,6 +24,61 @@ class PostingServiceImpl implements PostingService {
     PostTransactionCommand command,
   ) async {
     try {
+      final mutations = await _validateAndBuildMutations([command]);
+      switch (mutations) {
+        case FailureResult(:final failure):
+          return Result.failure(failure);
+        case Success(:final value):
+          final result = await _repository.postTransaction(
+            command: value.single.command,
+            balanceDeltasMinor: value.single.balanceDeltasMinor,
+          );
+          return Result.success(result);
+      }
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'posting_failed',
+          message: 'Failed to post transaction.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<List<PostTransactionResult>>> postMutation({
+    required List<TransactionStateUpdate> stateUpdates,
+    required List<PostTransactionCommand> commands,
+  }) async {
+    try {
+      final mutations = await _validateAndBuildMutations(commands);
+      switch (mutations) {
+        case FailureResult(:final failure):
+          return Result.failure(failure);
+        case Success(:final value):
+          final result = await _repository.mutateTransactions(
+            stateUpdates: stateUpdates,
+            posts: value,
+          );
+          return Result.success(result);
+      }
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'posting_mutation_failed',
+          message: 'Failed to mutate transactions.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  Future<Result<List<PostTransactionMutation>>> _validateAndBuildMutations(
+    List<PostTransactionCommand> commands,
+  ) async {
+    final mutations = <PostTransactionMutation>[];
+    for (final command in commands) {
       final failure = await _validate(command);
       if (failure != null) {
         return Result.failure(failure);
@@ -82,20 +142,11 @@ class PostingServiceImpl implements PostingService {
         );
       }
 
-      final result = await _repository.postTransaction(
-        command: command,
-        balanceDeltasMinor: deltas,
-      );
-      return Result.success(result);
-    } on Object catch (error) {
-      return Result.failure(
-        Failure(
-          code: 'posting_failed',
-          message: 'Failed to post transaction.',
-          cause: error,
-        ),
+      mutations.add(
+        PostTransactionMutation(command: command, balanceDeltasMinor: deltas),
       );
     }
+    return Result.success(mutations);
   }
 
   Future<Failure?> _validate(PostTransactionCommand command) async {
@@ -117,10 +168,15 @@ class PostingServiceImpl implements PostingService {
         message: 'Primary amount currency does not match transaction currency.',
       );
     }
-    if (command.primaryAmount.minorUnits <= 0) {
+    final expectsNegativeDetailAndEntryAmounts =
+        command.mutationKind == MutationKind.reversal;
+    if ((!expectsNegativeDetailAndEntryAmounts &&
+            command.primaryAmount.minorUnits <= 0) ||
+        (expectsNegativeDetailAndEntryAmounts &&
+            command.primaryAmount.minorUnits == 0)) {
       return const Failure(
         code: 'primary_amount_not_positive',
-        message: 'Primary amount must be positive.',
+        message: 'Primary amount has an invalid sign.',
       );
     }
 
@@ -129,8 +185,6 @@ class PostingServiceImpl implements PostingService {
       return reversalFailure;
     }
 
-    final expectsNegativeDetailAndEntryAmounts =
-        command.mutationKind == MutationKind.reversal;
     for (final detail in command.details) {
       if (!moneyMatchesCurrency(detail.amount, command.currencyCode)) {
         return const Failure(

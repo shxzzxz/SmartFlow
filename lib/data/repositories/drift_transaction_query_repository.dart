@@ -371,6 +371,11 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
             .get();
 
     final children = await _loadChildren(transactionId);
+    final history = await _loadHistory(
+      rootTransactionId: transaction.rootTransactionId ?? transaction.id,
+      excludeTransactionId: transaction.id,
+    );
+    final category = await _resolveDetailCategory(transaction);
     Money? refundedTotal;
     if (transaction.businessPurpose == BusinessPurpose.dailyExpense) {
       refundedTotal = await getRefundedTotal(
@@ -404,6 +409,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
             accountId: row.readTable(_database.accounts).id,
             accountName: row.readTable(_database.accounts).name,
             accountType: row.readTable(_database.accounts).accountType,
+            accountIconKey: row.readTable(_database.accounts).iconKey,
             direction: row.readTable(_database.entries).direction,
             amount: Money(
               minorUnits: row.readTable(_database.entries).amountMinor,
@@ -412,9 +418,42 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           ),
       ],
       children: children,
+      history: history,
+      categoryName: category?.name,
+      categoryIconKey: category?.iconKey,
       refundedTotal: refundedTotal,
       reimbursementSummary: reimbursementSummary,
     );
+  }
+
+  Future<AccountRow?> _resolveDetailCategory(TransactionRow transaction) async {
+    if (transaction.businessPurpose == BusinessPurpose.reimbursementAdvance) {
+      final categoryId = transaction.reimbursementExpenseAccountId;
+      if (categoryId == null) return null;
+      return (_database.select(_database.accounts)
+        ..where((a) => a.id.equals(categoryId))).getSingleOrNull();
+    }
+    final type = switch (transaction.businessPurpose) {
+      BusinessPurpose.dailyExpense ||
+      BusinessPurpose.refund => AccountType.expense,
+      BusinessPurpose.dailyIncome => AccountType.income,
+      _ => null,
+    };
+    if (type == null) return null;
+    final rows =
+        await (_database.select(_database.entries).join([
+                innerJoin(
+                  _database.accounts,
+                  _database.accounts.id.equalsExp(_database.entries.accountId),
+                ),
+              ])
+              ..where(
+                _database.entries.transactionId.equals(transaction.id) &
+                    _database.accounts.accountType.equalsValue(type),
+              )
+              ..limit(1))
+            .get();
+    return rows.isEmpty ? null : rows.first.readTable(_database.accounts);
   }
 
   Future<List<TransactionListItem>> _loadChildren(int parentId) async {
@@ -454,6 +493,72 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
               'GROUP BY t.id '
               'ORDER BY t.occurred_at DESC, t.id DESC',
               variables: variables,
+              readsFrom: {
+                _database.transactions,
+                _database.entries,
+                _database.accounts,
+              },
+            )
+            .get();
+    return rows.map(_mapListItem).toList();
+  }
+
+  Future<List<TransactionListItem>> _loadHistory({
+    required int rootTransactionId,
+    required int excludeTransactionId,
+  }) async {
+    final rows =
+        await _database
+            .customSelect(
+              'SELECT t.id, t.business_purpose, t.occurred_at, '
+              't.currency_code, t.primary_amount_minor, t.counterparty_name, '
+              't.note, t.is_excluded_from_stats, t.is_excluded_from_budget, '
+              "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
+              "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
+              "AND a.account_type = 'expense' THEN a.name "
+              "WHEN t.business_purpose = 'dailyIncome' "
+              "AND a.account_type = 'income' THEN a.name "
+              "WHEN t.business_purpose = 'reimbursementAdvance' "
+              "AND expense_category.account_type = 'expense' "
+              'THEN expense_category.name END) AS category_name, '
+              "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
+              "AND a.account_type = 'expense' THEN a.icon_key "
+              "WHEN t.business_purpose = 'dailyIncome' "
+              "AND a.account_type = 'income' THEN a.icon_key "
+              "WHEN t.business_purpose = 'reimbursementAdvance' "
+              "AND expense_category.account_type = 'expense' "
+              'THEN expense_category.icon_key END) AS category_icon_key, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'credit' THEN a.id END) "
+              'AS flow_out_account_id, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'debit' THEN a.id END) "
+              'AS flow_in_account_id, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'credit' THEN a.name END) "
+              'AS flow_out_account_name, '
+              "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
+              "AND e.direction = 'debit' THEN a.name END) "
+              'AS flow_in_account_name, '
+              '0 AS refunded_total_minor, 0 AS refund_child_count, '
+              '0 AS reimbursement_received_minor, 0 AS reimbursement_child_count, '
+              '0 AS reimbursement_gap_income_minor, '
+              '0 AS reimbursement_gap_expense_minor, '
+              '0 AS repayment_interest_minor, 0 AS repayment_fee_minor '
+              'FROM transactions t '
+              'LEFT JOIN entries e ON e.transaction_id = t.id '
+              'LEFT JOIN accounts a ON a.id = e.account_id '
+              'LEFT JOIN accounts expense_category '
+              'ON expense_category.id = t.reimbursement_expense_account_id '
+              'WHERE t.root_transaction_id = ? AND t.id <> ? '
+              "AND (t.business_state <> 'current' "
+              "OR t.mutation_kind <> 'original') "
+              'GROUP BY t.id '
+              'ORDER BY t.created_at DESC, t.id DESC',
+              variables: [
+                Variable<int>(rootTransactionId),
+                Variable<int>(excludeTransactionId),
+              ],
               readsFrom: {
                 _database.transactions,
                 _database.entries,

@@ -30,96 +30,138 @@ class DriftPostingRepository implements PostingRepository {
     required Map<int, int> balanceDeltasMinor,
   }) {
     return _database.transaction(() async {
-      final now = DateTime.now();
-      final transactionId = await _database
-          .into(_database.transactions)
-          .insert(
-            TransactionsCompanion.insert(
-              businessPurpose: command.businessPurpose,
-              occurredAt: command.occurredAt,
-              currencyCode: command.currencyCode,
-              primaryAmountMinor: command.primaryAmount.minorUnits,
-              mutationKind: command.mutationKind,
-              businessState: command.businessState,
-              sourceKind: command.sourceKind,
-              rootTransactionId: Value(command.rootTransactionId),
-              counterpartyName: Value(command.counterpartyName),
-              note: Value(command.note),
-              parentTransactionId: Value(command.parentTransactionId),
-              reimbursementExpenseAccountId: Value(
-                command.reimbursementExpenseAccountId,
-              ),
-              mutationPreviousTransactionId: Value(
-                command.mutationPreviousTransactionId,
-              ),
-              mutationReason: Value(command.mutationReason),
-              isExcludedFromStats: Value(command.isExcludedFromStats),
-              isExcludedFromBudget: Value(command.isExcludedFromBudget),
-              createdAt: Value(now),
-              updatedAt: Value(now),
-            ),
-          );
+      return _insertPostedTransaction(
+        command: command,
+        balanceDeltasMinor: balanceDeltasMinor,
+        now: DateTime.now(),
+      );
+    });
+  }
 
-      final rootTransactionId = command.rootTransactionId ?? transactionId;
-      if (command.rootTransactionId == null) {
+  @override
+  Future<List<PostTransactionResult>> mutateTransactions({
+    required List<TransactionStateUpdate> stateUpdates,
+    required List<PostTransactionMutation> posts,
+  }) {
+    return _database.transaction(() async {
+      final now = DateTime.now();
+      for (final update in stateUpdates) {
         await (_database.update(_database.transactions)
-          ..where((transaction) => transaction.id.equals(transactionId))).write(
+          ..where((t) => t.id.equals(update.transactionId))).write(
           TransactionsCompanion(
-            rootTransactionId: Value(rootTransactionId),
+            businessState: Value(update.businessState),
             updatedAt: Value(now),
           ),
         );
       }
 
-      await _database.batch((batch) {
-        batch.insertAll(
-          _database.transactionDetails,
-          command.details.map(
-            (detail) => TransactionDetailsCompanion.insert(
-              transactionId: transactionId,
-              lineNo: detail.lineNo,
-              detailType: detail.type,
-              amountMinor: detail.amount.minorUnits,
-              createdAt: Value(now),
-              updatedAt: Value(now),
-            ),
+      final results = <PostTransactionResult>[];
+      for (final post in posts) {
+        results.add(
+          await _insertPostedTransaction(
+            command: post.command,
+            balanceDeltasMinor: post.balanceDeltasMinor,
+            now: now,
           ),
-        );
-        batch.insertAll(
-          _database.entries,
-          command.entries.map(
-            (entry) => EntriesCompanion.insert(
-              transactionId: transactionId,
-              accountId: entry.accountId,
-              direction: entry.direction,
-              amountMinor: entry.amount.minorUnits,
-              createdAt: Value(now),
-              updatedAt: Value(now),
-            ),
-          ),
-        );
-      });
-
-      for (final MapEntry(key: accountId, value: delta)
-          in balanceDeltasMinor.entries) {
-        await _database.customUpdate(
-          'UPDATE accounts '
-          'SET balance_minor = balance_minor + ?, updated_at = ? '
-          'WHERE id = ?',
-          variables: [
-            Variable<int>(delta),
-            Variable<DateTime>(now),
-            Variable<int>(accountId),
-          ],
-          updates: {_database.accounts},
         );
       }
+      return results;
+    });
+  }
 
-      return PostTransactionResult(
-        transactionId: transactionId,
-        rootTransactionId: rootTransactionId,
+  Future<PostTransactionResult> _insertPostedTransaction({
+    required PostTransactionCommand command,
+    required Map<int, int> balanceDeltasMinor,
+    required DateTime now,
+  }) async {
+    final transactionId = await _database
+        .into(_database.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            businessPurpose: command.businessPurpose,
+            occurredAt: command.occurredAt,
+            currencyCode: command.currencyCode,
+            primaryAmountMinor: command.primaryAmount.minorUnits,
+            mutationKind: command.mutationKind,
+            businessState: command.businessState,
+            sourceKind: command.sourceKind,
+            rootTransactionId: Value(command.rootTransactionId),
+            counterpartyName: Value(command.counterpartyName),
+            note: Value(command.note),
+            parentTransactionId: Value(command.parentTransactionId),
+            reimbursementExpenseAccountId: Value(
+              command.reimbursementExpenseAccountId,
+            ),
+            mutationPreviousTransactionId: Value(
+              command.mutationPreviousTransactionId,
+            ),
+            mutationReason: Value(command.mutationReason),
+            isExcludedFromStats: Value(command.isExcludedFromStats),
+            isExcludedFromBudget: Value(command.isExcludedFromBudget),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+
+    final rootTransactionId = command.rootTransactionId ?? transactionId;
+    if (command.rootTransactionId == null) {
+      await (_database.update(_database.transactions)
+        ..where((transaction) => transaction.id.equals(transactionId))).write(
+        TransactionsCompanion(
+          rootTransactionId: Value(rootTransactionId),
+          updatedAt: Value(now),
+        ),
+      );
+    }
+
+    await _database.batch((batch) {
+      batch.insertAll(
+        _database.transactionDetails,
+        command.details.map(
+          (detail) => TransactionDetailsCompanion.insert(
+            transactionId: transactionId,
+            lineNo: detail.lineNo,
+            detailType: detail.type,
+            amountMinor: detail.amount.minorUnits,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        ),
+      );
+      batch.insertAll(
+        _database.entries,
+        command.entries.map(
+          (entry) => EntriesCompanion.insert(
+            transactionId: transactionId,
+            accountId: entry.accountId,
+            direction: entry.direction,
+            amountMinor: entry.amount.minorUnits,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        ),
       );
     });
+
+    for (final MapEntry(key: accountId, value: delta)
+        in balanceDeltasMinor.entries) {
+      await _database.customUpdate(
+        'UPDATE accounts '
+        'SET balance_minor = balance_minor + ?, updated_at = ? '
+        'WHERE id = ?',
+        variables: [
+          Variable<int>(delta),
+          Variable<DateTime>(now),
+          Variable<int>(accountId),
+        ],
+        updates: {_database.accounts},
+      );
+    }
+
+    return PostTransactionResult(
+      transactionId: transactionId,
+      rootTransactionId: rootTransactionId,
+    );
   }
 
   @override

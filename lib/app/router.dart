@@ -52,6 +52,13 @@ final appRouter = GoRouter(
           ),
     ),
     GoRoute(
+      path: '/transactions/:id/edit',
+      builder:
+          (context, state) => TransactionFormPage(
+            editTransactionId: int.parse(state.pathParameters['id']!),
+          ),
+    ),
+    GoRoute(
       path: '/transactions/:id/refund',
       builder:
           (context, state) => RefundFormPage(
