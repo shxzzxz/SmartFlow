@@ -63,16 +63,21 @@ class _AccountsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final assets =
-        accounts.where((account) => account.type == AccountType.asset).toList();
-    final liabilities =
-        accounts
-            .where((account) => account.type == AccountType.liability)
-            .toList();
+    final fundAccounts = accounts.where(_isFundAccount).toList();
+    final liabilities = accounts.where(_isLiabilityAccount).toList();
+    final reimbursementAccounts =
+        accounts.where(_isReimbursementAccount).toList();
+    final assets = [...fundAccounts, ...reimbursementAccounts];
+    final fundMinor = fundAccounts.fold(0, (sum, account) {
+      return sum + account.balance.minorUnits;
+    });
     final assetMinor = assets.fold(0, (sum, account) {
       return sum + account.balance.minorUnits;
     });
     final liabilityMinor = liabilities.fold(0, (sum, account) {
+      return sum + account.balance.minorUnits;
+    });
+    final reimbursementMinor = reimbursementAccounts.fold(0, (sum, account) {
       return sum + account.balance.minorUnits;
     });
 
@@ -93,11 +98,11 @@ class _AccountsContent extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space24),
         _AccountSection(
-          title: '资产账户',
-          totalLabel: '总资产',
-          total: Money(minorUnits: assetMinor),
+          title: '资金账户',
+          totalLabel: '资金',
+          total: Money(minorUnits: fundMinor),
           totalSemantic: MoneySemantic.asset,
-          accounts: assets,
+          accounts: fundAccounts,
           hideBalances: hideBalances,
         ),
         const SizedBox(height: AppSpacing.space24),
@@ -110,6 +115,15 @@ class _AccountsContent extends StatelessWidget {
           hideBalances: hideBalances,
         ),
         const SizedBox(height: AppSpacing.space24),
+        _AccountSection(
+          title: '报销账户',
+          totalLabel: '应收报销',
+          total: Money(minorUnits: reimbursementMinor),
+          totalSemantic: MoneySemantic.asset,
+          accounts: reimbursementAccounts,
+          hideBalances: hideBalances,
+        ),
+        const SizedBox(height: AppSpacing.space24),
         _TrendSection(
           netAsset: Money(minorUnits: assetMinor - liabilityMinor),
           hideBalances: hideBalances,
@@ -117,6 +131,20 @@ class _AccountsContent extends StatelessWidget {
       ],
     );
   }
+}
+
+bool _isFundAccount(Account account) {
+  return account.type == AccountType.asset &&
+      account.subtype != AccountSubtype.reimbursement;
+}
+
+bool _isLiabilityAccount(Account account) {
+  return account.type == AccountType.liability;
+}
+
+bool _isReimbursementAccount(Account account) {
+  return account.type == AccountType.asset &&
+      account.subtype == AccountSubtype.reimbursement;
 }
 
 class _AssetsHeader extends StatelessWidget {

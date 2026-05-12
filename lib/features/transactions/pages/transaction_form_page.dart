@@ -15,6 +15,7 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_service.dart';
+import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/category_grid_picker.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
@@ -59,19 +60,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   Widget build(BuildContext context) {
     final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
     final moneyAccounts =
-        accounts.where((account) {
-          return account.archivedAt == null &&
-              (account.type == AccountType.asset ||
-                  account.type == AccountType.liability);
-        }).toList();
+        accounts.where(_isSelectableSettlementAccount).toList();
+    final fundAccounts = accounts.where(_isSelectableFundAccount).toList();
     final liabilityAccounts =
         moneyAccounts
             .where((account) => account.type == AccountType.liability)
             .toList();
     final reimbursementAccounts =
-        moneyAccounts
-            .where((account) => account.subtype == AccountSubtype.reimbursement)
-            .toList();
+        accounts.where(_isSelectableReimbursementAccount).toList();
     final expenseTree =
         ref.watch(categoryTreeProvider(AccountType.expense)).value ?? const [];
     final incomeTree =
@@ -150,16 +146,45 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                           ),
                     ),
                   if (_mode == _TransactionFormMode.transfer)
-                    _SimpleModeHint(
-                      icon: Icons.swap_horiz,
-                      title: '账户转账',
-                      description: '记录两个资金账户之间的资金移动。',
+                    _MainAccountPickerSection(
+                      children: [
+                        _MainAccountPickerTile(
+                          label: '转出账户',
+                          accounts: moneyAccounts,
+                          selectedId: _fromAccountId,
+                          onChanged:
+                              (value) => setState(() => _fromAccountId = value),
+                        ),
+                        const SizedBox(height: AppSpacing.space8),
+                        _MainAccountPickerTile(
+                          label: '转入账户',
+                          accounts: moneyAccounts,
+                          selectedId: _toAccountId,
+                          onChanged:
+                              (value) => setState(() => _toAccountId = value),
+                        ),
+                      ],
                     ),
                   if (_mode == _TransactionFormMode.borrowing)
-                    _SimpleModeHint(
-                      icon: Icons.account_balance_wallet_outlined,
-                      title: '借入',
-                      description: '记录新增负债，可选择资金实际到账账户。',
+                    _MainAccountPickerSection(
+                      children: [
+                        _MainAccountPickerTile(
+                          label: '借出账户',
+                          accounts: liabilityAccounts,
+                          selectedId: _liabilityAccountId,
+                          onChanged:
+                              (value) =>
+                                  setState(() => _liabilityAccountId = value),
+                        ),
+                        const SizedBox(height: AppSpacing.space8),
+                        _MainAccountPickerTile(
+                          label: '借入账户',
+                          accounts: fundAccounts,
+                          selectedId: _toAccountId,
+                          onChanged:
+                              (value) => setState(() => _toAccountId = value),
+                        ),
+                      ],
                     ),
                 ],
               ),
@@ -183,12 +208,10 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                     mode: _mode,
                     occurredAt: _occurredAt,
                     moneyAccounts: moneyAccounts,
-                    liabilityAccounts: liabilityAccounts,
                     reimbursementAccounts: reimbursementAccounts,
                     fromAccountId: _fromAccountId,
                     toAccountId: _toAccountId,
                     reimbursementAccountId: _reimbursementAccountId,
-                    liabilityAccountId: _liabilityAccountId,
                     excludeStats: _excludeStats,
                     excludeBudget: _excludeBudget,
                     onPickDate: _pickDate,
@@ -199,8 +222,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
                     onReimbursementAccountChanged:
                         (value) =>
                             setState(() => _reimbursementAccountId = value),
-                    onLiabilityAccountChanged:
-                        (value) => setState(() => _liabilityAccountId = value),
                     onExcludeStatsChanged:
                         (value) => setState(() => _excludeStats = value),
                     onExcludeBudgetChanged:
@@ -235,6 +256,10 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     setState(() {
       _mode = mode;
       _reimbursementAccountId = null;
+      if (mode == _TransactionFormMode.transfer ||
+          mode == _TransactionFormMode.borrowing) {
+        _excludeStats = false;
+      }
       if (mode != _TransactionFormMode.expense) {
         _excludeBudget = false;
       }
@@ -328,19 +353,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
     final accounts = ref.read(accountListProvider).value ?? const <Account>[];
     final moneyAccounts =
-        accounts.where((account) {
-          return account.archivedAt == null &&
-              (account.type == AccountType.asset ||
-                  account.type == AccountType.liability);
-        }).toList();
+        accounts.where(_isSelectableSettlementAccount).toList();
+    final fundAccounts = accounts.where(_isSelectableFundAccount).toList();
     final liabilityAccounts =
         moneyAccounts
             .where((account) => account.type == AccountType.liability)
             .toList();
     final reimbursementAccounts =
-        moneyAccounts
-            .where((account) => account.subtype == AccountSubtype.reimbursement)
-            .toList();
+        accounts.where(_isSelectableReimbursementAccount).toList();
 
     final service = ref.read(transactionServiceProvider);
     final note = _blankToNull(_noteController.text);
@@ -430,7 +450,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             toAccountId: toAccountId,
             occurredAt: _occurredAt,
             note: note,
-            isExcludedFromStats: _excludeStats,
+            isExcludedFromStats: false,
             isExcludedFromBudget: false,
           ),
         );
@@ -439,14 +459,15 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           _liabilityAccountId,
           liabilityAccounts,
         );
-        final receiveAccountId =
-            _toAccountId != null &&
-                    moneyAccounts.any((account) => account.id == _toAccountId)
-                ? _toAccountId
-                : null;
+        final receiveAccountId = _effectiveId(_toAccountId, fundAccounts);
         if (liabilityAccountId == null) {
           setState(() => _submitting = false);
-          _showError('请选择负债账户');
+          _showError('请选择借出账户');
+          return;
+        }
+        if (receiveAccountId == null) {
+          setState(() => _submitting = false);
+          _showError('请选择借入账户');
           return;
         }
         result = await service.createBorrowing(
@@ -456,7 +477,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             receiveAccountId: receiveAccountId,
             occurredAt: _occurredAt,
             note: note,
-            isExcludedFromStats: _excludeStats,
+            isExcludedFromStats: false,
             isExcludedFromBudget: false,
           ),
         );
@@ -502,7 +523,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       _TransactionFormMode.expense => MoneySemantic.expense,
       _TransactionFormMode.income => MoneySemantic.income,
       _TransactionFormMode.transfer => MoneySemantic.neutral,
-      _TransactionFormMode.borrowing => MoneySemantic.income,
+      _TransactionFormMode.borrowing => MoneySemantic.neutral,
     };
   }
 
@@ -511,6 +532,35 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+bool _isSelectableSettlementAccount(Account account) {
+  return account.archivedAt == null &&
+      account.subtype != AccountSubtype.reimbursement &&
+      (account.type == AccountType.asset ||
+          account.type == AccountType.liability);
+}
+
+bool _isSelectableFundAccount(Account account) {
+  return account.archivedAt == null &&
+      account.type == AccountType.asset &&
+      account.subtype != AccountSubtype.reimbursement;
+}
+
+bool _isSelectableReimbursementAccount(Account account) {
+  return account.archivedAt == null &&
+      account.subtype == AccountSubtype.reimbursement;
+}
+
+Account? _effectiveAccount(int? selectedId, List<Account> options) {
+  if (selectedId != null) {
+    for (final account in options) {
+      if (account.id == selectedId) {
+        return account;
+      }
+    }
+  }
+  return options.firstOrNull;
 }
 
 class _TopBar extends StatelessWidget {
@@ -622,57 +672,131 @@ class _ModeTabItem extends StatelessWidget {
   }
 }
 
-class _SimpleModeHint extends StatelessWidget {
-  const _SimpleModeHint({
-    required this.icon,
-    required this.title,
-    required this.description,
+class _MainAccountPickerSection extends StatelessWidget {
+  const _MainAccountPickerSection({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSurface(
+      border: true,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        child: Column(children: children),
+      ),
+    );
+  }
+}
+
+class _MainAccountPickerTile extends StatelessWidget {
+  const _MainAccountPickerTile({
+    required this.label,
+    required this.accounts,
+    required this.selectedId,
+    required this.onChanged,
   });
 
-  final IconData icon;
-  final String title;
-  final String description;
+  final String label;
+  final List<Account> accounts;
+  final int? selectedId;
+  final ValueChanged<int?> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final effective = _effectiveAccount(selectedId, accounts);
+    final title = effective?.name ?? '$label为空';
 
-    return AppSurface(
-      border: true,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: colors.primary.withValues(alpha: 0.12),
-              foregroundColor: colors.primary,
-              child: Icon(icon),
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    description,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+    return Material(
+      color: colors.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+      child: InkWell(
+        onTap: () => _showAccountSheet(context),
+        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space12,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: AppSpacing.space32,
+                child: Center(
+                  child: BusinessIcon(iconKey: effective?.iconKey, size: 28),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontSize: AppTypography.fontSizeXs,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleSmall?.copyWith(
+                        color: colors.onSurface,
+                        fontSize: AppTypography.fontSizeMd,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showAccountSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final effective = _effectiveAccount(selectedId, accounts);
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final account in accounts)
+                ListTile(
+                  leading: Icon(
+                    account.id == effective?.id
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                  ),
+                  title: Text(account.name),
+                  subtitle: Text(accountTypeLabel(account.type)),
+                  onTap: () {
+                    onChanged(account.id);
+                    Navigator.pop(context);
+                  },
+                ),
+              if (accounts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.space20),
+                  child: Text(
+                    '$label暂无可选账户',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -765,19 +889,16 @@ class _TransactionOptionsPanel extends StatelessWidget {
     required this.mode,
     required this.occurredAt,
     required this.moneyAccounts,
-    required this.liabilityAccounts,
     required this.reimbursementAccounts,
     required this.fromAccountId,
     required this.toAccountId,
     required this.reimbursementAccountId,
-    required this.liabilityAccountId,
     required this.excludeStats,
     required this.excludeBudget,
     required this.onPickDate,
     required this.onFromAccountChanged,
     required this.onToAccountChanged,
     required this.onReimbursementAccountChanged,
-    required this.onLiabilityAccountChanged,
     required this.onExcludeStatsChanged,
     required this.onExcludeBudgetChanged,
   });
@@ -785,102 +906,77 @@ class _TransactionOptionsPanel extends StatelessWidget {
   final _TransactionFormMode mode;
   final DateTime occurredAt;
   final List<Account> moneyAccounts;
-  final List<Account> liabilityAccounts;
   final List<Account> reimbursementAccounts;
   final int? fromAccountId;
   final int? toAccountId;
   final int? reimbursementAccountId;
-  final int? liabilityAccountId;
   final bool excludeStats;
   final bool excludeBudget;
   final VoidCallback onPickDate;
   final ValueChanged<int?> onFromAccountChanged;
   final ValueChanged<int?> onToAccountChanged;
   final ValueChanged<int?> onReimbursementAccountChanged;
-  final ValueChanged<int?> onLiabilityAccountChanged;
   final ValueChanged<bool> onExcludeStatsChanged;
   final ValueChanged<bool> onExcludeBudgetChanged;
 
   @override
   Widget build(BuildContext context) {
-    final accountLabel = switch (mode) {
-      _TransactionFormMode.expense => '支出账户',
-      _TransactionFormMode.income => '收入账户',
-      _TransactionFormMode.transfer => '转出账户',
-      _TransactionFormMode.borrowing => '到账账户',
-    };
-    final primaryAccountId = switch (mode) {
-      _TransactionFormMode.expense => fromAccountId,
-      _TransactionFormMode.income => toAccountId,
-      _TransactionFormMode.transfer => fromAccountId,
-      _TransactionFormMode.borrowing => toAccountId,
-    };
-    final primaryChanged = switch (mode) {
-      _TransactionFormMode.expense => onFromAccountChanged,
-      _TransactionFormMode.income => onToAccountChanged,
-      _TransactionFormMode.transfer => onFromAccountChanged,
-      _TransactionFormMode.borrowing => onToAccountChanged,
-    };
+    final showPrimaryAccount =
+        mode == _TransactionFormMode.expense ||
+        mode == _TransactionFormMode.income;
+    final showExcludeStats = showPrimaryAccount;
+    final accountLabel = mode == _TransactionFormMode.income ? '收入账户' : '支出账户';
+    final primaryAccountId =
+        mode == _TransactionFormMode.income ? toAccountId : fromAccountId;
+    final primaryChanged =
+        mode == _TransactionFormMode.income
+            ? onToAccountChanged
+            : onFromAccountChanged;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _QuickActionChip(
-            icon: Icons.schedule,
-            label: _formatDateTime(occurredAt),
-            selected: false,
-            onTap: onPickDate,
-          ),
-          _AccountSelectorChip(
-            icon: Icons.account_balance_wallet_outlined,
-            label: accountLabel,
-            accounts: moneyAccounts,
-            selectedId: primaryAccountId,
-            allowNone: mode == _TransactionFormMode.borrowing,
-            noneLabel: '不记录到账',
-            onChanged: primaryChanged,
-          ),
-          if (mode == _TransactionFormMode.transfer)
-            _AccountSelectorChip(
-              icon: Icons.call_received,
-              label: '转入账户',
-              accounts: moneyAccounts,
-              selectedId: toAccountId,
-              onChanged: onToAccountChanged,
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            _QuickActionChip(
+              label: _formatDateTime(occurredAt),
+              selected: false,
+              onTap: onPickDate,
             ),
-          if (mode == _TransactionFormMode.expense)
-            _AccountSelectorChip(
-              icon: Icons.assignment_return_outlined,
-              label: '报销垫付',
-              accounts: reimbursementAccounts,
-              selectedId: reimbursementAccountId,
-              allowNone: true,
-              noneLabel: '不报销',
-              onChanged: onReimbursementAccountChanged,
-            ),
-          if (mode == _TransactionFormMode.borrowing)
-            _AccountSelectorChip(
-              icon: Icons.account_balance_outlined,
-              label: '负债账户',
-              accounts: liabilityAccounts,
-              selectedId: liabilityAccountId,
-              onChanged: onLiabilityAccountChanged,
-            ),
-          _ToggleChip(
-            icon: Icons.remove_circle_outline,
-            label: '不计收支',
-            selected: excludeStats,
-            onChanged: onExcludeStatsChanged,
-          ),
-          if (mode == _TransactionFormMode.expense)
-            _ToggleChip(
-              icon: Icons.pie_chart_outline,
-              label: '不计预算',
-              selected: excludeBudget,
-              onChanged: onExcludeBudgetChanged,
-            ),
-        ],
+            if (showPrimaryAccount)
+              _AccountSelectorChip(
+                label: accountLabel,
+                accounts: moneyAccounts,
+                selectedId: primaryAccountId,
+                onChanged: primaryChanged,
+              ),
+            if (mode == _TransactionFormMode.expense)
+              _AccountSelectorChip(
+                label: '报销账户',
+                accounts: reimbursementAccounts,
+                selectedId: reimbursementAccountId,
+                allowNone: true,
+                noneLabel: '不报销',
+                onChanged: onReimbursementAccountChanged,
+              ),
+            if (showExcludeStats)
+              _ToggleChip(
+                icon: Icons.remove_circle_outline,
+                label: '不计收支',
+                selected: excludeStats,
+                onChanged: onExcludeStatsChanged,
+              ),
+            if (mode == _TransactionFormMode.expense)
+              _ToggleChip(
+                icon: Icons.pie_chart_outline,
+                label: '不计预算',
+                selected: excludeBudget,
+                onChanged: onExcludeBudgetChanged,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -888,7 +984,6 @@ class _TransactionOptionsPanel extends StatelessWidget {
 
 class _AccountSelectorChip extends StatelessWidget {
   const _AccountSelectorChip({
-    required this.icon,
     required this.label,
     required this.accounts,
     required this.selectedId,
@@ -897,7 +992,6 @@ class _AccountSelectorChip extends StatelessWidget {
     this.noneLabel = '无',
   });
 
-  final IconData icon;
   final String label;
   final List<Account> accounts;
   final int? selectedId;
@@ -918,10 +1012,14 @@ class _AccountSelectorChip extends StatelessWidget {
             : effective == null
             ? '$label为空'
             : effective.name;
+    final leading =
+        effective == null || (allowNone && selectedId == null)
+            ? null
+            : BusinessIcon(iconKey: effective.iconKey, size: 14);
 
     return _QuickActionChip(
-      icon: icon,
       label: text,
+      leading: leading,
       selected: false,
       onTap: () => _showAccountSheet(context),
     );
@@ -1007,16 +1105,18 @@ class _ToggleChip extends StatelessWidget {
 
 class _QuickActionChip extends StatelessWidget {
   const _QuickActionChip({
-    required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
+    this.icon,
+    this.leading,
   });
 
-  final IconData icon;
+  final IconData? icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -1044,8 +1144,13 @@ class _QuickActionChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: foreground),
-              const SizedBox(width: AppSpacing.space2),
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: AppSpacing.space2),
+              ] else if (icon != null) ...[
+                Icon(icon, size: 14, color: foreground),
+                const SizedBox(width: AppSpacing.space2),
+              ],
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 96),
                 child: Text(

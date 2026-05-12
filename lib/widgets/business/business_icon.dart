@@ -415,6 +415,12 @@ const businessIconSpecs = <BusinessIconSpec>[
     label: '其他',
   ),
   BusinessIconSpec.svg(
+    iconKey: 'account',
+    assetPath: 'assets/icons/account/account.svg',
+    color: AppColors.categoryGenericNeutral,
+    label: '账户',
+  ),
+  BusinessIconSpec.svg(
     iconKey: 'alipay',
     assetPath: 'assets/icons/account/alipay.svg',
     color: AppColors.categoryGenericNeutral,
