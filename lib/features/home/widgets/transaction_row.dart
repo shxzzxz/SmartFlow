@@ -133,23 +133,111 @@ class _AccountLine extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final accountText = transactionAccountLabel(item);
     final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
-    final iconKey = _resolveIconKey(item, accounts);
+    final textStyle = textTheme.bodySmall?.copyWith(
+      color: colors.onSurfaceVariant,
+      fontSize: AppTypography.fontSizeXs,
+      fontWeight: FontWeight.w400,
+    );
+    final flow = _resolveAccountFlow(item, accounts);
+    final fallbackText = transactionAccountLabel(item);
 
+    if (flow.out != null && flow.in_ != null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Flexible(
+            child: _AccountEndpointView(endpoint: flow.out!, style: textStyle),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
+            child: Text(
+              flow.separator,
+              style: textStyle,
+              maxLines: 1,
+              overflow: TextOverflow.clip,
+            ),
+          ),
+          Flexible(
+            child: _AccountEndpointView(endpoint: flow.in_!, style: textStyle),
+          ),
+        ],
+      );
+    }
+
+    final endpoint =
+        flow.out ??
+        flow.in_ ??
+        _AccountEndpoint(
+          label: fallbackText.isEmpty ? '未分配账户' : fallbackText,
+          iconKey: null,
+        );
+    return Align(
+      alignment: Alignment.centerRight,
+      child: _AccountEndpointView(endpoint: endpoint, style: textStyle),
+    );
+  }
+}
+
+class _AccountFlow {
+  const _AccountFlow({this.out, this.in_, this.separator = '→'});
+
+  final _AccountEndpoint? out;
+  final _AccountEndpoint? in_;
+  final String separator;
+}
+
+_AccountFlow _resolveAccountFlow(
+  TransactionListItem item,
+  List<Account> accounts,
+) {
+  final flowOut = _resolveAccountEndpoint(
+    id: item.flowOutAccountId,
+    name: item.flowOutAccountName,
+    accounts: accounts,
+  );
+  final flowIn = _resolveAccountEndpoint(
+    id: item.flowInAccountId,
+    name: item.flowInAccountName,
+    accounts: accounts,
+  );
+
+  return switch (item.businessPurpose) {
+    BusinessPurpose.dailyExpense => _AccountFlow(out: flowOut),
+    BusinessPurpose.reimbursementAdvance => _AccountFlow(
+      out: flowIn,
+      in_: flowOut,
+      separator: '|',
+    ),
+    BusinessPurpose.dailyIncome => _AccountFlow(in_: flowIn),
+    _ => _AccountFlow(out: flowOut, in_: flowIn),
+  };
+}
+
+class _AccountEndpoint {
+  const _AccountEndpoint({required this.label, required this.iconKey});
+
+  final String label;
+  final String? iconKey;
+}
+
+class _AccountEndpointView extends StatelessWidget {
+  const _AccountEndpointView({required this.endpoint, required this.style});
+
+  final _AccountEndpoint endpoint;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        BusinessIcon(iconKey: iconKey, size: 12),
+        BusinessIcon(iconKey: endpoint.iconKey, size: 12),
         const SizedBox(width: AppSpacing.space4),
         Flexible(
           child: Text(
-            accountText.isEmpty ? '未分配账户' : accountText,
-            style: textTheme.bodySmall?.copyWith(
-              color: colors.onSurfaceVariant,
-              fontSize: AppTypography.fontSizeXs,
-              fontWeight: FontWeight.w400,
-            ),
+            endpoint.label,
+            style: style,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
@@ -159,17 +247,27 @@ class _AccountLine extends ConsumerWidget {
   }
 }
 
-String? _resolveIconKey(TransactionListItem item, List<Account> accounts) {
-  final accountId = switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose
-        .debtRepayment => item.flowOutAccountId ?? item.flowInAccountId,
-    _ => item.flowInAccountId ?? item.flowOutAccountId,
-  };
-  if (accountId == null) return null;
+_AccountEndpoint? _resolveAccountEndpoint({
+  required int? id,
+  required String? name,
+  required List<Account> accounts,
+}) {
+  final account = _findAccount(id, accounts);
+  final label = _cleanText(name) ?? account?.name;
+  if (label == null) return null;
+  return _AccountEndpoint(label: label, iconKey: account?.iconKey);
+}
+
+Account? _findAccount(int? id, List<Account> accounts) {
+  if (id == null) return null;
   for (final account in accounts) {
-    if (account.id == accountId) return account.iconKey;
+    if (account.id == id) return account;
   }
   return null;
+}
+
+String? _cleanText(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) return null;
+  return trimmed;
 }

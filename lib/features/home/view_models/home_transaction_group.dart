@@ -35,19 +35,34 @@ List<HomeTransactionDayGroup> groupTransactionsByDay(
       HomeTransactionDayGroup(
         date: date,
         items: groups[date]!,
-        incomeMinor: sumMinor(groups[date]!, isIncomePurpose),
-        expenseMinor: sumMinor(groups[date]!, isExpensePurpose),
+        incomeMinor: sumIncomeMinor(groups[date]!),
+        expenseMinor: sumExpenseMinor(groups[date]!),
       ),
   ];
 }
 
-int sumMinor(
-  Iterable<TransactionListItem> items,
-  bool Function(BusinessPurpose purpose) predicate,
-) {
-  return items
-      .where((item) => predicate(item.businessPurpose))
-      .fold(0, (sum, item) => sum + item.primaryAmount.minorUnits.abs());
+int sumIncomeMinor(Iterable<TransactionListItem> items) {
+  return items.fold(0, (sum, item) => sum + incomeMinorForDayTotal(item));
+}
+
+int sumExpenseMinor(Iterable<TransactionListItem> items) {
+  return items.fold(0, (sum, item) => sum + expenseMinorForDayTotal(item));
+}
+
+int incomeMinorForDayTotal(TransactionListItem item) {
+  if (!isIncomePurpose(item.businessPurpose)) {
+    return 0;
+  }
+  return item.primaryAmount.minorUnits.abs();
+}
+
+int expenseMinorForDayTotal(TransactionListItem item) {
+  if (!isExpensePurpose(item.businessPurpose)) {
+    return 0;
+  }
+  final refundedMinor = item.refundedTotal?.minorUnits.abs() ?? 0;
+  final netExpense = item.primaryAmount.minorUnits.abs() - refundedMinor;
+  return netExpense < 0 ? 0 : netExpense;
 }
 
 /// 主交易级别的"收入"判定。
@@ -56,16 +71,14 @@ int sumMinor(
 /// 因此不再纳入此处的"主级收入"统计。
 bool isIncomePurpose(BusinessPurpose purpose) {
   return switch (purpose) {
-    BusinessPurpose.dailyIncome || BusinessPurpose.borrowing => true,
+    BusinessPurpose.dailyIncome => true,
     _ => false,
   };
 }
 
 bool isExpensePurpose(BusinessPurpose purpose) {
   return switch (purpose) {
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.debtRepayment => true,
+    BusinessPurpose.dailyExpense => true,
     _ => false,
   };
 }

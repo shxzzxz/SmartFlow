@@ -380,6 +380,7 @@ void main() {
                       const CreateCategoryCommand(
                         name: '电费',
                         type: AccountType.expense,
+                        iconKey: 'flashlight-line',
                       ),
                     )
                     as Success)
@@ -422,6 +423,8 @@ void main() {
         final mainAdvance = items.singleWhere(
           (it) => it.businessPurpose == BusinessPurpose.reimbursementAdvance,
         );
+        expect(mainAdvance.categoryName, '电费');
+        expect(mainAdvance.categoryIconKey, 'flashlight-line');
         expect(mainAdvance.reimbursementReceivedTotal?.minorUnits, 48000);
         expect(mainAdvance.reimbursementChildCount, 1);
         expect(mainAdvance.reimbursementGapExpense?.minorUnits, 2000);

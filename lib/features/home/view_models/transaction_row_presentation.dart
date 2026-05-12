@@ -14,15 +14,16 @@ import '../../../widgets/business/finance_labels.dart';
 String? resolveCategoryIconKey(TransactionListItem item) {
   return switch (item.businessPurpose) {
     BusinessPurpose.dailyExpense ||
-    BusinessPurpose.dailyIncome => item.categoryIconKey,
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.reimbursementAdvance => item.categoryIconKey,
     BusinessPurpose.transfer => 'transfer',
-    BusinessPurpose.debtRepayment || BusinessPurpose.borrowing => 'loan',
-    BusinessPurpose.refund ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.reimbursementReceipt ||
-    BusinessPurpose.reimbursementClose ||
+    BusinessPurpose.debtRepayment => 'loan',
+    BusinessPurpose.borrowing => 'hand-coin-line',
     BusinessPurpose.openingBalance ||
-    BusinessPurpose.balanceAdjustment => null,
+    BusinessPurpose.balanceAdjustment => 'wallet-line',
+    BusinessPurpose.refund ||
+    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.reimbursementClose => null,
   };
 }
 
@@ -31,13 +32,15 @@ String transactionPrimaryLabel(TransactionListItem item) {
     BusinessPurpose.dailyExpense || BusinessPurpose.dailyIncome =>
       _cleanText(item.categoryName) ??
           transactionPurposeLabel(item.businessPurpose),
+    BusinessPurpose.reimbursementAdvance =>
+      _cleanText(item.categoryName) ?? '支出',
     _ => transactionPurposeLabel(item.businessPurpose),
   };
 }
 
 String transactionAccountLabel(TransactionListItem item) {
   return switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense =>
+    BusinessPurpose.dailyExpense || BusinessPurpose.reimbursementAdvance =>
       _cleanText(item.flowOutAccountName) ?? _firstAccountName(item),
     BusinessPurpose.dailyIncome =>
       _cleanText(item.flowInAccountName) ?? _firstAccountName(item),
@@ -81,14 +84,14 @@ Color amountColor(
   BusinessPurpose purpose,
 ) {
   return switch (purpose) {
-    BusinessPurpose.dailyIncome ||
-    BusinessPurpose.borrowing => financeColors.income,
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.debtRepayment => financeColors.expense,
+    BusinessPurpose.dailyIncome => financeColors.income,
+    BusinessPurpose.dailyExpense => financeColors.expense,
     BusinessPurpose.refund ||
     BusinessPurpose.reimbursementReceipt => financeColors.income,
     BusinessPurpose.transfer ||
+    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.debtRepayment ||
+    BusinessPurpose.borrowing ||
     BusinessPurpose.openingBalance ||
     BusinessPurpose.balanceAdjustment ||
     BusinessPurpose.reimbursementClose => colors.onSurface,
@@ -97,10 +100,8 @@ Color amountColor(
 
 String formatTransactionAmount(TransactionListItem item) {
   final prefix = switch (item.businessPurpose) {
-    BusinessPurpose.dailyIncome || BusinessPurpose.borrowing => '+',
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.reimbursementAdvance ||
-    BusinessPurpose.debtRepayment => '-',
+    BusinessPurpose.dailyIncome => '+',
+    BusinessPurpose.dailyExpense => '-',
     _ => '',
   };
   return '$prefix${formatMinorAmount(item.primaryAmount.minorUnits)}';

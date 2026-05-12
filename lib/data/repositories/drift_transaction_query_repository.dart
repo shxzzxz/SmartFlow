@@ -49,11 +49,17 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
           "AND a.account_type = 'expense' THEN a.name "
           "WHEN t.business_purpose = 'dailyIncome' "
-          "AND a.account_type = 'income' THEN a.name END) AS category_name, "
+          "AND a.account_type = 'income' THEN a.name "
+          "WHEN t.business_purpose = 'reimbursementAdvance' "
+          "AND expense_category.account_type = 'expense' "
+          'THEN expense_category.name END) AS category_name, '
           "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
           "AND a.account_type = 'expense' THEN a.icon_key "
           "WHEN t.business_purpose = 'dailyIncome' "
-          "AND a.account_type = 'income' THEN a.icon_key END) "
+          "AND a.account_type = 'income' THEN a.icon_key "
+          "WHEN t.business_purpose = 'reimbursementAdvance' "
+          "AND expense_category.account_type = 'expense' "
+          'THEN expense_category.icon_key END) '
           'AS category_icon_key, '
           "MAX(CASE WHEN a.account_type IN ('asset', 'liability') "
           "AND e.direction = 'credit' THEN a.id END) "
@@ -81,6 +87,8 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           'FROM transactions t '
           'LEFT JOIN entries e ON e.transaction_id = t.id '
           'LEFT JOIN accounts a ON a.id = e.account_id '
+          'LEFT JOIN accounts expense_category '
+          'ON expense_category.id = t.reimbursement_expense_account_id '
           'WHERE t.business_state = ? '
           '$topLevelFilter'
           '$accountFilter'

@@ -313,6 +313,13 @@ const businessIconSpecs = <BusinessIconSpec>[
     usage: BusinessIconUsage.incomeCategory,
   ),
   BusinessIconSpec.remix(
+    iconKey: 'wallet-line',
+    icon: RemixIcons.wallet_line,
+    color: AppColors.categoryGenericNeutral,
+    label: '余额',
+    usage: BusinessIconUsage.system,
+  ),
+  BusinessIconSpec.remix(
     iconKey: 'trophy-line',
     icon: RemixIcons.trophy_line,
     color: AppColors.categoryGift,
