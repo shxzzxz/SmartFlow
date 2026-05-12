@@ -381,7 +381,7 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
           _showError('请选择支出账户');
           return;
         }
-        final reimbursementAccountId = _effectiveId(
+        final reimbursementAccountId = _selectedId(
           _reimbursementAccountId,
           reimbursementAccounts,
         );
@@ -511,6 +511,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       return selectedId;
     }
     return options.isEmpty ? null : options.first.id;
+  }
+
+  int? _selectedId(int? selectedId, List<Account> options) {
+    if (selectedId != null &&
+        options.any((account) => account.id == selectedId)) {
+      return selectedId;
+    }
+    return null;
   }
 
   String? _blankToNull(String value) {

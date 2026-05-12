@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../design_system/tokens/radius.dart';
@@ -60,20 +59,6 @@ class HomeHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          IconButton(
-            onPressed: () => context.go('/transactions'),
-            icon: const Icon(RemixIcons.search_line),
-            iconSize: 22,
-            color: colors.onSurface,
-            tooltip: '搜索',
-          ),
-          IconButton(
-            onPressed: () => context.go('/transactions'),
-            icon: const Icon(RemixIcons.equalizer_line),
-            iconSize: 22,
-            color: colors.onSurface,
-            tooltip: '筛选',
-          ),
         ],
       ),
     );

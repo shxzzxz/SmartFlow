@@ -15,7 +15,6 @@ import '../features/transactions/pages/reimbursement_close_form_page.dart';
 import '../features/transactions/pages/reimbursement_receipt_form_page.dart';
 import '../features/transactions/pages/transaction_detail_page.dart';
 import '../features/transactions/pages/transaction_form_page.dart';
-import '../features/transactions/pages/transactions_page.dart';
 
 final appRouter = GoRouter(
   routes: [
@@ -38,10 +37,6 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/profile',
           builder: (context, state) => const ProfilePage(),
-        ),
-        GoRoute(
-          path: '/transactions',
-          builder: (context, state) => const TransactionsPage(),
         ),
       ],
     ),
