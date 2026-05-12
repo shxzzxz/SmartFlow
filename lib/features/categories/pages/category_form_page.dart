@@ -74,7 +74,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
           key: _formKey,
           child: Column(
             children: [
-              const _CategoryFormHeader(),
+              _CategoryFormHeader(submitting: _submitting, onSave: _submit),
               _TypeTabs(type: _type, onChanged: _switchType),
               const Divider(height: 1),
               Expanded(
@@ -112,30 +112,15 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                     _PlainFormRow(
                       label: '父分类',
                       onTap: () => _showParentSheet(parentOptions),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              effectiveParent?.name ?? '无',
-                              textAlign: TextAlign.right,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodyLarge?.copyWith(
-                                color:
-                                    effectiveParent == null
-                                        ? colors.onSurface
-                                        : colors.onSurface,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.space6),
-                          Icon(
-                            RemixIcons.arrow_right_s_line,
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ],
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          effectiveParent?.name ?? '无',
+                          textAlign: TextAlign.left,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: colors.onSurface),
+                        ),
                       ),
                     ),
                     const Divider(height: 1),
@@ -151,48 +136,6 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                     ),
                     const Divider(height: 1),
                   ],
-                ),
-              ),
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.space24,
-                    AppSpacing.space10,
-                    AppSpacing.space24,
-                    AppSpacing.space16,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 56,
-                          child: OutlinedButton(
-                            onPressed: _submitting ? null : () => context.pop(),
-                            child: const Text('取消'),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space12),
-                      Expanded(
-                        child: SizedBox(
-                          height: 56,
-                          child: FilledButton(
-                            onPressed: _submitting ? null : _submit,
-                            child:
-                                _submitting
-                                    ? const SizedBox.square(
-                                      dimension: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                    : const Text('保存'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -212,7 +155,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
   }
 
   Future<void> _showParentSheet(List<Account> parents) async {
-    final selected = await showModalBottomSheet<int?>(
+    final selected = await showModalBottomSheet<int>(
       context: context,
       showDragHandle: true,
       builder: (context) {
@@ -227,7 +170,7 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                       : RemixIcons.checkbox_blank_circle_line,
                 ),
                 title: const Text('无'),
-                onTap: () => Navigator.of(context).pop(null),
+                onTap: () => Navigator.of(context).pop(-1),
               ),
               for (final parent in parents)
                 ListTile(
@@ -244,8 +187,8 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
         );
       },
     );
-    if (!mounted) return;
-    setState(() => _parentId = selected);
+    if (!mounted || selected == null) return;
+    setState(() => _parentId = selected == -1 ? null : selected);
   }
 
   Future<void> _submit() async {
@@ -282,7 +225,10 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
 }
 
 class _CategoryFormHeader extends StatelessWidget {
-  const _CategoryFormHeader();
+  const _CategoryFormHeader({required this.submitting, required this.onSave});
+
+  final bool submitting;
+  final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -303,6 +249,19 @@ class _CategoryFormHeader extends StatelessWidget {
               icon: const Icon(RemixIcons.arrow_left_s_line),
               iconSize: 32,
               tooltip: '返回',
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: submitting ? null : onSave,
+              child:
+                  submitting
+                      ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : const Text('保存'),
             ),
           ),
           Text(
