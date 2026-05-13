@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../design_system/theme/app_text_styles.dart';
 import '../../design_system/tokens/radius.dart';
 import '../../design_system/tokens/spacing.dart';
 import '../../design_system/widgets/app_surface.dart';
@@ -42,7 +43,7 @@ class CategoryGridPicker extends StatelessWidget {
               Expanded(
                 child: Text(
                   emptyLabel,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  style: context.appTextStyles.inputText.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),

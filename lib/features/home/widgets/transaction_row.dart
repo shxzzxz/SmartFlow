@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
@@ -22,8 +22,8 @@ class TransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+    final textStyles = context.appTextStyles;
     final color = amountColor(colors, financeColors, item.businessPurpose);
     final title = transactionPrimaryLabel(item);
     final note = item.note?.trim();
@@ -57,11 +57,7 @@ class TransactionRow extends StatelessWidget {
                         fit: FlexFit.loose,
                         child: Text(
                           title,
-                          style: textTheme.titleSmall?.copyWith(
-                            fontSize: AppTypography.fontSizeMd,
-                            fontWeight: FontWeight.w400,
-                            color: colors.onSurface,
-                          ),
+                          style: textStyles.listTitle,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -75,10 +71,7 @@ class TransactionRow extends StatelessWidget {
                   const SizedBox(height: AppSpacing.space4),
                   Text(
                     subtitle,
-                    style: textTheme.bodySmall?.copyWith(
-                      fontSize: AppTypography.fontSizeXs,
-                      color: colors.onSurfaceVariant,
-                    ),
+                    style: textStyles.listSupporting,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -93,11 +86,7 @@ class TransactionRow extends StatelessWidget {
                 children: [
                   Text(
                     formatTransactionAmount(item),
-                    style: textTheme.titleSmall?.copyWith(
-                      fontSize: AppTypography.fontSizeMd,
-                      color: color,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: textStyles.amountList.copyWith(color: color),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -143,14 +132,8 @@ class _AccountLine extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
-    final textStyle = textTheme.bodySmall?.copyWith(
-      color: colors.onSurfaceVariant,
-      fontSize: AppTypography.fontSizeXs,
-      fontWeight: FontWeight.w400,
-    );
+    final textStyle = context.appTextStyles.listSupporting;
     final flow = _resolveAccountFlow(item, accounts);
     final fallbackText = transactionAccountLabel(item);
 

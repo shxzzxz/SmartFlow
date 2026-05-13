@@ -5,9 +5,9 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
@@ -158,13 +158,7 @@ class _AssetsHeader extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Text(
-          '资产',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: colors.onSurface,
-          ),
-        ),
+        Text('资产', style: context.appTextStyles.pageTitle),
         const Spacer(),
         IconButton(
           onPressed: () => context.push('/accounts/new'),
@@ -198,6 +192,7 @@ class _NetAssetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     final netMinor = assetMinor - liabilityMinor;
     final totalForRatio = (assetMinor.abs() + liabilityMinor.abs()).clamp(
       1,
@@ -228,17 +223,13 @@ class _NetAssetCard extends StatelessWidget {
           children: [
             Expanded(
               child: DefaultTextStyle(
-                style: TextStyle(color: colors.onPrimary),
+                style: context.appTextStyles.onPrimaryLabel,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Text(
-                          '净资产（元）',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: colors.onPrimary),
-                        ),
+                        Text('净资产（元）', style: textStyles.onPrimaryLabel),
                         const SizedBox(width: AppSpacing.space6),
                         Icon(
                           RemixIcons.eye_line,
@@ -250,20 +241,14 @@ class _NetAssetCard extends StatelessWidget {
                     const SizedBox(height: AppSpacing.space14),
                     Text(
                       hideBalances ? '¥ **,***.**' : _formatMoney(netMinor),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
+                      style: textStyles.amountDisplay.copyWith(
                         color: colors.onPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space12),
                     Text(
                       hideBalances ? '较上月 ****' : '较上月 +1,250.60 (+5.32%)',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colors.onPrimary.withValues(alpha: 0.86),
-                      ),
+                      style: textStyles.onPrimarySupporting,
                     ),
                   ],
                 ),
@@ -367,7 +352,7 @@ class _LegendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onPrimary = Theme.of(context).colorScheme.onPrimary;
+    final textStyles = context.appTextStyles;
     return Row(
       children: [
         Container(
@@ -376,21 +361,8 @@ class _LegendRow extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: AppSpacing.space6),
-        Expanded(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: onPrimary.withValues(alpha: 0.84),
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: onPrimary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        Expanded(child: Text(label, style: textStyles.onPrimaryTiny)),
+        Text(value, style: textStyles.onPrimaryTinyStrong),
       ],
     );
   }
@@ -415,21 +387,18 @@ class _AccountSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     return Column(
       children: [
         Row(
           children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
+            Text(title, style: textStyles.groupTitle),
             const Spacer(),
             Text(
               totalLabel,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              style: textStyles.detailLabel.copyWith(
+                color: colors.onSurfaceVariant,
               ),
             ),
             const SizedBox(width: AppSpacing.space6),
@@ -438,10 +407,7 @@ class _AccountSection extends StatelessWidget {
                 : MoneyText(
                   money: total,
                   semantic: totalSemantic,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                  style: textStyles.amountList,
                 ),
           ],
         ),
@@ -483,6 +449,7 @@ class _AccountRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     final semantic =
         account.type == AccountType.asset
             ? MoneySemantic.asset
@@ -513,17 +480,14 @@ class _AccountRow extends StatelessWidget {
                     account.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontSize: AppTypography.fontSizeMd,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: textStyles.formValue,
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
                     account.subtype == null
                         ? accountTypeLabel(account.type)
                         : accountSubtypeLabel(account.subtype!),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    style: textStyles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
                   ),
@@ -539,11 +503,7 @@ class _AccountRow extends StatelessWidget {
                     : MoneyText(
                       money: account.balance,
                       semantic: semantic,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontSize: AppTypography.fontSizeMd,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                      style: textStyles.amountList,
                     ),
                 if (account.type == AccountType.liability &&
                     (account.billingDay != null ||
@@ -551,9 +511,8 @@ class _AccountRow extends StatelessWidget {
                   const SizedBox(height: AppSpacing.space4),
                   Text(
                     _liabilityDateText(account),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    style: textStyles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
-                      fontSize: AppTypography.fontSizeXs,
                     ),
                   ),
                 ],
@@ -575,23 +534,14 @@ class _TrendSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     return Column(
       children: [
         Row(
           children: [
-            Text(
-              '资产趋势',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-            ),
+            Text('资产趋势', style: textStyles.sectionTitleStrong),
             const Spacer(),
-            Text(
-              '本月',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
-            ),
+            Text('本月', style: textStyles.detailLabel),
             Icon(RemixIcons.arrow_down_s_line, color: colors.onSurfaceVariant),
           ],
         ),
@@ -605,18 +555,12 @@ class _TrendSection extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '净资产变化',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      Text('净资产变化', style: textStyles.formValue),
                       const SizedBox(height: AppSpacing.space14),
                       Text(
                         hideBalances ? '+¥*,***.**' : '+¥1,250.60',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        style: textStyles.amountPrimary.copyWith(
                           color: colors.primary,
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -708,9 +652,7 @@ class _HiddenMoneyText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       '¥ ****',
-      style: Theme.of(
-        context,
-      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      style: context.appTextStyles.amountList,
     );
   }
 }

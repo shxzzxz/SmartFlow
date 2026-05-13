@@ -26,8 +26,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       income: AppColors.income,
       expense: AppColors.expense,
       transfer: AppColors.transfer,
-      asset: AppColors.asset,
-      liability: AppColors.liability,
+      asset: AppColors.income,
+      liability: AppColors.expense,
       equity: AppColors.equity,
     );
   }
@@ -41,8 +41,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
       income: Color(0xFF8BD88F),
       expense: Color(0xFFFFB68A),
       transfer: Color(0xFFA9C7FF),
-      asset: Color(0xFF80CBC4),
-      liability: Color(0xFFFFB3BD),
+      asset: Color(0xFF8BD88F),
+      liability: Color(0xFFFFB68A),
       equity: Color(0xFFD2BFFF),
     );
   }

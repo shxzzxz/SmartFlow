@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_text_styles.dart';
 import '../tokens/radius.dart';
 import '../tokens/spacing.dart';
-import '../tokens/typography.dart';
 
 class AppMonthSelector extends StatelessWidget {
   const AppMonthSelector({
@@ -20,9 +20,6 @@ class AppMonthSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -41,11 +38,7 @@ class AppMonthSelector extends StatelessWidget {
             ),
             child: Text(
               '${visibleMonth.year}年${visibleMonth.month}月',
-              style: textTheme.titleLarge?.copyWith(
-                fontSize: AppTypography.fontSizeLg,
-                fontWeight: FontWeight.w500,
-                color: colors.onSurface,
-              ),
+              style: context.appTextStyles.dateNavigationTitle,
             ),
           ),
         ),
@@ -154,7 +147,6 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final yearCount = widget.lastYear - widget.firstYear + 1;
 
     return SafeArea(
@@ -171,13 +163,7 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
           children: [
             Row(
               children: [
-                Text(
-                  '选择月份',
-                  style: textTheme.titleMedium?.copyWith(
-                    color: colors.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text('选择月份', style: context.appTextStyles.subsectionTitle),
                 const Spacer(),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -260,9 +246,6 @@ class _WheelPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return ListWheelScrollView.useDelegate(
       controller: controller,
       itemExtent: itemExtent,
@@ -277,9 +260,8 @@ class _WheelPicker extends StatelessWidget {
             (context, index) => Center(
               child: Text(
                 labelBuilder(index),
-                style: textTheme.titleMedium?.copyWith(
-                  color: colors.onSurface,
-                  fontWeight: FontWeight.w500,
+                style: context.appTextStyles.segmentedControlLabel(
+                  selected: false,
                 ),
               ),
             ),

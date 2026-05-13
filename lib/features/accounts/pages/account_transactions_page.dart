@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../widgets/business/money_text.dart';
 import '../../../widgets/business/transaction_purpose_badge.dart';
@@ -49,7 +50,7 @@ class AccountTransactionsPage extends ConsumerWidget {
                   ),
                   trailing: MoneyText(
                     money: item.primaryAmount,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: context.appTextStyles.amountList,
                   ),
                 ),
               );

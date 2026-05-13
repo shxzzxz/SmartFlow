@@ -7,11 +7,11 @@ import '../../../app/providers.dart';
 import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
@@ -875,8 +875,7 @@ class _TopBar extends StatelessWidget {
                     ? Center(
                       child: Text(
                         '编辑${_modeLabel(mode)}',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: context.appTextStyles.subsectionTitleStrong,
                       ),
                     )
                     : _ModeTabs(mode: mode, onChanged: onModeChanged),
@@ -924,7 +923,7 @@ class _ModeTabItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
 
     return InkWell(
       onTap: onTap,
@@ -939,11 +938,11 @@ class _ModeTabItem extends StatelessWidget {
           children: [
             Text(
               label,
-              style: textTheme.titleMedium?.copyWith(
-                color: selected ? colors.primary : colors.onSurfaceVariant,
-                fontSize: AppTypography.fontSizeMd,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
+              style: textStyles
+                  .segmentedControlLabel(selected: selected)
+                  .copyWith(
+                    color: selected ? colors.primary : colors.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: AppSpacing.space6),
             AnimatedContainer(
@@ -995,7 +994,7 @@ class _MainAccountPickerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
     final effective = _effectiveAccount(selectedId, accounts);
     final title = effective?.name ?? '$label为空';
 
@@ -1023,23 +1022,13 @@ class _MainAccountPickerTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      label,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        fontSize: AppTypography.fontSizeXs,
-                      ),
-                    ),
+                    Text(label, style: textStyles.formLabel),
                     const SizedBox(height: AppSpacing.space2),
                     Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleSmall?.copyWith(
-                        color: colors.onSurface,
-                        fontSize: AppTypography.fontSizeMd,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: textStyles.formValue,
                     ),
                   ],
                 ),
@@ -1080,7 +1069,7 @@ class _MainAccountPickerTile extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.space20),
                   child: Text(
                     '$label暂无可选账户',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: context.appTextStyles.inputText,
                   ),
                 ),
             ],
@@ -1106,6 +1095,7 @@ class _AmountNotePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>();
+    final textStyles = context.appTextStyles;
     final amountColor = switch (semantic) {
       MoneySemantic.expense => financeColors?.expense ?? colors.error,
       MoneySemantic.income => financeColors?.income ?? colors.primary,
@@ -1123,7 +1113,7 @@ class _AmountNotePanel extends StatelessWidget {
               controller: noteController,
               minLines: 1,
               maxLines: 1,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: textStyles.inputText,
               decoration: const InputDecoration(
                 hintText: '点击填写备注',
                 border: InputBorder.none,
@@ -1145,20 +1135,11 @@ class _AmountNotePanel extends StatelessWidget {
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
-              style: TextStyle(
-                color: amountColor,
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                height: 1,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+              style: textStyles.amountHero.copyWith(color: amountColor),
               decoration: InputDecoration(
                 hintText: '0.00',
-                hintStyle: TextStyle(
+                hintStyle: textStyles.amountHero.copyWith(
                   color: amountColor.withValues(alpha: 0.58),
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
                 ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -1358,7 +1339,7 @@ class _AccountSelectorChip extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.space20),
                   child: Text(
                     '$label暂无可选账户',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: context.appTextStyles.inputText,
                   ),
                 ),
             ],
@@ -1447,11 +1428,9 @@ class _QuickActionChip extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: foreground,
-                    fontSize: 11,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  ),
+                  style: context.appTextStyles
+                      .quickActionLabel(selected: selected)
+                      .copyWith(color: foreground),
                 ),
               ),
             ],
@@ -1558,6 +1537,7 @@ class _PadKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.space2),
@@ -1574,10 +1554,10 @@ class _PadKey extends StatelessWidget {
                   icon == null
                       ? Text(
                         label!,
-                        style: (label == '再记'
-                                ? Theme.of(context).textTheme.titleMedium
-                                : Theme.of(context).textTheme.titleLarge)
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style:
+                            label == '再记'
+                                ? textStyles.keypadSecondary
+                                : textStyles.keypadPrimary,
                       )
                       : Icon(icon, size: 22),
             ),

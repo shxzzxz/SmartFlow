@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -13,7 +13,6 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -26,13 +25,7 @@ class ProfilePage extends StatelessWidget {
             AppSpacing.space24,
           ),
           children: [
-            Text(
-              '我的',
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: colors.onSurface,
-              ),
-            ),
+            Text('我的', style: context.appTextStyles.pageTitle),
             const SizedBox(height: AppSpacing.space20),
             AppSurface(
               child: Column(
@@ -81,7 +74,6 @@ class _ProfileActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     return InkWell(
       onTap: onTap,
@@ -107,17 +99,11 @@ class _ProfileActionRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: textTheme.titleSmall?.copyWith(
-                      fontSize: AppTypography.fontSizeMd,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text(label, style: context.appTextStyles.formValue),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
                     description,
-                    style: textTheme.bodySmall?.copyWith(
+                    style: context.appTextStyles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
                   ),

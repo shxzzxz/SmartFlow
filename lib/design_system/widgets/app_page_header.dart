@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_text_styles.dart';
 import '../tokens/radius.dart';
 import '../tokens/spacing.dart';
-import '../tokens/typography.dart';
 
 class AppPageHeader extends StatelessWidget {
   const AppPageHeader({
@@ -20,9 +20,6 @@ class AppPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return Row(
       children: [
         if (showBackButton) ...[
@@ -39,10 +36,7 @@ class AppPageHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: textTheme.headlineSmall?.copyWith(
-                  fontSize: AppTypography.fontSizeXl,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: context.appTextStyles.pageTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -50,11 +44,7 @@ class AppPageHeader extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space2),
                 Text(
                   subtitle!,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                    fontSize: AppTypography.fontSizeSm,
-                    fontWeight: FontWeight.w400,
-                  ),
+                  style: context.appTextStyles.pageSubtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

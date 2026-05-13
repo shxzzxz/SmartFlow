@@ -5,9 +5,9 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/result/result.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/category_service.dart';
@@ -118,8 +118,9 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                           effectiveParent?.name ?? '无',
                           textAlign: TextAlign.left,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: colors.onSurface),
+                          style: context.appTextStyles.formPlainValue.copyWith(
+                            color: colors.onSurface,
+                          ),
                         ),
                       ),
                     ),
@@ -264,12 +265,7 @@ class _CategoryFormHeader extends StatelessWidget {
                       : const Text('保存'),
             ),
           ),
-          Text(
-            '新增分类',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
+          Text('新增分类', style: context.appTextStyles.sectionTitleStrong),
         ],
       ),
     );
@@ -315,6 +311,7 @@ class _TypeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -324,10 +321,12 @@ class _TypeTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.space14),
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: selected ? colors.primary : colors.onSurfaceVariant,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
+                style: textStyles
+                    .segmentedControlLabel(selected: selected)
+                    .copyWith(
+                      color:
+                          selected ? colors.primary : colors.onSurfaceVariant,
+                    ),
               ),
             ),
             AnimatedContainer(
@@ -361,13 +360,7 @@ class _PlainFormRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 92,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontSize: AppTypography.fontSizeMd,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: Text(label, style: context.appTextStyles.formValue),
           ),
           Expanded(child: child),
         ],

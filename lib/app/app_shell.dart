@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../design_system/theme/app_text_styles.dart';
 import '../design_system/tokens/spacing.dart';
-import '../design_system/tokens/typography.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({required this.child, super.key});
@@ -127,10 +127,8 @@ class _BottomNavItem extends StatelessWidget {
               const SizedBox(height: AppSpacing.space4),
               Text(
                 label,
-                style: TextStyle(
+                style: context.appTextStyles.navigationLabel.copyWith(
                   color: color,
-                  fontSize: AppTypography.fontSizeXs - 2,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],

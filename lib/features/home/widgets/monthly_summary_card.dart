@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../view_models/transaction_row_presentation.dart';
@@ -106,18 +106,14 @@ class _SummaryMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: textTheme.bodySmall?.copyWith(
-            fontSize: AppTypography.fontSizeXs,
-            color: colors.onSurface,
-            fontWeight: FontWeight.w400,
-          ),
+          style: textStyles.metricLabel,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -127,21 +123,15 @@ class _SummaryMetric extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Text(
             formatMonthlyAmount(amountMinor, showSign: showSign),
-            style: textTheme.titleMedium?.copyWith(
-              fontSize: 18,
-              color: amountColor,
-              fontWeight: FontWeight.w500,
-            ),
+            style: textStyles.metricValue.copyWith(color: amountColor),
             maxLines: 1,
           ),
         ),
         const SizedBox(height: AppSpacing.space6),
         Text(
           caption,
-          style: textTheme.bodySmall?.copyWith(
+          style: textStyles.metricSupporting.copyWith(
             color: colors.onSurfaceVariant,
-            fontSize: 11,
-            fontWeight: FontWeight.w400,
           ),
           overflow: TextOverflow.ellipsis,
         ),

@@ -6,9 +6,9 @@ import 'package:remixicon/remixicon.dart';
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/account_service.dart';
 import '../../../widgets/business/business_icon.dart';
@@ -124,7 +124,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                                 ),
                                 child: Text(
                                   _currencyLabel(_currencyCode),
-                                  style: Theme.of(context).textTheme.bodyLarge,
+                                  style: context.appTextStyles.formPlainValue,
                                 ),
                               ),
                             ),
@@ -285,9 +285,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                 ),
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: context.appTextStyles.subsectionTitleStrong,
                 ),
               ),
               ListTile(
@@ -399,12 +397,7 @@ class _AccountFormHeader extends StatelessWidget {
                       : const Text('保存'),
             ),
           ),
-          Text(
-            '新建账户',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w500),
-          ),
+          Text('新建账户', style: context.appTextStyles.dateNavigationTitle),
         ],
       ),
     );
@@ -455,6 +448,7 @@ class _AccountKindTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -464,10 +458,12 @@ class _AccountKindTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.space4),
               child: Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: selected ? colors.primary : colors.onSurfaceVariant,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
+                style: textStyles
+                    .segmentedControlLabel(selected: selected)
+                    .copyWith(
+                      color:
+                          selected ? colors.primary : colors.onSurfaceVariant,
+                    ),
               ),
             ),
             AnimatedContainer(
@@ -500,13 +496,7 @@ class _PlainFormRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 92,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontSize: AppTypography.fontSizeMd,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: Text(label, style: context.appTextStyles.formValue),
           ),
           Expanded(child: child),
         ],
@@ -528,7 +518,7 @@ class _PlainValueText extends StatelessWidget {
         text,
         textAlign: TextAlign.left,
         overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodyLarge,
+        style: context.appTextStyles.formPlainValue,
       ),
     );
   }
@@ -549,7 +539,7 @@ class _BillingRepaymentFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = Theme.of(context).textTheme.bodyLarge;
+    final textStyle = context.appTextStyles.formPlainValue;
     return Row(
       children: [
         Expanded(

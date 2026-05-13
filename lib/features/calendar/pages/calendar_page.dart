@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_month_picker.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../home/view_models/transaction_row_presentation.dart';
@@ -367,8 +367,7 @@ class _SummaryText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
     final amount =
         showSignedNegative
             ? formatMonthlyAmount(amountMinor, showSign: true)
@@ -377,17 +376,12 @@ class _SummaryText extends StatelessWidget {
     return Text.rich(
       TextSpan(
         text: '$label ',
-        style: textTheme.bodySmall?.copyWith(
-          color: colors.onSurfaceVariant,
-          fontSize: AppTypography.fontSizeXs,
-        ),
+        style: textStyles.listSupporting,
         children: [
           TextSpan(
             text: amount,
-            style: TextStyle(
+            style: textStyles.calendarSummaryAmount.copyWith(
               color: amountColor,
-              fontSize: AppTypography.fontSizeSm,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -404,7 +398,6 @@ class _WeekdayHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     const labels = ['日', '一', '二', '三', '四', '五', '六'];
 
     return Row(
@@ -414,10 +407,8 @@ class _WeekdayHeader extends StatelessWidget {
             child: Center(
               child: Text(
                 label,
-                style: textTheme.bodySmall?.copyWith(
+                style: context.appTextStyles.formLabel.copyWith(
                   color: colors.onSurfaceVariant,
-                  fontSize: AppTypography.fontSizeXs,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -472,7 +463,7 @@ class _CalendarDayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final foregroundOpacity = day.isInVisibleMonth ? 1.0 : 0.38;
     final selectedColor = colors.primaryContainer.withValues(alpha: 0.42);
@@ -510,13 +501,11 @@ class _CalendarDayCell extends StatelessWidget {
                       children: [
                         Text(
                           '${day.date.day}',
-                          style: textTheme.titleSmall?.copyWith(
+                          style: textStyles.calendarDayNumber.copyWith(
                             color:
                                 day.isSelected
                                     ? colors.primary
                                     : colors.onSurface,
-                            fontSize: AppTypography.fontSizeMd,
-                            fontWeight: FontWeight.w600,
                           ),
                           maxLines: 1,
                         ),
@@ -573,11 +562,8 @@ class _DayMarkerBadge extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         label,
-        style: TextStyle(
+        style: context.appTextStyles.calendarBadgeLabel.copyWith(
           color: colors.onPrimary,
-          fontSize: 8,
-          fontWeight: FontWeight.w600,
-          height: 1,
         ),
         maxLines: 1,
       ),
@@ -616,18 +602,14 @@ class _AmountLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return SizedBox(
       height: 10,
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
           text,
-          style: textTheme.bodySmall?.copyWith(
+          style: context.appTextStyles.calendarCellAmount.copyWith(
             color: color,
-            fontSize: 8,
-            fontWeight: FontWeight.w500,
           ),
           maxLines: 1,
         ),
@@ -644,15 +626,12 @@ class _LunarLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
 
     return Center(
       child: Text(
         label,
-        style: textTheme.bodySmall?.copyWith(
+        style: context.appTextStyles.listSupporting.copyWith(
           color: colors.onSurfaceVariant,
-          fontSize: AppTypography.fontSizeXs,
-          fontWeight: FontWeight.w400,
         ),
         overflow: TextOverflow.ellipsis,
         maxLines: 1,

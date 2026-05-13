@@ -6,9 +6,9 @@ import 'package:remixicon/remixicon.dart';
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
@@ -206,8 +206,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final transaction = detail.transaction;
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
     final categoryName = _resolveCategoryName(detail);
     final iconKey = _resolveCategoryIconKey(detail);
     final subtitle = _resolveHeroSubtitle(detail);
@@ -226,9 +225,7 @@ class _HeroCard extends StatelessWidget {
                   Text(
                     categoryName ??
                         transactionPurposeLabel(transaction.businessPurpose),
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: textStyles.subsectionTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -236,9 +233,7 @@ class _HeroCard extends StatelessWidget {
                     const SizedBox(height: AppSpacing.space4),
                     Text(
                       subtitle,
-                      style: textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
+                      style: textStyles.listSupporting,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -251,10 +246,7 @@ class _HeroCard extends StatelessWidget {
               money: _signedAmount(transaction.primaryAmount, semantic),
               showSign: semantic == MoneySemantic.income,
               semantic: semantic,
-              style: textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+              style: textStyles.amountPrimary,
             ),
           ],
         ),
@@ -529,7 +521,7 @@ class _ChevronRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
     final tappable = onTap != null && enabled;
     final resolvedValueColor = valueColor ?? colors.onSurface;
 
@@ -545,7 +537,7 @@ class _ChevronRow extends StatelessWidget {
           children: [
             Text(
               label,
-              style: textTheme.bodyMedium?.copyWith(
+              style: textStyles.detailLabel.copyWith(
                 color: colors.onSurfaceVariant,
               ),
             ),
@@ -556,8 +548,7 @@ class _ChevronRow extends StatelessWidget {
                 textAlign: TextAlign.right,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: textTheme.bodyMedium?.copyWith(
-                  fontSize: AppTypography.fontSizeMd,
+                style: textStyles.detailValue.copyWith(
                   color: resolvedValueColor,
                 ),
               ),
@@ -591,7 +582,6 @@ class _SwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space16,
@@ -601,7 +591,7 @@ class _SwitchRow extends StatelessWidget {
         children: [
           Text(
             label,
-            style: textTheme.bodyMedium?.copyWith(
+            style: context.appTextStyles.detailLabel.copyWith(
               color: colors.onSurfaceVariant,
             ),
           ),
@@ -977,7 +967,6 @@ void _showChildrenSheet(
     context: context,
     showDragHandle: true,
     builder: (ctx) {
-      final textTheme = Theme.of(ctx).textTheme;
       return SafeArea(
         top: false,
         child: Padding(
@@ -995,7 +984,7 @@ void _showChildrenSheet(
                 padding: const EdgeInsets.symmetric(
                   vertical: AppSpacing.space8,
                 ),
-                child: Text(title, style: textTheme.titleMedium),
+                child: Text(title, style: ctx.appTextStyles.subsectionTitle),
               ),
               for (final item in items)
                 ListTile(

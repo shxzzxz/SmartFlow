@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../view_models/home_transaction_group.dart';
 import '../view_models/transaction_row_presentation.dart';
@@ -64,28 +64,17 @@ class _DayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
+    final textStyles = context.appTextStyles;
 
     return Row(
       children: [
         Text(
           '${group.date.month}月${group.date.day}日',
-          style: textTheme.titleSmall?.copyWith(
-            fontSize: AppTypography.fontSizeMd,
-            fontWeight: FontWeight.w500,
-            color: colors.onSurface,
-          ),
+          style: textStyles.dateSectionTitle,
         ),
         const SizedBox(width: AppSpacing.space8),
-        Text(
-          weekdayLabel(group.date),
-          style: textTheme.bodySmall?.copyWith(
-            fontSize: AppTypography.fontSizeXs,
-            color: colors.onSurfaceVariant,
-          ),
-        ),
+        Text(weekdayLabel(group.date), style: textStyles.listSupporting),
         const Spacer(),
         _DayTotal(
           label: '收入',
@@ -116,25 +105,16 @@ class _DayTotal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final textStyles = context.appTextStyles;
 
     return Text.rich(
       TextSpan(
         text: '$label ',
-        style: textTheme.bodySmall?.copyWith(
-          fontSize: AppTypography.fontSizeXs,
-          color: colors.onSurfaceVariant,
-          fontWeight: FontWeight.w400,
-        ),
+        style: textStyles.listSupporting,
         children: [
           TextSpan(
             text: formatMinorAmount(amountMinor),
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w500,
-              fontSize: AppTypography.fontSizeXs,
-            ),
+            style: textStyles.amountCompact.copyWith(color: color),
           ),
         ],
       ),

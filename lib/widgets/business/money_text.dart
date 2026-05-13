@@ -10,31 +10,37 @@ class MoneyText extends StatelessWidget {
     this.style,
     this.showSign = false,
     this.semantic,
+    this.color,
   });
 
   final Money money;
   final TextStyle? style;
   final bool showSign;
   final MoneySemantic? semantic;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
-    final color = switch (semantic) {
-      MoneySemantic.income => financeColors.income,
-      MoneySemantic.expense => financeColors.expense,
-      MoneySemantic.neutral => colors.onSurface,
-      MoneySemantic.asset => financeColors.asset,
-      MoneySemantic.liability => financeColors.liability,
-      MoneySemantic.equity => financeColors.equity,
-      null => null,
-    };
+    final resolvedColor =
+        color ??
+        switch (semantic) {
+          MoneySemantic.income => financeColors.income,
+          MoneySemantic.expense => financeColors.expense,
+          MoneySemantic.neutral => colors.onSurface,
+          MoneySemantic.asset => financeColors.asset,
+          MoneySemantic.liability => financeColors.liability,
+          MoneySemantic.equity => financeColors.equity,
+          null => null,
+        };
     final sign = showSign && money.minorUnits > 0 ? '+' : '';
 
     return Text(
       '$sign${money.format()}',
-      style: style?.copyWith(color: color) ?? TextStyle(color: color),
+      style:
+          style?.copyWith(color: resolvedColor) ??
+          DefaultTextStyle.of(context).style.copyWith(color: resolvedColor),
       textAlign: TextAlign.end,
     );
   }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../design_system/theme/app_text_styles.dart';
 import '../../design_system/tokens/radius.dart';
 import '../../design_system/tokens/spacing.dart';
-import '../../design_system/tokens/typography.dart';
 
 class BusinessIconTile extends StatelessWidget {
   const BusinessIconTile({
@@ -77,7 +77,6 @@ class BusinessIconBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
     final effectiveBubbleColor =
         selected
             ? selectedBubbleColor ??
@@ -114,12 +113,7 @@ class BusinessIconBubble extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: labelMaxLines,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colors.onSurface,
-                    fontSize: AppTypography.fontSizeXs,
-                    fontWeight: FontWeight.w600,
-                    height: 1.15,
-                  ),
+                  style: context.appTextStyles.iconGridLabel,
                 ),
               ],
             );
