@@ -7,6 +7,7 @@ import '../features/accounts/pages/account_transactions_page.dart';
 import '../features/accounts/pages/accounts_page.dart';
 import '../features/categories/pages/categories_page.dart';
 import '../features/categories/pages/category_form_page.dart';
+import '../features/calendar/pages/calendar_page.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/placeholder/pages/placeholder_page.dart';
 import '../features/profile/pages/profile_page.dart';
@@ -28,7 +29,7 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/calendar',
-          builder: (context, state) => const PlaceholderPage(title: '日历'),
+          builder: (context, state) => const CalendarPage(),
         ),
         GoRoute(
           path: '/statistics',

@@ -5,7 +5,9 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_surface.dart';
 
 class EmptyTransactionCard extends StatelessWidget {
-  const EmptyTransactionCard({super.key});
+  const EmptyTransactionCard({super.key, this.message = '本月暂无交易记录'});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,7 @@ class EmptyTransactionCard extends StatelessWidget {
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: Text(
-                '本月暂无交易记录',
+                message,
                 style: textTheme.bodyMedium?.copyWith(
                   color: colors.onSurfaceVariant,
                 ),

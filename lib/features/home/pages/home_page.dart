@@ -5,6 +5,7 @@ import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
 import '../../../design_system/tokens/spacing.dart';
+import '../../../design_system/widgets/app_month_picker.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../view_models/home_transaction_group.dart';
 import '../widgets/empty_transaction_card.dart';
@@ -54,6 +55,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               HomeHeader(
                 visibleMonth: _visibleMonth,
                 onMonthPressed: _pickMonth,
+                onPreviousMonth: () => _shiftMonth(-1),
+                onNextMonth: () => _shiftMonth(1),
               ),
               Expanded(
                 child: switch ((transactionsAsync, summaryAsync)) {
@@ -83,12 +86,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _pickMonth() async {
-    final selected = await showDatePicker(
+    final selected = await showAppMonthPicker(
       context: context,
-      initialDate: _visibleMonth,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      helpText: '选择月份',
+      initialMonth: _visibleMonth,
     );
     if (!mounted || selected == null) {
       return;
@@ -103,11 +103,12 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (velocity.abs() < 260) {
       return;
     }
+    _shiftMonth(velocity < 0 ? 1 : -1);
+  }
+
+  void _shiftMonth(int delta) {
     setState(() {
-      _visibleMonth =
-          velocity < 0
-              ? DateTime(_visibleMonth.year, _visibleMonth.month + 1)
-              : DateTime(_visibleMonth.year, _visibleMonth.month - 1);
+      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + delta);
     });
   }
 }

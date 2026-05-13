@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:remixicon/remixicon.dart';
 
-import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/tokens/typography.dart';
+import '../../../design_system/widgets/app_month_picker.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
     required this.visibleMonth,
     required this.onMonthPressed,
+    required this.onPreviousMonth,
+    required this.onNextMonth,
     super.key,
   });
 
   final DateTime visibleMonth;
   final VoidCallback onMonthPressed;
+  final VoidCallback onPreviousMonth;
+  final VoidCallback onNextMonth;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space16,
@@ -29,34 +28,11 @@ class HomeHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          InkWell(
-            onTap: onMonthPressed,
-            borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space4,
-                vertical: AppSpacing.space6,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${visibleMonth.year}年${visibleMonth.month}月',
-                    style: textTheme.titleLarge?.copyWith(
-                      fontSize: AppTypography.fontSizeLg,
-                      fontWeight: FontWeight.w500,
-                      color: colors.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.space4),
-                  Icon(
-                    RemixIcons.arrow_down_s_line,
-                    color: colors.onSurfaceVariant,
-                    size: AppSpacing.space20,
-                  ),
-                ],
-              ),
-            ),
+          AppMonthSelector(
+            visibleMonth: visibleMonth,
+            onPreviousMonth: onPreviousMonth,
+            onMonthPressed: onMonthPressed,
+            onNextMonth: onNextMonth,
           ),
           const Spacer(),
         ],

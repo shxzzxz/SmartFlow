@@ -6,12 +6,14 @@ import '../../../design_system/tokens/typography.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../view_models/home_transaction_group.dart';
 import '../view_models/transaction_row_presentation.dart';
+import 'empty_transaction_card.dart';
 import 'transaction_row.dart';
 
 class TransactionDayCard extends StatelessWidget {
-  const TransactionDayCard({required this.group, super.key});
+  const TransactionDayCard({required this.group, super.key, this.emptyMessage});
 
   final HomeTransactionDayGroup group;
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -30,23 +32,26 @@ class TransactionDayCard extends StatelessWidget {
           ),
           child: _DayHeader(group: group),
         ),
-        AppSurface(
-          child: Column(
-            children: [
-              for (var i = 0; i < group.items.length; i++) ...[
-                TransactionRow(item: group.items[i]),
-                if (i < group.items.length - 1)
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space16,
+        if (group.items.isEmpty)
+          EmptyTransactionCard(message: emptyMessage ?? '本月暂无交易记录')
+        else
+          AppSurface(
+            child: Column(
+              children: [
+                for (var i = 0; i < group.items.length; i++) ...[
+                  TransactionRow(item: group.items[i]),
+                  if (i < group.items.length - 1)
+                    Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space16,
+                      ),
+                      height: 1,
+                      color: dividerColor,
                     ),
-                    height: 1,
-                    color: dividerColor,
-                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
       ],
     );
   }
