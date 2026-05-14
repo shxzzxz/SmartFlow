@@ -10,7 +10,7 @@ import '../../../domain/services/transaction_query_service.dart';
 /// 主交易行的"聚合 progress + 统计标记"badge 组。
 ///
 /// 表达：退/报/利/费/差收/差支/不计统计/不计预算。
-/// 金额为零的不显示；该 widget 自身只在有 badge 时占位，对外不再加额外间距。
+/// 金额为零的不显示；badge 保持单行展示。
 class TransactionProgressBadges extends StatelessWidget {
   const TransactionProgressBadges({required this.item, super.key});
 
@@ -24,10 +24,17 @@ class TransactionProgressBadges extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Wrap(
-      spacing: AppSpacing.space6,
-      runSpacing: 4,
-      children: [for (final badge in badges) _BadgeChip(badge: badge)],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < badges.length; i++) ...[
+            if (i > 0) const SizedBox(width: AppSpacing.space6),
+            _BadgeChip(badge: badges[i]),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -104,10 +111,13 @@ List<_BadgeData> _resolveBadges(
 }
 
 String _format(Money money) {
-  return Money(
-    minorUnits: money.minorUnits.abs(),
-    currency: money.currency,
-  ).format();
+  final formatted =
+      Money(
+        minorUnits: money.minorUnits.abs(),
+        currency: money.currency,
+      ).format();
+  final compact = formatted.replaceFirst(RegExp(r'\.?0+$'), '');
+  return compact.isEmpty ? '0' : compact;
 }
 
 class _BadgeChip extends StatelessWidget {
@@ -129,6 +139,9 @@ class _BadgeChip extends StatelessWidget {
       child: Text(
         badge.label,
         style: context.appTextStyles.badgeLabel.copyWith(color: badge.color),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
       ),
     );
   }

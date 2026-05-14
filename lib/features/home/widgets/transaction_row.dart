@@ -44,29 +44,17 @@ class TransactionRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CategoryAvatar(iconKey: resolveCategoryIconKey(item)),
-            const SizedBox(width: AppSpacing.space12),
+            CategoryAvatar(iconKey: resolveCategoryIconKey(item), size: 28),
+            const SizedBox(width: AppSpacing.space8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        fit: FlexFit.loose,
-                        child: Text(
-                          title,
-                          style: textStyles.listTitle,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                      if (hasBadges) ...[
-                        const SizedBox(width: AppSpacing.space8),
-                        Flexible(child: TransactionProgressBadges(item: item)),
-                      ],
-                    ],
+                  _TitleLine(
+                    title: title,
+                    style: textStyles.listTitle,
+                    item: item,
+                    hasBadges: hasBadges,
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
@@ -123,6 +111,79 @@ bool _hasBadges(TransactionListItem item) {
       item.repaymentFee != null ||
       item.reimbursementGapIncome != null ||
       item.reimbursementGapExpense != null;
+}
+
+class _TitleLine extends StatelessWidget {
+  const _TitleLine({
+    required this.title,
+    required this.style,
+    required this.item,
+    required this.hasBadges,
+  });
+
+  static const _minBadgeWidth = 48.0;
+
+  final String title;
+  final TextStyle style;
+  final TransactionListItem item;
+  final bool hasBadges;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasBadges) {
+      return Text(
+        title,
+        style: style,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        const gap = AppSpacing.space8;
+        if (maxWidth <= gap + _minBadgeWidth) {
+          return Text(
+            title,
+            style: style,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          );
+        }
+
+        final titlePainter = TextPainter(
+          text: TextSpan(text: title, style: style),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: double.infinity);
+        final maxTitleWidth = maxWidth - gap - _minBadgeWidth;
+        final titleWidth = titlePainter.width.clamp(0.0, maxTitleWidth);
+        final badgeWidth = maxWidth - titleWidth - gap;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: titleWidth,
+              child: Text(
+                title,
+                style: style,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            const SizedBox(width: gap),
+            SizedBox(
+              width: badgeWidth,
+              child: TransactionProgressBadges(item: item),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _AccountLine extends ConsumerWidget {
