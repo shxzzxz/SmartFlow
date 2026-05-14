@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/design_system/theme/app_theme_extension.dart';
 import 'package:smartflow/domain/enums/accounting_enums.dart';
+import 'package:smartflow/domain/services/financial_metrics_service.dart';
 import 'package:smartflow/domain/services/transaction_query_service.dart';
 import 'package:smartflow/features/home/view_models/home_transaction_group.dart';
 import 'package:smartflow/features/home/view_models/transaction_row_presentation.dart';
@@ -58,13 +59,22 @@ void main() {
 
     test('subtracts refunded total from daily expense summary', () {
       final group =
-          groupTransactionsByDay([
-            _item(
-              BusinessPurpose.dailyExpense,
-              amountMinor: 5800,
-              refundedTotal: const Money(minorUnits: 1000),
-            ),
-          ]).single;
+          groupTransactionsByDay(
+            [
+              _item(
+                BusinessPurpose.dailyExpense,
+                amountMinor: 5800,
+                refundedTotal: const Money(minorUnits: 1000),
+              ),
+            ],
+            [
+              DailyCashflowSummary(
+                date: DateTime(2026, 5, 12),
+                income: Money.zero(),
+                expense: const Money(minorUnits: 4800),
+              ),
+            ],
+          ).single;
 
       expect(group.expenseMinor, 4800);
       expect(group.incomeMinor, 0);

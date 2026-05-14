@@ -9,6 +9,7 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_month_picker.dart';
+import '../../../domain/services/financial_metrics_service.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../home/view_models/transaction_row_presentation.dart';
 import '../../home/widgets/transaction_day_card.dart';
@@ -43,7 +44,13 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
       ),
     );
     final summaryAsync = ref.watch(
-      homeMonthCashflowSummaryProvider(
+      homeMonthCashflowComparisonProvider(
+        year: _visibleMonth.year,
+        month: _visibleMonth.month,
+      ),
+    );
+    final dailySummariesAsync = ref.watch(
+      homeMonthDailyCashflowSummariesProvider(
         year: _visibleMonth.year,
         month: _visibleMonth.month,
       ),
@@ -66,21 +73,29 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 onToggleLunar: () => setState(() => _showLunar = !_showLunar),
               ),
               Expanded(
-                child: switch ((transactionsAsync, summaryAsync)) {
+                child: switch ((
+                  transactionsAsync,
+                  summaryAsync,
+                  dailySummariesAsync,
+                )) {
                   (
                     AsyncData(value: final transactions),
-                    AsyncData(value: final summary),
+                    AsyncData(value: final comparison),
+                    AsyncData(value: final dailySummaries),
                   ) =>
                     _CalendarContent(
                       visibleMonth: _visibleMonth,
                       selectedDate: _selectedDate,
                       showLunar: _showLunar,
                       transactions: transactions,
-                      summary: summary,
+                      summary: comparison.current,
+                      dailySummaries: dailySummaries,
                       onDateSelected: _selectDate,
                     ),
-                  (AsyncError(:final error), _) ||
+                  (AsyncError(:final error), _, _) ||
+                  (_, AsyncError(:final error), _) ||
                   (
+                    _,
                     _,
                     AsyncError(:final error),
                   ) => Center(child: Text('加载失败：$error')),
@@ -263,6 +278,7 @@ class _CalendarContent extends StatelessWidget {
     required this.showLunar,
     required this.transactions,
     required this.summary,
+    required this.dailySummaries,
     required this.onDateSelected,
   });
 
@@ -271,6 +287,7 @@ class _CalendarContent extends StatelessWidget {
   final bool showLunar;
   final List<TransactionListItem> transactions;
   final CashflowSummary summary;
+  final List<DailyCashflowSummary> dailySummaries;
   final ValueChanged<DateTime> onDateSelected;
 
   @override
@@ -279,10 +296,12 @@ class _CalendarContent extends StatelessWidget {
       visibleMonth: visibleMonth,
       selectedDate: selectedDate,
       transactions: transactions,
+      dailySummaries: dailySummaries,
     );
     final selectedGroup = transactionGroupForDate(
       date: selectedDate,
       transactions: transactions,
+      dailySummaries: dailySummaries,
     );
 
     return ListView(

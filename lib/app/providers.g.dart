@@ -248,6 +248,55 @@ final class TransactionQueryRepositoryProvider
 String _$transactionQueryRepositoryHash() =>
     r'7d7f7862b1445138292134dec6a709e558fbc82f';
 
+@ProviderFor(financialMetricsRepository)
+final financialMetricsRepositoryProvider =
+    FinancialMetricsRepositoryProvider._();
+
+final class FinancialMetricsRepositoryProvider
+    extends
+        $FunctionalProvider<
+          FinancialMetricsRepository,
+          FinancialMetricsRepository,
+          FinancialMetricsRepository
+        >
+    with $Provider<FinancialMetricsRepository> {
+  FinancialMetricsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'financialMetricsRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$financialMetricsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<FinancialMetricsRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  FinancialMetricsRepository create(Ref ref) {
+    return financialMetricsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FinancialMetricsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FinancialMetricsRepository>(value),
+    );
+  }
+}
+
+String _$financialMetricsRepositoryHash() =>
+    r'e524f0373c9c731f50a3d991bd7d4bb6e75a4263';
+
 @ProviderFor(accountService)
 final accountServiceProvider = AccountServiceProvider._();
 
@@ -467,6 +516,54 @@ final class TransactionQueryServiceProvider
 
 String _$transactionQueryServiceHash() =>
     r'6e6488ddf0a18422e56a6510c1ca3503aae56ed9';
+
+@ProviderFor(financialMetricsService)
+final financialMetricsServiceProvider = FinancialMetricsServiceProvider._();
+
+final class FinancialMetricsServiceProvider
+    extends
+        $FunctionalProvider<
+          FinancialMetricsService,
+          FinancialMetricsService,
+          FinancialMetricsService
+        >
+    with $Provider<FinancialMetricsService> {
+  FinancialMetricsServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'financialMetricsServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$financialMetricsServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<FinancialMetricsService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  FinancialMetricsService create(Ref ref) {
+    return financialMetricsService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FinancialMetricsService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FinancialMetricsService>(value),
+    );
+  }
+}
+
+String _$financialMetricsServiceHash() =>
+    r'9fe5ee10c7d80f486cfafcf01bf8cd1391c39020';
 
 @ProviderFor(accountList)
 final accountListProvider = AccountListProvider._();
@@ -825,48 +922,51 @@ final class HomeMonthTransactionsFamily extends $Family
   String toString() => r'homeMonthTransactionsProvider';
 }
 
-@ProviderFor(homeMonthCashflowSummary)
-final homeMonthCashflowSummaryProvider = HomeMonthCashflowSummaryFamily._();
+@ProviderFor(homeMonthCashflowComparison)
+final homeMonthCashflowComparisonProvider =
+    HomeMonthCashflowComparisonFamily._();
 
-final class HomeMonthCashflowSummaryProvider
+final class HomeMonthCashflowComparisonProvider
     extends
         $FunctionalProvider<
-          AsyncValue<CashflowSummary>,
-          CashflowSummary,
-          Stream<CashflowSummary>
+          AsyncValue<CashflowComparison>,
+          CashflowComparison,
+          Stream<CashflowComparison>
         >
-    with $FutureModifier<CashflowSummary>, $StreamProvider<CashflowSummary> {
-  HomeMonthCashflowSummaryProvider._({
-    required HomeMonthCashflowSummaryFamily super.from,
+    with
+        $FutureModifier<CashflowComparison>,
+        $StreamProvider<CashflowComparison> {
+  HomeMonthCashflowComparisonProvider._({
+    required HomeMonthCashflowComparisonFamily super.from,
     required ({int year, int month}) super.argument,
   }) : super(
          retry: null,
-         name: r'homeMonthCashflowSummaryProvider',
+         name: r'homeMonthCashflowComparisonProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$homeMonthCashflowSummaryHash();
+  String debugGetCreateSourceHash() => _$homeMonthCashflowComparisonHash();
 
   @override
   String toString() {
-    return r'homeMonthCashflowSummaryProvider'
+    return r'homeMonthCashflowComparisonProvider'
         ''
         '$argument';
   }
 
   @$internal
   @override
-  $StreamProviderElement<CashflowSummary> $createElement(
+  $StreamProviderElement<CashflowComparison> $createElement(
     $ProviderPointer pointer,
   ) => $StreamProviderElement(pointer);
 
   @override
-  Stream<CashflowSummary> create(Ref ref) {
+  Stream<CashflowComparison> create(Ref ref) {
     final argument = this.argument as ({int year, int month});
-    return homeMonthCashflowSummary(
+    return homeMonthCashflowComparison(
       ref,
       year: argument.year,
       month: argument.month,
@@ -875,7 +975,7 @@ final class HomeMonthCashflowSummaryProvider
 
   @override
   bool operator ==(Object other) {
-    return other is HomeMonthCashflowSummaryProvider &&
+    return other is HomeMonthCashflowComparisonProvider &&
         other.argument == argument;
   }
 
@@ -885,34 +985,246 @@ final class HomeMonthCashflowSummaryProvider
   }
 }
 
-String _$homeMonthCashflowSummaryHash() =>
-    r'7274875d4358857c36630fe4ca6da35f292984e5';
+String _$homeMonthCashflowComparisonHash() =>
+    r'16e398d83416f5480791c481b1b990315efca0a9';
 
-final class HomeMonthCashflowSummaryFamily extends $Family
+final class HomeMonthCashflowComparisonFamily extends $Family
     with
         $FunctionalFamilyOverride<
-          Stream<CashflowSummary>,
+          Stream<CashflowComparison>,
           ({int year, int month})
         > {
-  HomeMonthCashflowSummaryFamily._()
+  HomeMonthCashflowComparisonFamily._()
     : super(
         retry: null,
-        name: r'homeMonthCashflowSummaryProvider',
+        name: r'homeMonthCashflowComparisonProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  HomeMonthCashflowSummaryProvider call({
+  HomeMonthCashflowComparisonProvider call({
     required int year,
     required int month,
-  }) => HomeMonthCashflowSummaryProvider._(
+  }) => HomeMonthCashflowComparisonProvider._(
     argument: (year: year, month: month),
     from: this,
   );
 
   @override
-  String toString() => r'homeMonthCashflowSummaryProvider';
+  String toString() => r'homeMonthCashflowComparisonProvider';
+}
+
+@ProviderFor(homeMonthDailyCashflowSummaries)
+final homeMonthDailyCashflowSummariesProvider =
+    HomeMonthDailyCashflowSummariesFamily._();
+
+final class HomeMonthDailyCashflowSummariesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<DailyCashflowSummary>>,
+          List<DailyCashflowSummary>,
+          Stream<List<DailyCashflowSummary>>
+        >
+    with
+        $FutureModifier<List<DailyCashflowSummary>>,
+        $StreamProvider<List<DailyCashflowSummary>> {
+  HomeMonthDailyCashflowSummariesProvider._({
+    required HomeMonthDailyCashflowSummariesFamily super.from,
+    required ({int year, int month}) super.argument,
+  }) : super(
+         retry: null,
+         name: r'homeMonthDailyCashflowSummariesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$homeMonthDailyCashflowSummariesHash();
+
+  @override
+  String toString() {
+    return r'homeMonthDailyCashflowSummariesProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<DailyCashflowSummary>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<DailyCashflowSummary>> create(Ref ref) {
+    final argument = this.argument as ({int year, int month});
+    return homeMonthDailyCashflowSummaries(
+      ref,
+      year: argument.year,
+      month: argument.month,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HomeMonthDailyCashflowSummariesProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$homeMonthDailyCashflowSummariesHash() =>
+    r'065be5249de795011c3f489e3fc99147758ccfb2';
+
+final class HomeMonthDailyCashflowSummariesFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<DailyCashflowSummary>>,
+          ({int year, int month})
+        > {
+  HomeMonthDailyCashflowSummariesFamily._()
+    : super(
+        retry: null,
+        name: r'homeMonthDailyCashflowSummariesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  HomeMonthDailyCashflowSummariesProvider call({
+    required int year,
+    required int month,
+  }) => HomeMonthDailyCashflowSummariesProvider._(
+    argument: (year: year, month: month),
+    from: this,
+  );
+
+  @override
+  String toString() => r'homeMonthDailyCashflowSummariesProvider';
+}
+
+@ProviderFor(balanceSheetComparison)
+final balanceSheetComparisonProvider = BalanceSheetComparisonProvider._();
+
+final class BalanceSheetComparisonProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<BalanceSheetComparison>,
+          BalanceSheetComparison,
+          Stream<BalanceSheetComparison>
+        >
+    with
+        $FutureModifier<BalanceSheetComparison>,
+        $StreamProvider<BalanceSheetComparison> {
+  BalanceSheetComparisonProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'balanceSheetComparisonProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$balanceSheetComparisonHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<BalanceSheetComparison> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<BalanceSheetComparison> create(Ref ref) {
+    return balanceSheetComparison(ref);
+  }
+}
+
+String _$balanceSheetComparisonHash() =>
+    r'3074d4a48f31dc81aabfc69f6d6645cf53838e18';
+
+@ProviderFor(netAssetTrend)
+final netAssetTrendProvider = NetAssetTrendFamily._();
+
+final class NetAssetTrendProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<NetAssetTrendPoint>>,
+          List<NetAssetTrendPoint>,
+          Stream<List<NetAssetTrendPoint>>
+        >
+    with
+        $FutureModifier<List<NetAssetTrendPoint>>,
+        $StreamProvider<List<NetAssetTrendPoint>> {
+  NetAssetTrendProvider._({
+    required NetAssetTrendFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'netAssetTrendProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$netAssetTrendHash();
+
+  @override
+  String toString() {
+    return r'netAssetTrendProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<NetAssetTrendPoint>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<NetAssetTrendPoint>> create(Ref ref) {
+    final argument = this.argument as int;
+    return netAssetTrend(ref, months: argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is NetAssetTrendProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$netAssetTrendHash() => r'02f663fc1ea286e5ee9a693a7a32a5610a1aa41d';
+
+final class NetAssetTrendFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<NetAssetTrendPoint>>, int> {
+  NetAssetTrendFamily._()
+    : super(
+        retry: null,
+        name: r'netAssetTrendProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  NetAssetTrendProvider call({int months = 6}) =>
+      NetAssetTrendProvider._(argument: months, from: this);
+
+  @override
+  String toString() => r'netAssetTrendProvider';
 }
 
 @ProviderFor(transactionDetail)

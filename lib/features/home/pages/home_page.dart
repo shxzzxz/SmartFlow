@@ -6,6 +6,7 @@ import 'package:remixicon/remixicon.dart';
 import '../../../app/providers.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_month_picker.dart';
+import '../../../domain/services/financial_metrics_service.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../view_models/home_transaction_group.dart';
 import '../widgets/empty_transaction_card.dart';
@@ -39,7 +40,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     );
     final summaryAsync = ref.watch(
-      homeMonthCashflowSummaryProvider(
+      homeMonthCashflowComparisonProvider(
+        year: _visibleMonth.year,
+        month: _visibleMonth.month,
+      ),
+    );
+    final dailySummariesAsync = ref.watch(
+      homeMonthDailyCashflowSummariesProvider(
         year: _visibleMonth.year,
         month: _visibleMonth.month,
       ),
@@ -59,11 +66,25 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onNextMonth: () => _shiftMonth(1),
               ),
               Expanded(
-                child: switch ((transactionsAsync, summaryAsync)) {
-                  (AsyncData(:final value), AsyncData(value: final summary)) =>
-                    _HomeContent(transactions: value, summary: summary),
-                  (AsyncError(:final error), _) ||
+                child: switch ((
+                  transactionsAsync,
+                  summaryAsync,
+                  dailySummariesAsync,
+                )) {
                   (
+                    AsyncData(:final value),
+                    AsyncData(value: final comparison),
+                    AsyncData(value: final dailySummaries),
+                  ) =>
+                    _HomeContent(
+                      transactions: value,
+                      comparison: comparison,
+                      dailySummaries: dailySummaries,
+                    ),
+                  (AsyncError(:final error), _, _) ||
+                  (_, AsyncError(:final error), _) ||
+                  (
+                    _,
                     _,
                     AsyncError(:final error),
                   ) => Center(child: Text('加载失败：$error')),
@@ -114,14 +135,19 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 class _HomeContent extends StatelessWidget {
-  const _HomeContent({required this.transactions, required this.summary});
+  const _HomeContent({
+    required this.transactions,
+    required this.comparison,
+    required this.dailySummaries,
+  });
 
   final List<TransactionListItem> transactions;
-  final CashflowSummary summary;
+  final CashflowComparison comparison;
+  final List<DailyCashflowSummary> dailySummaries;
 
   @override
   Widget build(BuildContext context) {
-    final groups = groupTransactionsByDay(transactions);
+    final groups = groupTransactionsByDay(transactions, dailySummaries);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(
@@ -134,7 +160,7 @@ class _HomeContent extends StatelessWidget {
         AppSpacing.space24 + 56, // 留给 FAB
       ),
       children: [
-        MonthlySummaryCard(summary: summary),
+        MonthlySummaryCard(comparison: comparison),
         const SizedBox(height: AppSpacing.space20),
         if (groups.isEmpty)
           const EmptyTransactionCard()

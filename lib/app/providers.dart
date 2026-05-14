@@ -2,20 +2,24 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/database/database_provider.dart';
 import '../data/repositories/drift_account_repository.dart';
+import '../data/repositories/drift_financial_metrics_repository.dart';
 import '../data/repositories/drift_posting_repository.dart';
 import '../data/repositories/drift_system_account_resolver.dart';
 import '../data/repositories/drift_transaction_query_repository.dart';
 import '../domain/entities/account.dart';
 import '../domain/enums/accounting_enums.dart';
 import '../domain/repositories/account_repository.dart';
+import '../domain/repositories/financial_metrics_repository.dart';
 import '../domain/repositories/posting_repository.dart';
 import '../domain/repositories/system_account_resolver.dart';
 import '../domain/repositories/transaction_query_repository.dart';
 import '../domain/services/account_service.dart';
 import '../domain/services/category_service.dart';
+import '../domain/services/financial_metrics_service.dart';
 import '../domain/services/posting_service.dart';
 import '../domain/services/transaction_query_service.dart';
 import '../domain/services/transaction_service.dart';
+import '../core/time/month_key.dart';
 
 part 'providers.g.dart';
 
@@ -51,6 +55,11 @@ TransactionQueryRepository transactionQueryRepository(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
+FinancialMetricsRepository financialMetricsRepository(Ref ref) {
+  return DriftFinancialMetricsRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
 AccountService accountService(Ref ref) {
   return AccountServiceImpl(ref.watch(accountRepositoryProvider));
 }
@@ -80,6 +89,13 @@ TransactionService transactionService(Ref ref) {
 TransactionQueryService transactionQueryService(Ref ref) {
   return TransactionQueryServiceImpl(
     ref.watch(transactionQueryRepositoryProvider),
+  );
+}
+
+@Riverpod(keepAlive: true)
+FinancialMetricsService financialMetricsService(Ref ref) {
+  return FinancialMetricsServiceImpl(
+    ref.watch(financialMetricsRepositoryProvider),
   );
 }
 
@@ -130,17 +146,55 @@ Stream<List<TransactionListItem>> homeMonthTransactions(
 }
 
 @riverpod
-Stream<CashflowSummary> homeMonthCashflowSummary(
+Stream<CashflowComparison> homeMonthCashflowComparison(
   Ref ref, {
   required int year,
   required int month,
 }) {
-  final from = DateTime(year, month);
-  final until = DateTime(year, month + 1);
   return ref
-      .watch(transactionQueryServiceProvider)
-      .watchCashflowSummary(
-        CashflowSummaryQuery(occurredFrom: from, occurredUntil: until),
+      .watch(financialMetricsServiceProvider)
+      .watchCashflowComparison(
+        CashflowComparisonQuery(month: MonthKey(year: year, month: month)),
+      );
+}
+
+@riverpod
+Stream<List<DailyCashflowSummary>> homeMonthDailyCashflowSummaries(
+  Ref ref, {
+  required int year,
+  required int month,
+}) {
+  return ref
+      .watch(financialMetricsServiceProvider)
+      .watchDailyCashflowSummaries(
+        DailyCashflowSummaryQuery(month: MonthKey(year: year, month: month)),
+      );
+}
+
+@riverpod
+Stream<BalanceSheetComparison> balanceSheetComparison(Ref ref) {
+  final now = DateTime.now();
+  return ref
+      .watch(financialMetricsServiceProvider)
+      .watchBalanceSheetComparison(
+        BalanceSheetComparisonQuery(
+          month: MonthKey.fromDate(now),
+          asOfExclusive: now,
+        ),
+      );
+}
+
+@riverpod
+Stream<List<NetAssetTrendPoint>> netAssetTrend(Ref ref, {int months = 6}) {
+  final now = DateTime.now();
+  return ref
+      .watch(financialMetricsServiceProvider)
+      .watchNetAssetTrend(
+        NetAssetTrendQuery(
+          endMonth: MonthKey.fromDate(now),
+          months: months,
+          currentAsOfExclusive: now,
+        ),
       );
 }
 
