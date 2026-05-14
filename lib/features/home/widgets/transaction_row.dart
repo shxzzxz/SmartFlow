@@ -9,7 +9,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
-import '../../../widgets/business/business_icon.dart';
+import '../../../widgets/business/account_endpoint_view.dart';
 import '../../../widgets/business/category_avatar.dart';
 import '../view_models/transaction_row_presentation.dart';
 import 'transaction_progress_badges.dart';
@@ -142,7 +142,7 @@ class _AccountLine extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Flexible(
-            child: _AccountEndpointView(endpoint: flow.out!, style: textStyle),
+            child: AccountEndpointView(endpoint: flow.out!, style: textStyle),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4),
@@ -154,7 +154,7 @@ class _AccountLine extends ConsumerWidget {
             ),
           ),
           Flexible(
-            child: _AccountEndpointView(endpoint: flow.in_!, style: textStyle),
+            child: AccountEndpointView(endpoint: flow.in_!, style: textStyle),
           ),
         ],
       );
@@ -163,13 +163,13 @@ class _AccountLine extends ConsumerWidget {
     final endpoint =
         flow.out ??
         flow.in_ ??
-        _AccountEndpoint(
+        AccountEndpoint(
           label: fallbackText.isEmpty ? '未分配账户' : fallbackText,
           iconKey: null,
         );
     return Align(
       alignment: Alignment.centerRight,
-      child: _AccountEndpointView(endpoint: endpoint, style: textStyle),
+      child: AccountEndpointView(endpoint: endpoint, style: textStyle),
     );
   }
 }
@@ -177,8 +177,8 @@ class _AccountLine extends ConsumerWidget {
 class _AccountFlow {
   const _AccountFlow({this.out, this.in_, this.separator = '→'});
 
-  final _AccountEndpoint? out;
-  final _AccountEndpoint? in_;
+  final AccountEndpoint? out;
+  final AccountEndpoint? in_;
   final String separator;
 }
 
@@ -209,40 +209,7 @@ _AccountFlow _resolveAccountFlow(
   };
 }
 
-class _AccountEndpoint {
-  const _AccountEndpoint({required this.label, required this.iconKey});
-
-  final String label;
-  final String? iconKey;
-}
-
-class _AccountEndpointView extends StatelessWidget {
-  const _AccountEndpointView({required this.endpoint, required this.style});
-
-  final _AccountEndpoint endpoint;
-  final TextStyle? style;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        BusinessIcon(iconKey: endpoint.iconKey, size: 12),
-        const SizedBox(width: AppSpacing.space4),
-        Flexible(
-          child: Text(
-            endpoint.label,
-            style: style,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-_AccountEndpoint? _resolveAccountEndpoint({
+AccountEndpoint? _resolveAccountEndpoint({
   required int? id,
   required String? name,
   required List<Account> accounts,
@@ -250,7 +217,7 @@ _AccountEndpoint? _resolveAccountEndpoint({
   final account = _findAccount(id, accounts);
   final label = _cleanText(name) ?? account?.name;
   if (label == null) return null;
-  return _AccountEndpoint(label: label, iconKey: account?.iconKey);
+  return AccountEndpoint(label: label, iconKey: account?.iconKey);
 }
 
 Account? _findAccount(int? id, List<Account> accounts) {

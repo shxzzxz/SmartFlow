@@ -87,36 +87,39 @@ Future<DateTime?> showAppMonthPicker({
   required DateTime initialMonth,
   int firstYear = 2000,
   int lastYear = 2100,
+  String title = '选择月份',
 }) {
-  return showModalBottomSheet<DateTime>(
+  return showDialog<DateTime>(
     context: context,
-    showDragHandle: true,
     builder:
-        (context) => AppMonthPickerSheet(
+        (context) => AppMonthPickerDialog(
           initialMonth: initialMonth,
           firstYear: firstYear,
           lastYear: lastYear,
+          title: title,
         ),
   );
 }
 
-class AppMonthPickerSheet extends StatefulWidget {
-  const AppMonthPickerSheet({
+class AppMonthPickerDialog extends StatefulWidget {
+  const AppMonthPickerDialog({
     required this.initialMonth,
     required this.firstYear,
     required this.lastYear,
+    required this.title,
     super.key,
   });
 
   final DateTime initialMonth;
   final int firstYear;
   final int lastYear;
+  final String title;
 
   @override
-  State<AppMonthPickerSheet> createState() => _AppMonthPickerSheetState();
+  State<AppMonthPickerDialog> createState() => _AppMonthPickerDialogState();
 }
 
-class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
+class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
   static const _itemExtent = 44.0;
 
   late int _selectedYear;
@@ -149,80 +152,95 @@ class _AppMonthPickerSheetState extends State<AppMonthPickerSheet> {
     final colors = Theme.of(context).colorScheme;
     final yearCount = widget.lastYear - widget.firstYear + 1;
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          0,
-          AppSpacing.space16,
-          AppSpacing.space16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Text('选择月份', style: context.appTextStyles.subsectionTitle),
-                const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('取消'),
-                ),
-                FilledButton(
-                  onPressed:
-                      () => Navigator.of(
-                        context,
-                      ).pop(DateTime(_selectedYear, _selectedMonth)),
-                  child: const Text('确定'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space12),
-            SizedBox(
-              height: 220,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    height: _itemExtent,
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer.withValues(alpha: 0.26),
-                      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space24,
+        vertical: AppSpacing.space24,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space20,
+            AppSpacing.space20,
+            AppSpacing.space20,
+            AppSpacing.space16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(widget.title, style: context.appTextStyles.sectionTitle),
+              const SizedBox(height: AppSpacing.space16),
+              SizedBox(
+                height: 220,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      height: _itemExtent,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer.withValues(alpha: 0.26),
+                        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+                      ),
                     ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _WheelPicker(
+                            controller: _yearController,
+                            itemCount: yearCount,
+                            selectedIndex: _selectedYear - widget.firstYear,
+                            itemExtent: _itemExtent,
+                            labelBuilder:
+                                (index) => '${widget.firstYear + index}年',
+                            onSelectedItemChanged:
+                                (index) => setState(
+                                  () =>
+                                      _selectedYear = widget.firstYear + index,
+                                ),
+                          ),
+                        ),
+                        Expanded(
+                          child: _WheelPicker(
+                            controller: _monthController,
+                            itemCount: 12,
+                            selectedIndex: _selectedMonth - 1,
+                            itemExtent: _itemExtent,
+                            labelBuilder: (index) => '${index + 1}月',
+                            onSelectedItemChanged:
+                                (index) =>
+                                    setState(() => _selectedMonth = index + 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('取消'),
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _WheelPicker(
-                          controller: _yearController,
-                          itemCount: yearCount,
-                          itemExtent: _itemExtent,
-                          labelBuilder:
-                              (index) => '${widget.firstYear + index}年',
-                          onSelectedItemChanged:
-                              (index) => setState(
-                                () => _selectedYear = widget.firstYear + index,
-                              ),
-                        ),
-                      ),
-                      Expanded(
-                        child: _WheelPicker(
-                          controller: _monthController,
-                          itemCount: 12,
-                          itemExtent: _itemExtent,
-                          labelBuilder: (index) => '${index + 1}月',
-                          onSelectedItemChanged:
-                              (index) =>
-                                  setState(() => _selectedMonth = index + 1),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: AppSpacing.space8),
+                  FilledButton(
+                    onPressed:
+                        () => Navigator.of(
+                          context,
+                        ).pop(DateTime(_selectedYear, _selectedMonth)),
+                    child: const Text('确定'),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -233,6 +251,7 @@ class _WheelPicker extends StatelessWidget {
   const _WheelPicker({
     required this.controller,
     required this.itemCount,
+    required this.selectedIndex,
     required this.itemExtent,
     required this.labelBuilder,
     required this.onSelectedItemChanged,
@@ -240,12 +259,14 @@ class _WheelPicker extends StatelessWidget {
 
   final FixedExtentScrollController controller;
   final int itemCount;
+  final int selectedIndex;
   final double itemExtent;
   final String Function(int index) labelBuilder;
   final ValueChanged<int> onSelectedItemChanged;
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return ListWheelScrollView.useDelegate(
       controller: controller,
       itemExtent: itemExtent,
@@ -256,15 +277,20 @@ class _WheelPicker extends StatelessWidget {
       onSelectedItemChanged: onSelectedItemChanged,
       childDelegate: ListWheelChildBuilderDelegate(
         childCount: itemCount,
-        builder:
-            (context, index) => Center(
-              child: Text(
-                labelBuilder(index),
-                style: context.appTextStyles.segmentedControlLabel(
-                  selected: false,
-                ),
-              ),
+        builder: (context, index) {
+          final selected = index == selectedIndex;
+          return Center(
+            child: Text(
+              labelBuilder(index),
+              style: context.appTextStyles
+                  .segmentedControlLabel(selected: selected)
+                  .copyWith(
+                    color:
+                        selected ? colors.onSurface : colors.onSurfaceVariant,
+                  ),
             ),
+          );
+        },
       ),
     );
   }

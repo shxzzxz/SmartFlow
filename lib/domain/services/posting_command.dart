@@ -87,6 +87,23 @@ class TransactionStateUpdate {
   final BusinessState businessState;
 }
 
+class EntryAccountReassignment {
+  const EntryAccountReassignment({
+    required this.fromAccountId,
+    required this.toAccountId,
+    this.transactionId,
+    this.rootTransactionId,
+  }) : assert(
+         (transactionId == null) != (rootTransactionId == null),
+         'Exactly one reassignment scope must be provided.',
+       );
+
+  final int fromAccountId;
+  final int toAccountId;
+  final int? transactionId;
+  final int? rootTransactionId;
+}
+
 class PostTransactionMutation {
   const PostTransactionMutation({
     required this.command,

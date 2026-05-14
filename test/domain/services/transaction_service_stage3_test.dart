@@ -36,11 +36,13 @@ void main() {
       );
       queryRepository = DriftTransactionQueryRepository(database);
       queryService = TransactionQueryServiceImpl(queryRepository);
+      final postingRepository = DriftPostingRepository(database);
       service = TransactionServiceImpl(
-        PostingServiceImpl(DriftPostingRepository(database)),
+        PostingServiceImpl(postingRepository),
         accountRepository: accountRepository,
         transactionQueryRepository: queryRepository,
         systemAccountResolver: systemAccounts,
+        postingRepository: postingRepository,
       );
       accountService = AccountServiceImpl(accountRepository);
       categoryService = CategoryServiceImpl(accountRepository);
@@ -230,6 +232,94 @@ void main() {
       },
     );
 
+    test(
+      'updates reimbursement account across current reimbursement chain',
+      () async {
+        final card = await _createLiability(accountService, '信用卡');
+        final bank = await _createAsset(accountService, '招行');
+        final oldReceivable = await _createAsset(
+          accountService,
+          '公司报销',
+          subtype: AccountSubtype.reimbursement,
+        );
+        final newReceivable = await _createAsset(
+          accountService,
+          '项目报销',
+          subtype: AccountSubtype.reimbursement,
+        );
+        final travel = await _createCategory(
+          categoryService,
+          '差旅',
+          AccountType.expense,
+        );
+
+        final advance =
+            (await service.createReimbursementAdvance(
+                      CreateReimbursementAdvanceCommand(
+                        amount: const Money(minorUnits: 200000),
+                        receivableAccountId: oldReceivable.id,
+                        paidFromAccountId: card.id,
+                        expenseCategoryId: travel.id,
+                        occurredAt: DateTime(2026, 5, 1),
+                      ),
+                    )
+                    as Success<PostTransactionResult>)
+                .value;
+        final receipt =
+            (await service.createReimbursementReceipt(
+                      CreateReimbursementReceiptCommand(
+                        amount: const Money(minorUnits: 50000),
+                        advanceTransactionId: advance.transactionId,
+                        receivableAccountId: oldReceivable.id,
+                        receiveAccountId: bank.id,
+                        occurredAt: DateTime(2026, 5, 2),
+                      ),
+                    )
+                    as Success<PostTransactionResult>)
+                .value;
+
+        final result = await service.updateTransactionBasics(
+          UpdateTransactionBasicsCommand(
+            transactionId: advance.transactionId,
+            occurredAt: DateTime(2026, 5, 3, 8, 30),
+            reimbursementAccountId: newReceivable.id,
+          ),
+        );
+        expect(result, isA<Success<void>>());
+
+        expect(await _balance(database, oldReceivable.id), 0);
+        expect(await _balance(database, newReceivable.id), 150000);
+
+        final updatedAdvance =
+            await queryService
+                .watchTransactionDetail(advance.transactionId)
+                .first;
+        expect(
+          updatedAdvance!.transaction.occurredAt,
+          DateTime(2026, 5, 3, 8, 30),
+        );
+        expect(
+          updatedAdvance.entries
+              .where((entry) => entry.accountId == newReceivable.id)
+              .single
+              .direction,
+          EntryDirection.debit,
+        );
+
+        final updatedReceipt =
+            await queryService
+                .watchTransactionDetail(receipt.transactionId)
+                .first;
+        expect(
+          updatedReceipt!.entries
+              .where((entry) => entry.accountId == newReceivable.id)
+              .single
+              .direction,
+          EntryDirection.credit,
+        );
+      },
+    );
+
     test('receipt after close is rejected', () async {
       final card = await _createLiability(accountService, '信用卡');
       final bank = await _createAsset(accountService, '招行');
@@ -393,12 +483,14 @@ Future<dynamic> _createAsset(
   AccountService service,
   String name, {
   Money opening = const Money(minorUnits: 0),
+  AccountSubtype? subtype,
 }) async {
   final result = await service.createAccount(
     CreateAccountCommand(
       name: name,
       type: AccountType.asset,
       openingBalance: opening,
+      subtype: subtype,
     ),
   );
   return (result as Success).value;

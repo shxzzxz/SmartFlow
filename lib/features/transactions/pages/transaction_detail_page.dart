@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
@@ -9,10 +10,14 @@ import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
+import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_surface.dart';
+import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/services/posting_command.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
+import '../../../widgets/business/account_endpoint_view.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/business_icon_bubble.dart';
 import '../../../widgets/business/finance_labels.dart';
@@ -98,7 +103,7 @@ class _DetailBody extends ConsumerWidget {
     final transaction = detail.transaction;
     final purpose = transaction.businessPurpose;
     final semantic = _semanticForPurpose(purpose);
-    final accountInfo = _resolveAccountInfo(detail);
+    final accountRows = _resolveAccountRows(detail);
 
     final showRefund = purpose == BusinessPurpose.dailyExpense;
     final showReimbursement = purpose == BusinessPurpose.reimbursementAdvance;
@@ -126,16 +131,19 @@ class _DetailBody extends ConsumerWidget {
               const SizedBox(height: AppSpacing.space12),
               _PrimaryMetaCard(
                 detail: detail,
-                accountInfo: accountInfo,
-                onAccountTap: () => _showAccountChangeUnsupported(context),
+                accountRows: accountRows,
+                onOccurredAtTap: () => _editOccurredAt(context, ref),
+                onAccountTap: (row) => _editAccount(context, ref, row),
                 onNoteTap: () => _editNote(context, ref),
               ),
               if (detail.history.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _HistoryCard(detail: detail),
               ],
-              const SizedBox(height: AppSpacing.space12),
-              _ExclusionCard(detail: detail),
+              if (_showsExclusionCard(detail)) ...[
+                const SizedBox(height: AppSpacing.space12),
+                _ExclusionCard(detail: detail),
+              ],
             ],
           ),
         ),
@@ -174,7 +182,9 @@ class _DetailBody extends ConsumerWidget {
         );
       },
     );
+    await WidgetsBinding.instance.endOfFrame;
     controller.dispose();
+    if (!context.mounted) return;
     if (updated == null) return;
     if (updated == current) return;
 
@@ -183,17 +193,67 @@ class _DetailBody extends ConsumerWidget {
         .updateTransactionMetadata(
           UpdateTransactionMetadataCommand(
             transactionId: detail.transaction.id,
-            note: updated,
+            note: updated.isEmpty ? null : updated,
+            noteChanged: true,
           ),
         );
     if (!context.mounted) return;
     _showResultSnackBar(context, result, success: '备注已更新');
   }
 
-  void _showAccountChangeUnsupported(BuildContext context) {
-    ScaffoldMessenger.of(
+  Future<void> _editOccurredAt(BuildContext context, WidgetRef ref) async {
+    final current = detail.transaction.occurredAt;
+    final updated = await showAppDateTimePicker(
+      context: context,
+      initialDateTime: current,
+      title: '选择交易时间',
+    );
+    if (updated == null || !context.mounted) return;
+    if (updated == current) return;
+    final result = await ref
+        .read(transactionServiceProvider)
+        .updateTransactionBasics(
+          UpdateTransactionBasicsCommand(
+            transactionId: detail.transaction.id,
+            occurredAt: updated,
+          ),
+        );
+    if (!context.mounted) return;
+    _showResultSnackBar(context, result, success: '交易时间已更新');
+  }
+
+  Future<void> _editAccount(
+    BuildContext context,
+    WidgetRef ref,
+    _AccountRowInfo row,
+  ) async {
+    final accounts = ref.read(accountListProvider).value ?? const <Account>[];
+    final options =
+        row.editKind == _AccountEditKind.reimbursement
+            ? accounts.where(_isSelectableReimbursementAccount).toList()
+            : accounts.where(_isSelectableSettlementAccount).toList();
+    final selectedId = await _showAccountPicker(
       context,
-    ).showSnackBar(const SnackBar(content: Text('账户切换暂未支持，敬请期待下个版本')));
+      title: row.label,
+      accounts: options,
+      selectedId: row.accountId,
+    );
+    if (selectedId == null || selectedId == row.accountId) return;
+    final result = await ref
+        .read(transactionServiceProvider)
+        .updateTransactionBasics(
+          UpdateTransactionBasicsCommand(
+            transactionId: detail.transaction.id,
+            settlementAccountId:
+                row.editKind == _AccountEditKind.settlement ? selectedId : null,
+            reimbursementAccountId:
+                row.editKind == _AccountEditKind.reimbursement
+                    ? selectedId
+                    : null,
+          ),
+        );
+    if (!context.mounted) return;
+    _showResultSnackBar(context, result, success: '${row.label}已更新');
   }
 }
 
@@ -344,14 +404,16 @@ class _RefundReimbursementCard extends StatelessWidget {
 class _PrimaryMetaCard extends StatelessWidget {
   const _PrimaryMetaCard({
     required this.detail,
-    required this.accountInfo,
+    required this.accountRows,
+    required this.onOccurredAtTap,
     required this.onAccountTap,
     required this.onNoteTap,
   });
 
   final TransactionDetailView detail;
-  final _AccountInfo accountInfo;
-  final VoidCallback onAccountTap;
+  final List<_AccountRowInfo> accountRows;
+  final VoidCallback onOccurredAtTap;
+  final ValueChanged<_AccountRowInfo> onAccountTap;
   final VoidCallback onNoteTap;
 
   @override
@@ -366,23 +428,33 @@ class _PrimaryMetaCard extends StatelessWidget {
         label: '交易时间',
         value: _formatDateTime(transaction.occurredAt),
         showChevron: false,
+        onTap: onOccurredAtTap,
       ),
       _ChevronRow(
         label: '创建时间',
         value: _formatDateTime(transaction.createdAt),
         showChevron: false,
       ),
-      if (accountInfo.label.isNotEmpty)
+      for (final accountRow in accountRows)
         _ChevronRow(
-          label: accountInfo.label,
-          value: accountInfo.value,
-          onTap: onAccountTap,
+          label: accountRow.label,
+          value: '',
+          trailing: AccountEndpointView(
+            endpoint: accountRow.endpoint,
+            style: context.appTextStyles.detailValue,
+          ),
+          showChevron: false,
+          onTap:
+              accountRow.editKind == null
+                  ? null
+                  : () => onAccountTap(accountRow),
         ),
       _ChevronRow(
         label: '备注',
         value: hasNote ? note : '点击添加备注',
         valueColor: hasNote ? null : colors.onSurfaceVariant,
         onTap: onNoteTap,
+        showChevron: false,
       ),
     ];
 
@@ -422,21 +494,22 @@ class _ExclusionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transaction = detail.transaction;
-    return _RowCard(
-      rows: [
+    final rows = <Widget>[
+      if (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
+          transaction.businessPurpose == BusinessPurpose.dailyIncome)
         _SwitchRow(
           label: '不计入收支',
           value: transaction.isExcludedFromStats,
           onChanged: (next) => _toggleExcludeStats(context, ref, next),
         ),
-        if (transaction.businessPurpose != BusinessPurpose.dailyIncome)
-          _SwitchRow(
-            label: '不计入预算',
-            value: transaction.isExcludedFromBudget,
-            onChanged: (next) => _toggleExcludeBudget(context, ref, next),
-          ),
-      ],
-    );
+      if (transaction.businessPurpose == BusinessPurpose.dailyExpense)
+        _SwitchRow(
+          label: '不计入预算',
+          value: transaction.isExcludedFromBudget,
+          onChanged: (next) => _toggleExcludeBudget(context, ref, next),
+        ),
+    ];
+    return _RowCard(rows: rows);
   }
 
   Future<void> _toggleExcludeStats(
@@ -508,6 +581,7 @@ class _ChevronRow extends StatelessWidget {
     this.enabled = true,
     this.valueSemantic,
     this.valueColor,
+    this.trailing,
   });
 
   final String label;
@@ -517,6 +591,7 @@ class _ChevronRow extends StatelessWidget {
   final bool enabled;
   final MoneySemantic? valueSemantic;
   final Color? valueColor;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -541,18 +616,23 @@ class _ChevronRow extends StatelessWidget {
                 color: colors.onSurfaceVariant,
               ),
             ),
-            const Spacer(),
-            Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: textStyles.detailValue.copyWith(
-                  color: resolvedValueColor,
+            const SizedBox(width: AppSpacing.space16),
+            if (trailing == null)
+              Expanded(
+                child: Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textStyles.detailValue.copyWith(
+                    color: resolvedValueColor,
+                  ),
                 ),
+              )
+            else
+              Expanded(
+                child: Align(alignment: Alignment.centerRight, child: trailing),
               ),
-            ),
             if (tappable && showChevron) ...[
               const SizedBox(width: AppSpacing.space4),
               Icon(
@@ -670,7 +750,7 @@ class _ActionBar extends StatelessWidget {
             onPressed:
                 closed
                     ? () => _showReimbursementClosed(context)
-                    : () => _showReimbursementActions(context, transaction.id),
+                    : () => _showReimbursementDialog(context, detail),
           ),
         );
         actions.add(
@@ -728,36 +808,13 @@ class _ActionBar extends StatelessWidget {
     ).showSnackBar(const SnackBar(content: Text('报销已结束')));
   }
 
-  void _showReimbursementActions(BuildContext context, int transactionId) {
-    showModalBottomSheet<void>(
+  void _showReimbursementDialog(
+    BuildContext context,
+    TransactionDetailView detail,
+  ) {
+    showDialog<void>(
       context: context,
-      showDragHandle: true,
-      builder:
-          (ctx) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  title: const Text('记一笔到账'),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    context.push(
-                      '/transactions/$transactionId/reimburse-receipt',
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text('结束报销'),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    context.push(
-                      '/transactions/$transactionId/reimburse-close',
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+      builder: (_) => _ReimbursementDialog(detail: detail),
     );
   }
 
@@ -765,6 +822,311 @@ class _ActionBar extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('该交易类型暂不支持编辑')));
+  }
+}
+
+class _ReimbursementDialog extends ConsumerStatefulWidget {
+  const _ReimbursementDialog({required this.detail});
+
+  final TransactionDetailView detail;
+
+  @override
+  ConsumerState<_ReimbursementDialog> createState() =>
+      _ReimbursementDialogState();
+}
+
+class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _noteController = TextEditingController();
+
+  bool _closeReimbursement = true;
+  bool _submitting = false;
+  int? _receiveAccountId;
+  late DateTime _occurredAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _occurredAt = DateTime.now();
+    final outstanding = widget.detail.reimbursementSummary?.outstanding;
+    if (outstanding != null) {
+      _amountController.text = outstanding.format();
+    }
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+    final receiveAccounts =
+        accounts.where(_isSelectableReceiveAccount).toList();
+    final selectedAccountId = _effectiveAccountId(
+      _receiveAccountId,
+      receiveAccounts,
+    );
+    final selectedAccount = _findAccount(selectedAccountId, receiveAccounts);
+    final summary = widget.detail.reimbursementSummary;
+    final outstanding = summary?.outstanding;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
+      ),
+      title: const Text('报销'),
+      content: SizedBox(
+        width: 360,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DialogRowCard(
+                  rows: [
+                    if (outstanding != null)
+                      _DialogValueRow(
+                        label: '剩余应收',
+                        child: Text(
+                          outstanding.format(),
+                          textAlign: TextAlign.right,
+                          style: context.appTextStyles.detailValue,
+                        ),
+                      ),
+                    FormField<int>(
+                      initialValue: selectedAccountId,
+                      validator: (_) {
+                        final amount = _parseAmountOrNull();
+                        if (amount != null &&
+                            amount.minorUnits > 0 &&
+                            selectedAccountId == null) {
+                          return '请选择到账账户';
+                        }
+                        return null;
+                      },
+                      builder: (field) {
+                        return _DialogValueRow(
+                          label: '到账账户',
+                          onTap: () => _pickReceiveAccount(receiveAccounts),
+                          errorText: field.errorText,
+                          child:
+                              selectedAccount == null
+                                  ? Text(
+                                    '请选择账户',
+                                    textAlign: TextAlign.right,
+                                    style: context.appTextStyles.detailValue
+                                        .copyWith(
+                                          color:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  )
+                                  : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      BusinessIcon(
+                                        iconKey: selectedAccount.iconKey,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: AppSpacing.space8),
+                                      Flexible(
+                                        child: Text(
+                                          selectedAccount.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style:
+                                              context.appTextStyles.detailValue,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                        );
+                      },
+                    ),
+                    _DialogValueRow(
+                      label: '报销金额',
+                      child: TextFormField(
+                        controller: _amountController,
+                        decoration: _dialogInlineInputDecoration(context),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        ],
+                        validator: _validateAmount,
+                        textAlign: TextAlign.right,
+                        style: context.appTextStyles.detailValue,
+                      ),
+                    ),
+                    _DialogValueRow(
+                      label: '备注',
+                      alignTop: true,
+                      child: TextFormField(
+                        controller: _noteController,
+                        decoration: _dialogInlineInputDecoration(
+                          context,
+                          hintText: '点击填写备注',
+                        ),
+                        maxLines: 2,
+                        textAlign: TextAlign.right,
+                        style: context.appTextStyles.detailValue,
+                      ),
+                    ),
+                    _DialogValueRow(
+                      label: '报销时间',
+                      onTap: _pickOccurredAt,
+                      child: Text(
+                        _formatDateTime(_occurredAt),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: context.appTextStyles.detailValue,
+                      ),
+                    ),
+                    _DialogValueRow(
+                      label: '结束报销',
+                      child: Switch(
+                        value: _closeReimbursement,
+                        onChanged:
+                            (value) =>
+                                setState(() => _closeReimbursement = value),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _submitting ? null : () => _submit(selectedAccountId),
+          child:
+              _submitting
+                  ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                  : const Text('保存'),
+        ),
+      ],
+    );
+  }
+
+  Money? _parseAmountOrNull() {
+    try {
+      return Money.parse(_amountController.text);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Future<void> _pickReceiveAccount(List<Account> accounts) async {
+    final picked = await _showAccountPicker(
+      context,
+      title: '报销到账账户',
+      accounts: accounts,
+      selectedId:
+          _receiveAccountId ?? (accounts.isEmpty ? 0 : accounts.first.id),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _receiveAccountId = picked);
+  }
+
+  String? _validateAmount(String? value) {
+    final amount = _parseAmountOrNull();
+    if (amount == null) {
+      return '请输入有效金额';
+    }
+    if (_closeReimbursement) {
+      return amount.minorUnits >= 0 ? null : '金额不能小于 0';
+    }
+    if (amount.minorUnits <= 0) {
+      return '金额必须大于 0';
+    }
+    final outstanding = widget.detail.reimbursementSummary?.outstanding;
+    if (outstanding != null && amount.minorUnits > outstanding.minorUnits) {
+      return '到账金额不能超过剩余应收';
+    }
+    return null;
+  }
+
+  Future<void> _pickOccurredAt() async {
+    final picked = await showAppDateTimePicker(
+      context: context,
+      initialDateTime: _occurredAt,
+      title: '选择报销时间',
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _occurredAt = picked;
+    });
+  }
+
+  Future<void> _submit(int? selectedAccountId) async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    final receivableAccountId = _resolveReceivableAccountId(widget.detail);
+    if (receivableAccountId == null) {
+      _showFailure('无法定位报销账户');
+      return;
+    }
+    final amount = Money.parse(_amountController.text);
+    final receiveAccountId = selectedAccountId ?? receivableAccountId;
+    setState(() => _submitting = true);
+    final service = ref.read(transactionServiceProvider);
+    final note = _blankToNull(_noteController.text);
+    final Result<PostTransactionResult> result =
+        _closeReimbursement
+            ? await service.closeReimbursement(
+              CloseReimbursementCommand(
+                actualReceivedAmount: amount,
+                advanceTransactionId: widget.detail.transaction.id,
+                receivableAccountId: receivableAccountId,
+                receiveAccountId: receiveAccountId,
+                occurredAt: _occurredAt,
+                note: note,
+              ),
+            )
+            : await service.createReimbursementReceipt(
+              CreateReimbursementReceiptCommand(
+                amount: amount,
+                advanceTransactionId: widget.detail.transaction.id,
+                receivableAccountId: receivableAccountId,
+                receiveAccountId: receiveAccountId,
+                occurredAt: _occurredAt,
+                note: note,
+              ),
+            );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    result.when(
+      success: (_) => Navigator.of(context).pop(),
+      failure: (failure) => _showFailure(failure.message),
+    );
+  }
+
+  void _showFailure(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -798,14 +1160,106 @@ class _SecondaryAction extends StatelessWidget {
   }
 }
 
-class _AccountInfo {
-  const _AccountInfo({required this.label, required this.value});
+class _DialogRowCard extends StatelessWidget {
+  const _DialogRowCard({required this.rows});
 
-  final String label;
-  final String value;
+  final List<Widget> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const Divider(height: 1),
+          rows[i],
+        ],
+      ],
+    );
+  }
 }
 
-_AccountInfo _resolveAccountInfo(TransactionDetailView detail) {
+class _DialogValueRow extends StatelessWidget {
+  const _DialogValueRow({
+    required this.label,
+    required this.child,
+    this.onTap,
+    this.errorText,
+    this.alignTop = false,
+  });
+
+  final String label;
+  final Widget child;
+  final VoidCallback? onTap;
+  final String? errorText;
+  final bool alignTop;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment:
+                alignTop ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: context.appTextStyles.detailLabel.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space16),
+              Expanded(
+                child: Align(alignment: Alignment.centerRight, child: child),
+              ),
+            ],
+          ),
+          if (errorText != null) ...[
+            const SizedBox(height: AppSpacing.space4),
+            Text(
+              errorText!,
+              textAlign: TextAlign.right,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: colors.error),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (onTap == null) {
+      return row;
+    }
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+      child: row,
+    );
+  }
+}
+
+class _AccountRowInfo {
+  const _AccountRowInfo({
+    required this.label,
+    required this.accountId,
+    required this.endpoint,
+    this.editKind,
+  });
+
+  final String label;
+  final int accountId;
+  final AccountEndpoint endpoint;
+  final _AccountEditKind? editKind;
+}
+
+enum _AccountEditKind { settlement, reimbursement }
+
+List<_AccountRowInfo> _resolveAccountRows(TransactionDetailView detail) {
   final purpose = detail.transaction.businessPurpose;
   final entries = detail.entries;
   final asset =
@@ -826,10 +1280,18 @@ _AccountInfo _resolveAccountInfo(TransactionDetailView detail) {
         (e) => e.direction == EntryDirection.debit,
         orElse: () => asset.first,
       );
-      return _AccountInfo(
-        label: '账户',
-        value: '${from.accountName} → ${to.accountName}',
-      );
+      return [
+        _AccountRowInfo(
+          label: '转出账户',
+          accountId: from.accountId,
+          endpoint: _endpointFromEntry(from),
+        ),
+        _AccountRowInfo(
+          label: '转入账户',
+          accountId: to.accountId,
+          endpoint: _endpointFromEntry(to),
+        ),
+      ];
     case BusinessPurpose.dailyIncome:
     case BusinessPurpose.refund:
     case BusinessPurpose.reimbursementReceipt:
@@ -839,20 +1301,77 @@ _AccountInfo _resolveAccountInfo(TransactionDetailView detail) {
         (e) => e.direction == EntryDirection.debit,
         orElse: () => asset.isEmpty ? _placeholder() : asset.first,
       );
-      return _AccountInfo(label: '收支账户', value: inAccount.accountName);
+      return [
+        _AccountRowInfo(
+          label: '收支账户',
+          accountId: inAccount.accountId,
+          endpoint: _endpointFromEntry(inAccount),
+          editKind:
+              purpose == BusinessPurpose.dailyIncome
+                  ? _AccountEditKind.settlement
+                  : null,
+        ),
+      ];
     case BusinessPurpose.dailyExpense:
-    case BusinessPurpose.reimbursementAdvance:
     case BusinessPurpose.debtRepayment:
       final outAccount = asset.firstWhere(
         (e) => e.direction == EntryDirection.credit,
         orElse: () => asset.isEmpty ? _placeholder() : asset.first,
       );
-      return _AccountInfo(label: '收支账户', value: outAccount.accountName);
+      return [
+        _AccountRowInfo(
+          label: '收支账户',
+          accountId: outAccount.accountId,
+          endpoint: _endpointFromEntry(outAccount),
+          editKind:
+              purpose == BusinessPurpose.dailyExpense
+                  ? _AccountEditKind.settlement
+                  : null,
+        ),
+      ];
+    case BusinessPurpose.reimbursementAdvance:
+      final receivable = asset.firstWhere(
+        (e) =>
+            e.direction == EntryDirection.debit &&
+            e.accountType == AccountType.asset,
+        orElse: () => asset.isEmpty ? _placeholder() : asset.first,
+      );
+      final paidFrom = asset.firstWhere(
+        (e) => e.direction == EntryDirection.credit,
+        orElse: () => asset.isEmpty ? _placeholder() : asset.first,
+      );
+      return [
+        _AccountRowInfo(
+          label: '收支账户',
+          accountId: paidFrom.accountId,
+          endpoint: _endpointFromEntry(paidFrom),
+          editKind: _AccountEditKind.settlement,
+        ),
+        _AccountRowInfo(
+          label: '报销账户',
+          accountId: receivable.accountId,
+          endpoint: _endpointFromEntry(receivable),
+          editKind: _AccountEditKind.reimbursement,
+        ),
+      ];
     case BusinessPurpose.openingBalance:
     case BusinessPurpose.balanceAdjustment:
       final acct = asset.firstWhere((_) => true, orElse: () => _placeholder());
-      return _AccountInfo(label: '账户', value: acct.accountName);
+      return [
+        _AccountRowInfo(
+          label: '账户',
+          accountId: acct.accountId,
+          endpoint: _endpointFromEntry(acct),
+        ),
+      ];
   }
+}
+
+AccountEndpoint _endpointFromEntry(EntryLineView entry) {
+  return AccountEndpoint(
+    label: entry.accountName,
+    iconKey: entry.accountIconKey,
+  );
 }
 
 EntryLineView _placeholder() {
@@ -863,6 +1382,122 @@ EntryLineView _placeholder() {
     direction: EntryDirection.debit,
     amount: Money.zero(),
     accountIconKey: null,
+  );
+}
+
+int? _resolveReceivableAccountId(TransactionDetailView detail) {
+  for (final entry in detail.entries) {
+    if (entry.accountType == AccountType.asset &&
+        entry.direction == EntryDirection.debit) {
+      return entry.accountId;
+    }
+  }
+  return null;
+}
+
+bool _isSelectableReceiveAccount(Account account) {
+  return _isSelectableSettlementAccount(account);
+}
+
+bool _isSelectableSettlementAccount(Account account) {
+  return account.archivedAt == null &&
+      account.subtype != AccountSubtype.reimbursement &&
+      (account.type == AccountType.asset ||
+          account.type == AccountType.liability);
+}
+
+bool _isSelectableReimbursementAccount(Account account) {
+  return account.archivedAt == null &&
+      account.type == AccountType.asset &&
+      account.subtype == AccountSubtype.reimbursement;
+}
+
+int? _effectiveAccountId(int? selectedId, List<Account> options) {
+  if (selectedId != null &&
+      options.any((account) => account.id == selectedId)) {
+    return selectedId;
+  }
+  return options.isEmpty ? null : options.first.id;
+}
+
+Account? _findAccount(int? accountId, List<Account> accounts) {
+  if (accountId == null) return null;
+  for (final account in accounts) {
+    if (account.id == accountId) return account;
+  }
+  return null;
+}
+
+String? _blankToNull(String value) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
+}
+
+InputDecoration _dialogInlineInputDecoration(
+  BuildContext context, {
+  String? hintText,
+}) {
+  final colors = Theme.of(context).colorScheme;
+  return InputDecoration(
+    isDense: true,
+    hintText: hintText,
+    hintStyle: context.appTextStyles.detailValue.copyWith(
+      color: colors.onSurfaceVariant,
+    ),
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
+    errorBorder: InputBorder.none,
+    focusedErrorBorder: InputBorder.none,
+    contentPadding: EdgeInsets.zero,
+  );
+}
+
+Future<int?> _showAccountPicker(
+  BuildContext context, {
+  required String title,
+  required List<Account> accounts,
+  required int selectedId,
+}) {
+  return showModalBottomSheet<int>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) {
+      return SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space16,
+                0,
+                AppSpacing.space16,
+                AppSpacing.space8,
+              ),
+              child: Text(title, style: ctx.appTextStyles.subsectionTitle),
+            ),
+            for (final account in accounts)
+              ListTile(
+                leading: BusinessIcon(iconKey: account.iconKey, size: 24),
+                title: Text(account.name),
+                trailing:
+                    account.id == selectedId
+                        ? Icon(
+                          Icons.check,
+                          color: Theme.of(ctx).colorScheme.primary,
+                        )
+                        : null,
+                onTap: () => Navigator.of(ctx).pop(account.id),
+              ),
+            if (accounts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.space20),
+                child: Text('暂无可选账户', style: ctx.appTextStyles.inputText),
+              ),
+          ],
+        ),
+      );
+    },
   );
 }
 
@@ -949,6 +1584,11 @@ Money _signedAmount(Money money, MoneySemantic semantic) {
     return Money(minorUnits: -money.minorUnits, currency: money.currency);
   }
   return money;
+}
+
+bool _showsExclusionCard(TransactionDetailView detail) {
+  return detail.transaction.businessPurpose == BusinessPurpose.dailyExpense ||
+      detail.transaction.businessPurpose == BusinessPurpose.dailyIncome;
 }
 
 String _formatDateTime(DateTime dt) {

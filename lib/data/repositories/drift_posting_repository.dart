@@ -2,6 +2,8 @@ import 'package:drift/drift.dart';
 
 import '../../core/money/money.dart';
 import '../../domain/entities/account.dart' as domain;
+import '../../domain/enums/accounting_enums.dart';
+import '../../domain/ledger/ledger_rules.dart';
 import '../../domain/repositories/posting_repository.dart';
 import '../../domain/services/posting_command.dart';
 import '../database/app_database.dart';
@@ -167,11 +169,12 @@ class DriftPostingRepository implements PostingRepository {
   @override
   Future<void> updateTransactionMetadata({
     required int transactionId,
+    bool updateNote = false,
     String? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
   }) async {
-    if (note == null &&
+    if (!updateNote &&
         isExcludedFromStats == null &&
         isExcludedFromBudget == null) {
       return;
@@ -180,9 +183,9 @@ class DriftPostingRepository implements PostingRepository {
       ..where((t) => t.id.equals(transactionId))).write(
       TransactionsCompanion(
         note:
-            note == null
-                ? const Value.absent()
-                : Value(note.isEmpty ? null : note),
+            updateNote
+                ? Value(note == null || note.isEmpty ? null : note)
+                : const Value.absent(),
         isExcludedFromStats:
             isExcludedFromStats == null
                 ? const Value.absent()
@@ -194,6 +197,133 @@ class DriftPostingRepository implements PostingRepository {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  @override
+  Future<void> updateTransactionBasics({
+    required int transactionId,
+    DateTime? occurredAt,
+    List<EntryAccountReassignment> entryAccountReassignments = const [],
+  }) {
+    return _database.transaction(() async {
+      final now = DateTime.now();
+      if (occurredAt != null) {
+        await (_database.update(_database.transactions)
+          ..where((t) => t.id.equals(transactionId))).write(
+          TransactionsCompanion(
+            occurredAt: Value(occurredAt),
+            updatedAt: Value(now),
+          ),
+        );
+      }
+
+      for (final reassignment in entryAccountReassignments) {
+        await _reassignEntryAccount(reassignment, now: now);
+      }
+    });
+  }
+
+  Future<void> _reassignEntryAccount(
+    EntryAccountReassignment reassignment, {
+    required DateTime now,
+  }) async {
+    if (reassignment.fromAccountId == reassignment.toAccountId) {
+      return;
+    }
+
+    final accountRows =
+        await (_database.select(_database.accounts)..where(
+          (a) =>
+              a.id.isIn({reassignment.fromAccountId, reassignment.toAccountId}),
+        )).get();
+    final accountsById = {
+      for (final account in accountRows) account.id: account,
+    };
+    final oldAccount = accountsById[reassignment.fromAccountId];
+    final newAccount = accountsById[reassignment.toAccountId];
+    if (oldAccount == null || newAccount == null) {
+      throw StateError(
+        'Cannot reassign entry account because account is missing.',
+      );
+    }
+
+    final rows = await _entryRowsForReassignment(reassignment);
+    final balanceDeltas = <int, int>{};
+    for (final row in rows) {
+      final entry = row.readTable(_database.entries);
+      final oldDelta = balanceDeltaMinor(
+        accountType: oldAccount.accountType,
+        direction: entry.direction,
+        amountMinor: entry.amountMinor,
+      );
+      final newDelta = balanceDeltaMinor(
+        accountType: newAccount.accountType,
+        direction: entry.direction,
+        amountMinor: entry.amountMinor,
+      );
+      balanceDeltas.update(
+        oldAccount.id,
+        (value) => value - oldDelta,
+        ifAbsent: () => -oldDelta,
+      );
+      balanceDeltas.update(
+        newAccount.id,
+        (value) => value + newDelta,
+        ifAbsent: () => newDelta,
+      );
+
+      await (_database.update(_database.entries)
+        ..where((e) => e.id.equals(entry.id))).write(
+        EntriesCompanion(
+          accountId: Value(newAccount.id),
+          updatedAt: Value(now),
+        ),
+      );
+      await (_database.update(_database.transactions)..where(
+        (t) => t.id.equals(entry.transactionId),
+      )).write(TransactionsCompanion(updatedAt: Value(now)));
+    }
+
+    for (final MapEntry(key: accountId, value: delta)
+        in balanceDeltas.entries) {
+      if (delta == 0) continue;
+      await _database.customUpdate(
+        'UPDATE accounts '
+        'SET balance_minor = balance_minor + ?, updated_at = ? '
+        'WHERE id = ?',
+        variables: [
+          Variable<int>(delta),
+          Variable<DateTime>(now),
+          Variable<int>(accountId),
+        ],
+        updates: {_database.accounts},
+      );
+    }
+  }
+
+  Future<List<TypedResult>> _entryRowsForReassignment(
+    EntryAccountReassignment reassignment,
+  ) {
+    final query = _database.select(_database.entries).join([
+      innerJoin(
+        _database.transactions,
+        _database.transactions.id.equalsExp(_database.entries.transactionId),
+      ),
+    ])..where(_database.entries.accountId.equals(reassignment.fromAccountId));
+
+    final transactionId = reassignment.transactionId;
+    final rootTransactionId = reassignment.rootTransactionId;
+    if (transactionId != null) {
+      query.where(_database.entries.transactionId.equals(transactionId));
+    } else {
+      query.where(
+        _database.transactions.rootTransactionId.equals(rootTransactionId!) &
+            _database.transactions.businessState.equalsValue(
+              BusinessState.current,
+            ),
+      );
+    }
+    return query.get();
   }
 
   domain.Account _mapAccount(AccountRow row) {

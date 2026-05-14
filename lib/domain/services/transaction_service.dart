@@ -61,6 +61,10 @@ abstract interface class TransactionService {
   Future<Result<void>> updateTransactionMetadata(
     UpdateTransactionMetadataCommand command,
   );
+
+  Future<Result<void>> updateTransactionBasics(
+    UpdateTransactionBasicsCommand command,
+  );
 }
 
 class TransactionServiceImpl implements TransactionService {
@@ -1005,6 +1009,7 @@ class TransactionServiceImpl implements TransactionService {
         UpdateTransactionMetadataCommand(
           transactionId: command.transactionId,
           note: command.note,
+          noteChanged: true,
           isExcludedFromStats: command.isExcludedFromStats,
           isExcludedFromBudget: command.isExcludedFromBudget,
         ),
@@ -1103,7 +1108,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<void>> updateTransactionMetadata(
     UpdateTransactionMetadataCommand command,
   ) async {
-    if (command.note == null &&
+    if (!command.noteChanged &&
         command.isExcludedFromStats == null &&
         command.isExcludedFromBudget == null) {
       return const Result.success(null);
@@ -1135,6 +1140,7 @@ class TransactionServiceImpl implements TransactionService {
     try {
       await repository.updateTransactionMetadata(
         transactionId: command.transactionId,
+        updateNote: command.noteChanged,
         note: command.note,
         isExcludedFromStats: command.isExcludedFromStats,
         isExcludedFromBudget: command.isExcludedFromBudget,
@@ -1149,6 +1155,228 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
+  }
+
+  @override
+  Future<Result<void>> updateTransactionBasics(
+    UpdateTransactionBasicsCommand command,
+  ) async {
+    if (command.occurredAt == null &&
+        command.settlementAccountId == null &&
+        command.reimbursementAccountId == null) {
+      return const Result.success(null);
+    }
+    final repository = _postingRepository;
+    if (repository == null) {
+      return const Result.failure(
+        Failure(
+          code: 'posting_repository_unavailable',
+          message:
+              'PostingRepository is required to update transaction basics.',
+        ),
+      );
+    }
+
+    final query = _requireQueryRepository();
+    final detail =
+        await query.watchTransactionDetail(command.transactionId).first;
+    if (detail == null) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_found',
+          message: 'Transaction not found.',
+        ),
+      );
+    }
+    if (detail.transaction.businessState != BusinessState.current) {
+      return const Result.failure(
+        Failure(
+          code: 'transaction_not_current',
+          message: 'Only current transactions can be updated.',
+        ),
+      );
+    }
+
+    final reassignments = <EntryAccountReassignment>[];
+    final settlementAccountId = command.settlementAccountId;
+    if (settlementAccountId != null) {
+      final entry = _settlementEntry(detail);
+      if (entry == null) {
+        return const Result.failure(
+          Failure(
+            code: 'settlement_account_not_found',
+            message: 'Settlement account cannot be located.',
+          ),
+        );
+      }
+      final failure = await _validateDirectAccount(
+        settlementAccountId,
+        currencyCode: detail.transaction.currencyCode,
+        expectedTypes: {AccountType.asset, AccountType.liability},
+        allowReimbursementSubtype: false,
+      );
+      if (failure != null) {
+        return Result.failure(failure);
+      }
+      if (entry.accountId != settlementAccountId) {
+        reassignments.add(
+          EntryAccountReassignment(
+            transactionId: detail.transaction.id,
+            fromAccountId: entry.accountId,
+            toAccountId: settlementAccountId,
+          ),
+        );
+      }
+    }
+
+    final reimbursementAccountId = command.reimbursementAccountId;
+    if (reimbursementAccountId != null) {
+      if (detail.transaction.businessPurpose !=
+          BusinessPurpose.reimbursementAdvance) {
+        return const Result.failure(
+          Failure(
+            code: 'reimbursement_account_unsupported',
+            message:
+                'Only reimbursement advances can change reimbursement account.',
+          ),
+        );
+      }
+      final entry = _reimbursementReceivableEntry(detail);
+      if (entry == null) {
+        return const Result.failure(
+          Failure(
+            code: 'reimbursement_account_not_found',
+            message: 'Reimbursement account cannot be located.',
+          ),
+        );
+      }
+      final failure = await _validateDirectAccount(
+        reimbursementAccountId,
+        currencyCode: detail.transaction.currencyCode,
+        expectedTypes: {AccountType.asset},
+        requiredSubtype: AccountSubtype.reimbursement,
+      );
+      if (failure != null) {
+        return Result.failure(failure);
+      }
+      if (entry.accountId != reimbursementAccountId) {
+        reassignments.add(
+          EntryAccountReassignment(
+            rootTransactionId: detail.transaction.rootTransactionId,
+            fromAccountId: entry.accountId,
+            toAccountId: reimbursementAccountId,
+          ),
+        );
+      }
+    }
+
+    try {
+      await repository.updateTransactionBasics(
+        transactionId: command.transactionId,
+        occurredAt: command.occurredAt,
+        entryAccountReassignments: reassignments,
+      );
+      return const Result.success(null);
+    } on Object catch (error) {
+      return Result.failure(
+        Failure(
+          code: 'transaction_basics_update_failed',
+          message: 'Failed to update transaction basics.',
+          cause: error,
+        ),
+      );
+    }
+  }
+
+  EntryLineView? _settlementEntry(TransactionDetailView detail) {
+    final direction = switch (detail.transaction.businessPurpose) {
+      BusinessPurpose.dailyExpense ||
+      BusinessPurpose.reimbursementAdvance ||
+      BusinessPurpose.debtRepayment => EntryDirection.credit,
+      BusinessPurpose.dailyIncome ||
+      BusinessPurpose.refund ||
+      BusinessPurpose.reimbursementReceipt ||
+      BusinessPurpose.reimbursementClose ||
+      BusinessPurpose.borrowing => EntryDirection.debit,
+      _ => null,
+    };
+    if (direction == null) return null;
+    for (final entry in detail.entries) {
+      final settlementType =
+          entry.accountType == AccountType.asset ||
+          entry.accountType == AccountType.liability;
+      final isReimbursementReceivable =
+          detail.transaction.businessPurpose ==
+              BusinessPurpose.reimbursementAdvance &&
+          entry.direction == EntryDirection.debit &&
+          entry.accountType == AccountType.asset;
+      if (settlementType &&
+          !isReimbursementReceivable &&
+          entry.direction == direction) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  EntryLineView? _reimbursementReceivableEntry(TransactionDetailView detail) {
+    for (final entry in detail.entries) {
+      if (entry.accountType == AccountType.asset &&
+          entry.direction == EntryDirection.debit) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  Future<Failure?> _validateDirectAccount(
+    int accountId, {
+    required String currencyCode,
+    required Set<AccountType> expectedTypes,
+    AccountSubtype? requiredSubtype,
+    bool allowReimbursementSubtype = true,
+  }) async {
+    final repository = _accountRepository;
+    if (repository == null) return null;
+    final account = await repository.findAccountById(accountId);
+    if (account == null) {
+      return Failure(
+        code: 'account_not_found',
+        message: 'Account $accountId does not exist.',
+      );
+    }
+    if (account.archivedAt != null) {
+      return Failure(
+        code: 'account_archived',
+        message: 'Account $accountId is archived.',
+      );
+    }
+    if (account.currencyCode != currencyCode) {
+      return Failure(
+        code: 'account_currency_mismatch',
+        message: 'Account $accountId cannot be used for this currency.',
+      );
+    }
+    if (!expectedTypes.contains(account.type)) {
+      return Failure(
+        code: 'account_role_invalid',
+        message: 'Account $accountId cannot be used for this transaction.',
+      );
+    }
+    if (requiredSubtype != null && account.subtype != requiredSubtype) {
+      return Failure(
+        code: 'account_subtype_invalid',
+        message: 'Account $accountId cannot be used for this transaction.',
+      );
+    }
+    if (!allowReimbursementSubtype &&
+        account.subtype == AccountSubtype.reimbursement) {
+      return Failure(
+        code: 'account_subtype_invalid',
+        message: 'Reimbursement account cannot be used as settlement account.',
+      );
+    }
+    return null;
   }
 
   bool _supportsFormCorrection(BusinessPurpose purpose) {
@@ -1908,13 +2136,29 @@ class _ReplacementStructure {
 class UpdateTransactionMetadataCommand {
   const UpdateTransactionMetadataCommand({
     required this.transactionId,
+    this.noteChanged = false,
     this.note,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
   });
 
   final int transactionId;
+  final bool noteChanged;
   final String? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
+}
+
+class UpdateTransactionBasicsCommand {
+  const UpdateTransactionBasicsCommand({
+    required this.transactionId,
+    this.occurredAt,
+    this.settlementAccountId,
+    this.reimbursementAccountId,
+  });
+
+  final int transactionId;
+  final DateTime? occurredAt;
+  final int? settlementAccountId;
+  final int? reimbursementAccountId;
 }

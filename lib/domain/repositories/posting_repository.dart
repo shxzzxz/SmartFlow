@@ -16,8 +16,15 @@ abstract interface class PostingRepository {
 
   Future<void> updateTransactionMetadata({
     required int transactionId,
+    bool updateNote = false,
     String? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
+  });
+
+  Future<void> updateTransactionBasics({
+    required int transactionId,
+    DateTime? occurredAt,
+    List<EntryAccountReassignment> entryAccountReassignments = const [],
   });
 }

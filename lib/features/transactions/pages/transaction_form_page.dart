@@ -12,6 +12,7 @@ import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/colors.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
+import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
@@ -360,31 +361,16 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showAppDateTimePicker(
       context: context,
-      initialDate: _occurredAt,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      initialDateTime: _occurredAt,
+      title: '选择交易时间',
     );
     if (picked == null || !mounted) {
       return;
     }
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_occurredAt),
-    );
-    if (!mounted) {
-      return;
-    }
-    final time = pickedTime ?? TimeOfDay.fromDateTime(_occurredAt);
     setState(() {
-      _occurredAt = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        time.hour,
-        time.minute,
-      );
+      _occurredAt = picked;
     });
   }
 
