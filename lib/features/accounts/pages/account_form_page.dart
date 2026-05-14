@@ -9,6 +9,8 @@ import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
+import '../../../design_system/widgets/app_form_field.dart';
+import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/account_service.dart';
 import '../../../widgets/business/business_icon.dart';
@@ -75,14 +77,11 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                     ),
                     const SizedBox(height: AppSpacing.space20),
                     const Divider(height: 1),
-                    _PlainFormRow(
+                    AppPlainFormRow(
                       label: '账户名称',
-                      child: TextFormField(
+                      child: AppPlainTextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(
-                          hintText: '请输入账户名称',
-                          border: InputBorder.none,
-                        ),
+                        hintText: '请输入账户名称',
                         textInputAction: TextInputAction.next,
                         validator:
                             (value) =>
@@ -93,21 +92,18 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                     ),
                     const Divider(height: 1),
                     if (_kind != _AccountKind.reimbursement) ...[
-                      _PlainFormRow(
+                      AppPlainFormRow(
                         label:
                             _kind == _AccountKind.liability ? '初始欠款' : '初始额度',
                         child: Row(
                           children: [
                             Expanded(
-                              child: TextFormField(
+                              child: AppPlainTextFormField(
                                 controller: _openingBalanceController,
-                                decoration: InputDecoration(
-                                  hintText:
-                                      _kind == _AccountKind.liability
-                                          ? '请输入初始欠款'
-                                          : '请输入初始额度',
-                                  border: InputBorder.none,
-                                ),
+                                hintText:
+                                    _kind == _AccountKind.liability
+                                        ? '请输入初始欠款'
+                                        : '请输入初始额度',
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
@@ -134,14 +130,11 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                       const Divider(height: 1),
                     ],
                     if (_kind == _AccountKind.liability) ...[
-                      _PlainFormRow(
+                      AppPlainFormRow(
                         label: '信用额度',
-                        child: TextFormField(
+                        child: AppPlainTextFormField(
                           controller: _creditLimitController,
-                          decoration: const InputDecoration(
-                            hintText: '请输入信用额度（可选）',
-                            border: InputBorder.none,
-                          ),
+                          hintText: '请输入信用额度（可选）',
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
@@ -149,7 +142,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                         ),
                       ),
                       const Divider(height: 1),
-                      _PlainFormRow(
+                      AppPlainFormRow(
                         label: '出账还款日',
                         child: _BillingRepaymentFields(
                           billingDay: _billingDay,
@@ -173,14 +166,11 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                       ),
                       const Divider(height: 1),
                     ],
-                    _PlainFormRow(
+                    AppPlainFormRow(
                       label: '备注',
-                      child: TextFormField(
+                      child: AppPlainTextFormField(
                         controller: _noteController,
-                        decoration: const InputDecoration(
-                          hintText: '请输入备注（可选）',
-                          border: InputBorder.none,
-                        ),
+                        hintText: '请输入备注（可选）',
                       ),
                     ),
                     const Divider(height: 1),
@@ -482,48 +472,6 @@ class _AccountKindTab extends StatelessWidget {
   }
 }
 
-class _PlainFormRow extends StatelessWidget {
-  const _PlainFormRow({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 70),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 92,
-            child: Text(label, style: context.appTextStyles.formValue),
-          ),
-          Expanded(child: child),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlainValueText extends StatelessWidget {
-  const _PlainValueText({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Text(
-        text,
-        textAlign: TextAlign.left,
-        overflow: TextOverflow.ellipsis,
-        style: context.appTextStyles.formPlainValue,
-      ),
-    );
-  }
-}
-
 class _BillingRepaymentFields extends StatelessWidget {
   const _BillingRepaymentFields({
     required this.billingDay,
@@ -545,7 +493,7 @@ class _BillingRepaymentFields extends StatelessWidget {
         Expanded(
           child: InkWell(
             onTap: onSelectBillingDay,
-            child: _PlainValueText(
+            child: AppPlainValueText(
               text: billingDay == null ? '出账日' : '$billingDay 日',
             ),
           ),
@@ -554,7 +502,7 @@ class _BillingRepaymentFields extends StatelessWidget {
         Expanded(
           child: InkWell(
             onTap: onSelectRepaymentDay,
-            child: _PlainValueText(
+            child: AppPlainValueText(
               text: repaymentDay == null ? '还款日' : '$repaymentDay 日',
             ),
           ),

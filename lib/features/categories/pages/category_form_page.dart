@@ -8,6 +8,8 @@ import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
+import '../../../design_system/widgets/app_form_field.dart';
+import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/category_service.dart';
@@ -93,14 +95,11 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                     ),
                     const SizedBox(height: AppSpacing.space20),
                     const Divider(height: 1),
-                    _PlainFormRow(
+                    AppPlainFormRow(
                       label: '分类名称',
-                      child: TextFormField(
+                      child: AppPlainTextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(
-                          hintText: '请输入分类名称',
-                          border: InputBorder.none,
-                        ),
+                        hintText: '请输入分类名称',
                         validator:
                             (value) =>
                                 value == null || value.trim().isEmpty
@@ -109,30 +108,19 @@ class _CategoryFormPageState extends ConsumerState<CategoryFormPage> {
                       ),
                     ),
                     const Divider(height: 1),
-                    _PlainFormRow(
+                    AppPlainFormRow(
                       label: '父分类',
                       onTap: () => _showParentSheet(parentOptions),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Text(
-                          effectiveParent?.name ?? '无',
-                          textAlign: TextAlign.left,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.appTextStyles.formPlainValue.copyWith(
-                            color: colors.onSurface,
-                          ),
-                        ),
+                      child: AppPlainValueText(
+                        text: effectiveParent?.name ?? '无',
                       ),
                     ),
                     const Divider(height: 1),
-                    _PlainFormRow(
+                    AppPlainFormRow(
                       label: '备注',
-                      child: TextFormField(
+                      child: AppPlainTextFormField(
                         controller: _noteController,
-                        decoration: const InputDecoration(
-                          hintText: '请输入备注（可选）',
-                          border: InputBorder.none,
-                        ),
+                        hintText: '请输入备注（可选）',
                       ),
                     ),
                     const Divider(height: 1),
@@ -342,32 +330,6 @@ class _TypeTab extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _PlainFormRow extends StatelessWidget {
-  const _PlainFormRow({required this.label, required this.child, this.onTap});
-
-  final String label;
-  final Widget child;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 70),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 92,
-            child: Text(label, style: context.appTextStyles.formValue),
-          ),
-          Expanded(child: child),
-        ],
-      ),
-    );
-    if (onTap == null) return content;
-    return InkWell(onTap: onTap, child: content);
   }
 }
 

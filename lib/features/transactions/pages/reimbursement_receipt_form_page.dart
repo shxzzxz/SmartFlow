@@ -7,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
 import '../../../design_system/tokens/spacing.dart';
+import '../../../design_system/widgets/app_form_field.dart';
 import '../../../design_system/widgets/app_form_section.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../domain/entities/account.dart';
@@ -76,12 +77,10 @@ class _ReimbursementReceiptFormPageState
                 ),
               AppFormSection(
                 children: [
-                  TextFormField(
+                  AppTextFormField(
                     controller: _amountController,
-                    decoration: const InputDecoration(
-                      labelText: '到账金额',
-                      prefixIcon: Icon(Icons.payments_outlined),
-                    ),
+                    labelText: '到账金额',
+                    prefixIcon: const Icon(Icons.payments_outlined),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -90,12 +89,10 @@ class _ReimbursementReceiptFormPageState
                     ],
                     validator: _validatePositive,
                   ),
-                  DropdownButtonFormField<int>(
+                  AppDropdownFormField<int>(
                     initialValue: _receiveAccountId,
-                    decoration: const InputDecoration(
-                      labelText: '到账账户',
-                      prefixIcon: Icon(Icons.account_balance),
-                    ),
+                    labelText: '到账账户',
+                    prefixIcon: const Icon(Icons.account_balance),
                     items: [
                       for (final account in accounts)
                         DropdownMenuItem(
@@ -107,12 +104,10 @@ class _ReimbursementReceiptFormPageState
                         (value) => setState(() => _receiveAccountId = value),
                     validator: (value) => value == null ? '请选择账户' : null,
                   ),
-                  TextFormField(
+                  AppTextFormField(
                     controller: _noteController,
-                    decoration: const InputDecoration(
-                      labelText: '备注',
-                      prefixIcon: Icon(Icons.notes),
-                    ),
+                    labelText: '备注',
+                    prefixIcon: const Icon(Icons.notes),
                     maxLines: 2,
                   ),
                 ],
