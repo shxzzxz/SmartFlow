@@ -21,6 +21,7 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getVersionInfo" -> result.success(getVersionInfo())
+                    "getSupportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
                     "installApk" -> {
                         val filePath = call.argument<String>("filePath")
                         if (filePath.isNullOrBlank()) {

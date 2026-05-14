@@ -1,12 +1,16 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
+import '../../../core/update/app_update_channel.dart';
 import '../../../core/update/app_update_info.dart';
 import '../../../core/update/app_update_platform.dart';
 import '../../../core/update/app_update_service.dart';
+import '../../../data/database/app_database.dart';
+import '../../../data/database/database_provider.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
@@ -20,22 +24,33 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  static const _manifestUrl = String.fromEnvironment(
+  static const _updateChannelKey = 'update.channel';
+  static const _manifestUrlOverride = String.fromEnvironment(
     'SMARTFLOW_UPDATE_URL',
-    defaultValue: AppUpdateService.defaultManifestUrl,
+    defaultValue: '',
+  );
+  static const _manifestBaseUrl = String.fromEnvironment(
+    'SMARTFLOW_UPDATE_BASE_URL',
+    defaultValue: AppUpdateService.defaultManifestBaseUrl,
+  );
+  static final _defaultUpdateChannel = AppUpdateChannel.fromCode(
+    const String.fromEnvironment(
+      'SMARTFLOW_UPDATE_CHANNEL',
+      defaultValue: 'beta',
+    ),
   );
 
-  late final AppUpdateService _updateService;
   final _updatePlatform = const AppUpdatePlatform();
 
   AppVersionInfo? _versionInfo;
+  AppUpdateChannel _updateChannel = _defaultUpdateChannel;
   bool _isCheckingUpdate = false;
 
   @override
   void initState() {
     super.initState();
-    _updateService = AppUpdateService(manifestUri: Uri.parse(_manifestUrl));
     _loadVersionInfo();
+    _loadUpdateChannel();
   }
 
   Future<void> _loadVersionInfo() async {
@@ -57,6 +72,40 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
       );
     }
+  }
+
+  Future<void> _loadUpdateChannel() async {
+    try {
+      final database = ref.read(appDatabaseProvider);
+      final row =
+          await (database.select(database.appMetadata)..where(
+            (table) => table.key.equals(_updateChannelKey),
+          )).getSingleOrNull();
+      if (!mounted || row == null) {
+        return;
+      }
+      setState(() => _updateChannel = AppUpdateChannel.fromCode(row.value));
+    } catch (_) {
+      // Keep the compile-time default channel when local metadata is unreadable.
+    }
+  }
+
+  Future<void> _setUpdateChannel(AppUpdateChannel channel) async {
+    if (channel == _updateChannel) {
+      return;
+    }
+
+    setState(() => _updateChannel = channel);
+    final database = ref.read(appDatabaseProvider);
+    await database
+        .into(database.appMetadata)
+        .insertOnConflictUpdate(
+          AppMetadataCompanion.insert(
+            key: _updateChannelKey,
+            value: channel.code,
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
   }
 
   Future<void> _checkForUpdate() async {
@@ -81,7 +130,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     setState(() => _isCheckingUpdate = true);
     try {
-      final updateInfo = await _updateService.checkForUpdate(
+      final updateService = _createUpdateService();
+      final updateInfo = await updateService.checkForUpdate(
         currentBuildNumber: versionInfo.buildNumber,
       );
       if (!mounted) {
@@ -93,13 +143,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         return;
       }
 
+      final supportedAbis = await _updatePlatform.getSupportedAbis();
+      if (!mounted) {
+        return;
+      }
+
       await showDialog<void>(
         context: context,
         barrierDismissible: !updateInfo.required,
         builder:
             (context) => _AppUpdateDialog(
               updateInfo: updateInfo,
-              updateService: _updateService,
+              supportedAbis: supportedAbis,
+              updateService: updateService,
               updatePlatform: _updatePlatform,
             ),
       );
@@ -113,6 +169,37 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         setState(() => _isCheckingUpdate = false);
       }
     }
+  }
+
+  AppUpdateService _createUpdateService() {
+    final override = _manifestUrlOverride.trim();
+    if (override.isNotEmpty) {
+      return AppUpdateService(
+        manifestUri: Uri.parse(override),
+        expectedChannel: _updateChannel,
+      );
+    }
+
+    return AppUpdateService(
+      manifestUri: AppUpdateService.manifestUriForChannel(
+        _updateChannel,
+        baseUrl: _manifestBaseUrl,
+      ),
+      expectedChannel: _updateChannel,
+    );
+  }
+
+  Future<void> _chooseUpdateChannel() async {
+    final selected = await showModalBottomSheet<AppUpdateChannel>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (context) => _UpdateChannelSheet(selectedChannel: _updateChannel),
+    );
+    if (selected == null || !mounted) {
+      return;
+    }
+    await _setUpdateChannel(selected);
   }
 
   void _showMessage(String message) {
@@ -175,6 +262,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             : '当前版本 ${versionInfo.displayName}',
                     onTap: _checkForUpdate,
                   ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space16,
+                    ),
+                    child: Divider(height: 1),
+                  ),
+                  _ProfileActionRow(
+                    icon: RemixIcons.git_branch_line,
+                    label: '更新渠道',
+                    description:
+                        '${_updateChannel.label} · ${_updateChannel.description}',
+                    onTap: _chooseUpdateChannel,
+                  ),
                 ],
               ),
             ),
@@ -188,11 +288,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 class _AppUpdateDialog extends StatefulWidget {
   const _AppUpdateDialog({
     required this.updateInfo,
+    required this.supportedAbis,
     required this.updateService,
     required this.updatePlatform,
   });
 
   final AppUpdateInfo updateInfo;
+  final List<String> supportedAbis;
   final AppUpdateService updateService;
   final AppUpdatePlatform updatePlatform;
 
@@ -217,6 +319,7 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
     try {
       final apk = await widget.updateService.downloadApk(
         widget.updateInfo,
+        supportedAbis: widget.supportedAbis,
         onProgress: (progress) {
           if (!mounted) {
             return;
@@ -258,6 +361,7 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
     final progress = _progress;
+    final package = widget.updateInfo.resolvePackage(widget.supportedAbis);
 
     return AlertDialog(
       title: Text('发现新版本 ${widget.updateInfo.versionName}'),
@@ -269,6 +373,13 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
             Text(widget.updateInfo.notes, style: textStyles.detailValue),
           if (widget.updateInfo.notes.isEmpty)
             Text('有新的内测版本可用。', style: textStyles.detailValue),
+          const SizedBox(height: AppSpacing.space12),
+          Text(
+            package.abi == 'universal' ? '安装包：通用包' : '安装包：${package.abi}',
+            style: textStyles.listSupporting.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
           if (_isDownloading) ...[
             const SizedBox(height: AppSpacing.space16),
             LinearProgressIndicator(value: progress),
@@ -294,6 +405,53 @@ class _AppUpdateDialogState extends State<_AppUpdateDialog> {
           child: Text(_isDownloading ? '下载中' : '立即更新'),
         ),
       ],
+    );
+  }
+}
+
+class _UpdateChannelSheet extends StatelessWidget {
+  const _UpdateChannelSheet({required this.selectedChannel});
+
+  final AppUpdateChannel selectedChannel;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyles = context.appTextStyles;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          0,
+          AppSpacing.space16,
+          AppSpacing.space16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space4,
+                0,
+                AppSpacing.space4,
+                AppSpacing.space8,
+              ),
+              child: Text('更新渠道', style: textStyles.sectionTitle),
+            ),
+            for (final channel in AppUpdateChannel.values)
+              ListTile(
+                onTap: () => Navigator.of(context).pop(channel),
+                title: Text(channel.label),
+                subtitle: Text(channel.description),
+                trailing:
+                    channel == selectedChannel
+                        ? const Icon(RemixIcons.check_line)
+                        : null,
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

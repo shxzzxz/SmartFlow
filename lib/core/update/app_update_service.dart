@@ -1,22 +1,33 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import 'app_update_channel.dart';
 import 'app_update_info.dart';
 
 class AppUpdateService {
   AppUpdateService({
     required this.manifestUri,
+    this.expectedChannel,
     HttpClient Function()? httpClientFactory,
   }) : _httpClientFactory = httpClientFactory ?? HttpClient.new;
 
-  static const defaultManifestUrl =
-      'https://raw.githubusercontent.com/shxzzxz/smartflow/main/release/update-beta.json';
+  static const defaultManifestBaseUrl =
+      'https://raw.githubusercontent.com/shxzzxz/smartflow/main/release';
 
   final Uri manifestUri;
+  final AppUpdateChannel? expectedChannel;
   final HttpClient Function() _httpClientFactory;
+
+  static Uri manifestUriForChannel(
+    AppUpdateChannel channel, {
+    String baseUrl = defaultManifestBaseUrl,
+  }) {
+    return Uri.parse('$baseUrl/update-${channel.code}.json');
+  }
 
   Future<AppUpdateInfo> fetchUpdateInfo() async {
     final client = _httpClientFactory();
@@ -39,7 +50,15 @@ class AppUpdateService {
         throw const FormatException('Update manifest must be a JSON object.');
       }
 
-      return AppUpdateInfo.fromJson(json);
+      final info = AppUpdateInfo.fromJson(json);
+      final channel = expectedChannel;
+      if (channel != null && info.channel != channel) {
+        throw FormatException(
+          'Update manifest channel mismatch: expected ${channel.code}, '
+          'got ${info.channel.code}.',
+        );
+      }
+      return info;
     } finally {
       client.close(force: true);
     }
@@ -54,19 +73,25 @@ class AppUpdateService {
 
   Future<File> downloadApk(
     AppUpdateInfo info, {
+    List<String> supportedAbis = const [],
     void Function(AppUpdateDownloadProgress progress)? onProgress,
   }) async {
-    final uri = Uri.parse(info.apkUrl);
+    final package = info.resolvePackage(supportedAbis);
+    final uri = Uri.parse(package.url);
     final directory = await getTemporaryDirectory();
     final file = File(
       path.join(
         directory.path,
-        'smartflow-${info.versionName}-${info.versionCode}.apk',
+        package.abi == 'universal'
+            ? 'smartflow-${info.versionName}.apk'
+            : 'smartflow-${info.versionName}-${package.abi}.apk',
       ),
     );
 
     final client = _httpClientFactory();
     IOSink? sink;
+    final digestCollector = _DigestSink();
+    final digestSink = sha256.startChunkedConversion(digestCollector);
     try {
       final request = await client.getUrl(uri);
       request.headers.set(HttpHeaders.userAgentHeader, 'SmartFlow');
@@ -86,6 +111,7 @@ class AppUpdateService {
 
       await for (final chunk in response) {
         receivedBytes += chunk.length;
+        digestSink.add(chunk);
         sink.add(chunk);
         onProgress?.call(
           AppUpdateDownloadProgress(
@@ -95,12 +121,45 @@ class AppUpdateService {
         );
       }
 
+      digestSink.close();
       await sink.close();
       sink = null;
+      final expectedSize = package.size;
+      if (expectedSize != null && receivedBytes != expectedSize) {
+        await file.delete().catchError((_) => file);
+        throw const FormatException('Downloaded APK size mismatch.');
+      }
+      final expectedHash = package.sha256;
+      if (expectedHash != null &&
+          expectedHash.isNotEmpty &&
+          digestCollector.digest.toString().toLowerCase() != expectedHash) {
+        await file.delete().catchError((_) => file);
+        throw const FormatException('Downloaded APK checksum mismatch.');
+      }
       return file;
     } finally {
       await sink?.close();
       client.close(force: true);
     }
   }
+}
+
+class _DigestSink implements Sink<Digest> {
+  Digest? _digest;
+
+  Digest get digest {
+    final digest = _digest;
+    if (digest == null) {
+      throw StateError('Digest is not ready.');
+    }
+    return digest;
+  }
+
+  @override
+  void add(Digest data) {
+    _digest = data;
+  }
+
+  @override
+  void close() {}
 }

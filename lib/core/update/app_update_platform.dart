@@ -29,6 +29,11 @@ class AppUpdatePlatform {
     );
   }
 
+  Future<List<String>> getSupportedAbis() async {
+    final result = await _channel.invokeListMethod<String>('getSupportedAbis');
+    return result ?? const [];
+  }
+
   Future<void> installApk(String filePath) async {
     await _channel.invokeMethod<void>('installApk', {'filePath': filePath});
   }
