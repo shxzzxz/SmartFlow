@@ -91,15 +91,7 @@ class TransactionRow extends StatelessWidget {
 }
 
 void _openTransaction(BuildContext context, TransactionListItem item) {
-  final path = switch (item.businessPurpose) {
-    BusinessPurpose.dailyExpense ||
-    BusinessPurpose.dailyIncome ||
-    BusinessPurpose.reimbursementAdvance => '/transactions/${item.id}',
-    BusinessPurpose.transfer ||
-    BusinessPurpose.borrowing => '/transactions/${item.id}/edit',
-    _ => '/transactions/${item.id}',
-  };
-  context.push(path);
+  context.push('/transactions/${item.id}');
 }
 
 bool _hasBadges(TransactionListItem item) {

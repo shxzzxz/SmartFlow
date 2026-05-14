@@ -178,6 +178,10 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
               mode: _mode,
               editing: widget.editTransactionId != null,
               onBack: () => context.pop(),
+              onDelete:
+                  widget.editTransactionId != null && !_submitting
+                      ? _confirmDelete
+                      : null,
               onModeChanged: _switchMode,
             ),
             Expanded(
@@ -582,10 +586,9 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     setState(() => _submitting = false);
 
     switch (result) {
-      case Success(:final value):
-        if (value is PostTransactionResult &&
-            widget.editTransactionId != null) {
-          context.go('/transactions/${value.transactionId}');
+      case Success():
+        if (widget.editTransactionId != null) {
+          context.go('/');
         } else {
           context.pop();
         }
@@ -758,6 +761,49 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _confirmDelete() async {
+    final transactionId = widget.editTransactionId;
+    if (transactionId == null || _submitting) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('删除交易'),
+            content: const Text('删除后会写入冲销记录，历史链路仍可追溯。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() => _submitting = true);
+    final result = await ref
+        .read(transactionServiceProvider)
+        .deleteTransaction(
+          DeleteTransactionCommand(transactionId: transactionId),
+        );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _submitting = false);
+    result.when(
+      success: (_) => context.go('/'),
+      failure: (failure) => _showError('删除失败：${failure.message}'),
+    );
+  }
+
   int? _firstAccountId(
     TransactionDetailView detail,
     AccountType type,
@@ -831,12 +877,14 @@ class _TopBar extends StatelessWidget {
     required this.mode,
     required this.editing,
     required this.onBack,
+    required this.onDelete,
     required this.onModeChanged,
   });
 
   final _TransactionFormMode mode;
   final bool editing;
   final VoidCallback onBack;
+  final VoidCallback? onDelete;
   final ValueChanged<_TransactionFormMode> onModeChanged;
 
   @override
@@ -866,7 +914,14 @@ class _TopBar extends StatelessWidget {
                     )
                     : _ModeTabs(mode: mode, onChanged: onModeChanged),
           ),
-          const SizedBox(width: AppSpacing.space48),
+          if (editing)
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+              tooltip: '删除',
+            )
+          else
+            const SizedBox(width: AppSpacing.space48),
         ],
       ),
     );

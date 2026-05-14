@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/database/database_provider.dart';
@@ -124,6 +125,64 @@ void main() {
         .map((widget) => widget.iconKey);
     expect(iconKeys, contains('cmb_credit_card'));
     expect(iconKeys, contains('reimburse'));
+  });
+
+  testWidgets('tap transfer row opens transaction detail route', (
+    tester,
+  ) async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder:
+              (context, state) => Scaffold(
+                body: home.TransactionRow(
+                  item: TransactionListItem(
+                    id: 3,
+                    businessPurpose: BusinessPurpose.transfer,
+                    occurredAt: DateTime(2026, 5, 12, 8, 30),
+                    primaryAmount: const Money(minorUnits: 1000),
+                    accountNames: '支付宝 / 微信',
+                    isExcludedFromStats: false,
+                    isExcludedFromBudget: false,
+                  ),
+                ),
+              ),
+        ),
+        GoRoute(
+          path: '/transactions/:id',
+          builder:
+              (context, state) => Text("detail ${state.pathParameters['id']}"),
+        ),
+        GoRoute(
+          path: '/transactions/:id/edit',
+          builder:
+              (context, state) => Text("edit ${state.pathParameters['id']}"),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byType(home.TransactionRow));
+    await tester.pumpAndSettle();
+
+    expect(find.text('detail 3'), findsOneWidget);
+    expect(find.text('edit 3'), findsNothing);
   });
 }
 
