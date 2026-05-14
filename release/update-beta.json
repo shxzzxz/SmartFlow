@@ -3,21 +3,29 @@
   "versionName": "0.1.3-beta.1",
   "versionCode": 13,
   "apkUrl": "https://github.com/shxzzxz/smartflow/releases/download/v0.1.3-beta.1/smartflow-0.1.3-beta.1.apk",
+  "apkSha256": "2f772b1335ec604e6911505e82893d713cd70f5355c3545f4c66b5ff78bcf4b6",
+  "apkSize": 79959913,
   "releaseUrl": "https://github.com/shxzzxz/smartflow/releases/tag/v0.1.3-beta.1",
   "required": false,
   "notes": "SmartFlow 0.1.3-beta.1 尝鲜版本。",
   "apks": [
     {
       "abi": "arm64-v8a",
-      "url": "https://github.com/shxzzxz/smartflow/releases/download/v0.1.3-beta.1/smartflow-0.1.3-beta.1-arm64-v8a.apk"
+      "url": "https://github.com/shxzzxz/smartflow/releases/download/v0.1.3-beta.1/smartflow-0.1.3-beta.1-arm64-v8a.apk",
+      "sha256": "ddc11b0c656b6f1853fe92087112f910076652b9681a64cc40077b8f1dd071ae",
+      "size": 39156061
     },
     {
       "abi": "armeabi-v7a",
-      "url": "https://github.com/shxzzxz/smartflow/releases/download/v0.1.3-beta.1/smartflow-0.1.3-beta.1-armeabi-v7a.apk"
+      "url": "https://github.com/shxzzxz/smartflow/releases/download/v0.1.3-beta.1/smartflow-0.1.3-beta.1-armeabi-v7a.apk",
+      "sha256": "43f4e6b92a8dfcb100c15f790aaa51fcc265b9d66b9145c773aae1bd32696aca",
+      "size": 36893385
     },
     {
       "abi": "x86_64",
-      "url": "https://github.com/shxzzxz/smartflow/releases/download/v0.1.3-beta.1/smartflow-0.1.3-beta.1-x86_64.apk"
+      "url": "https://github.com/shxzzxz/smartflow/releases/download/v0.1.3-beta.1/smartflow-0.1.3-beta.1-x86_64.apk",
+      "sha256": "c8d585854e0794de51f904d30a6434fa00e0e85d03d79029d520093ac0705689",
+      "size": 40604965
     }
   ]
 }
