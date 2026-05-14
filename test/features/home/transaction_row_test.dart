@@ -184,6 +184,110 @@ void main() {
     expect(find.text('detail 3'), findsOneWidget);
     expect(find.text('edit 3'), findsNothing);
   });
+
+  testWidgets('right swipe transfer row opens transaction edit route', (
+    tester,
+  ) async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+
+    final router = _buildTransactionRowRouter(
+      item: TransactionListItem(
+        id: 4,
+        businessPurpose: BusinessPurpose.transfer,
+        occurredAt: DateTime(2026, 5, 12, 8, 30),
+        primaryAmount: const Money(minorUnits: 1000),
+        accountNames: '支付宝 / 微信',
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.drag(find.byType(home.TransactionRow), const Offset(360, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('edit 4'), findsOneWidget);
+    expect(find.text('detail 4'), findsNothing);
+  });
+
+  testWidgets('right swipe returned below threshold cancels quick edit', (
+    tester,
+  ) async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+
+    final router = _buildTransactionRowRouter(
+      item: TransactionListItem(
+        id: 5,
+        businessPurpose: BusinessPurpose.transfer,
+        occurredAt: DateTime(2026, 5, 12, 8, 30),
+        primaryAmount: const Money(minorUnits: 1000),
+        accountNames: '支付宝 / 微信',
+        isExcludedFromStats: false,
+        isExcludedFromBudget: false,
+      ),
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(home.TransactionRow)),
+    );
+    await gesture.moveBy(const Offset(360, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(-320, 0));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(home.TransactionRow), findsOneWidget);
+    expect(find.text('edit 5'), findsNothing);
+    expect(find.text('detail 5'), findsNothing);
+  });
+}
+
+GoRouter _buildTransactionRowRouter({required TransactionListItem item}) {
+  return GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder:
+            (context, state) => Scaffold(body: home.TransactionRow(item: item)),
+      ),
+      GoRoute(
+        path: '/transactions/:id',
+        builder:
+            (context, state) => Text("detail ${state.pathParameters['id']}"),
+      ),
+      GoRoute(
+        path: '/transactions/:id/edit',
+        builder: (context, state) => Text("edit ${state.pathParameters['id']}"),
+      ),
+    ],
+  );
 }
 
 Future<int> _insertAccount(

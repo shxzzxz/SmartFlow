@@ -58,52 +58,49 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
 
     return Scaffold(
       body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragEnd: _handleMonthSwipe,
-          child: Column(
-            children: [
-              _CalendarHeader(
-                visibleMonth: _visibleMonth,
-                showLunar: _showLunar,
-                onMonthPressed: _pickMonth,
-                onPreviousMonth: () => _shiftMonth(-1),
-                onNextMonth: () => _shiftMonth(1),
-                onTodayPressed: _goToday,
-                onToggleLunar: () => setState(() => _showLunar = !_showLunar),
-              ),
-              Expanded(
-                child: switch ((
-                  transactionsAsync,
-                  summaryAsync,
-                  dailySummariesAsync,
-                )) {
-                  (
-                    AsyncData(value: final transactions),
-                    AsyncData(value: final comparison),
-                    AsyncData(value: final dailySummaries),
-                  ) =>
-                    _CalendarContent(
-                      visibleMonth: _visibleMonth,
-                      selectedDate: _selectedDate,
-                      showLunar: _showLunar,
-                      transactions: transactions,
-                      summary: comparison.current,
-                      dailySummaries: dailySummaries,
-                      onDateSelected: _selectDate,
-                    ),
-                  (AsyncError(:final error), _, _) ||
-                  (_, AsyncError(:final error), _) ||
-                  (
-                    _,
-                    _,
-                    AsyncError(:final error),
-                  ) => Center(child: Text('加载失败：$error')),
-                  _ => const Center(child: CircularProgressIndicator()),
-                },
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            _CalendarHeader(
+              visibleMonth: _visibleMonth,
+              showLunar: _showLunar,
+              onMonthPressed: _pickMonth,
+              onPreviousMonth: () => _shiftMonth(-1),
+              onNextMonth: () => _shiftMonth(1),
+              onTodayPressed: _goToday,
+              onToggleLunar: () => setState(() => _showLunar = !_showLunar),
+            ),
+            Expanded(
+              child: switch ((
+                transactionsAsync,
+                summaryAsync,
+                dailySummariesAsync,
+              )) {
+                (
+                  AsyncData(value: final transactions),
+                  AsyncData(value: final comparison),
+                  AsyncData(value: final dailySummaries),
+                ) =>
+                  _CalendarContent(
+                    visibleMonth: _visibleMonth,
+                    selectedDate: _selectedDate,
+                    showLunar: _showLunar,
+                    transactions: transactions,
+                    summary: comparison.current,
+                    dailySummaries: dailySummaries,
+                    onDateSelected: _selectDate,
+                    onMonthSwipe: _shiftMonth,
+                  ),
+                (AsyncError(:final error), _, _) ||
+                (_, AsyncError(:final error), _) ||
+                (
+                  _,
+                  _,
+                  AsyncError(:final error),
+                ) => Center(child: Text('加载失败：$error')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -144,14 +141,6 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
       _selectedDate = normalizeDate(date);
       _visibleMonth = DateTime(date.year, date.month);
     });
-  }
-
-  void _handleMonthSwipe(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (velocity.abs() < 260) {
-      return;
-    }
-    _shiftMonth(velocity < 0 ? 1 : -1);
   }
 
   void _shiftMonth(int delta) {
@@ -280,6 +269,7 @@ class _CalendarContent extends StatelessWidget {
     required this.summary,
     required this.dailySummaries,
     required this.onDateSelected,
+    required this.onMonthSwipe,
   });
 
   final DateTime visibleMonth;
@@ -289,6 +279,7 @@ class _CalendarContent extends StatelessWidget {
   final CashflowSummary summary;
   final List<DailyCashflowSummary> dailySummaries;
   final ValueChanged<DateTime> onDateSelected;
+  final ValueChanged<int> onMonthSwipe;
 
   @override
   Widget build(BuildContext context) {
@@ -323,6 +314,7 @@ class _CalendarContent extends StatelessWidget {
           days: days,
           showLunar: showLunar,
           onDateSelected: onDateSelected,
+          onMonthSwipe: onMonthSwipe,
         ),
         const SizedBox(height: AppSpacing.space10),
         TransactionDayCard(group: selectedGroup, emptyMessage: '当天暂无交易记录'),
@@ -442,29 +434,43 @@ class _CalendarGrid extends StatelessWidget {
     required this.days,
     required this.showLunar,
     required this.onDateSelected,
+    required this.onMonthSwipe,
   });
 
   final List<CalendarDayPresentation> days;
   final bool showLunar;
   final ValueChanged<DateTime> onDateSelected;
+  final ValueChanged<int> onMonthSwipe;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: days.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: DateTime.daysPerWeek,
-        mainAxisExtent: 56,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragEnd: _handleHorizontalDragEnd,
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: days.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: DateTime.daysPerWeek,
+          mainAxisExtent: 56,
+        ),
+        itemBuilder:
+            (context, index) => _CalendarDayCell(
+              day: days[index],
+              showLunar: showLunar,
+              onTap: () => onDateSelected(days[index].date),
+            ),
       ),
-      itemBuilder:
-          (context, index) => _CalendarDayCell(
-            day: days[index],
-            showLunar: showLunar,
-            onTap: () => onDateSelected(days[index].date),
-          ),
     );
+  }
+
+  void _handleHorizontalDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 260) {
+      return;
+    }
+    onMonthSwipe(velocity < 0 ? 1 : -1);
   }
 }
 

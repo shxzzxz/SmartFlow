@@ -54,45 +54,41 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     return Scaffold(
       body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragEnd: _handleMonthSwipe,
-          child: Column(
-            children: [
-              HomeHeader(
-                visibleMonth: _visibleMonth,
-                onMonthPressed: _pickMonth,
-                onPreviousMonth: () => _shiftMonth(-1),
-                onNextMonth: () => _shiftMonth(1),
-              ),
-              Expanded(
-                child: switch ((
-                  transactionsAsync,
-                  summaryAsync,
-                  dailySummariesAsync,
-                )) {
-                  (
-                    AsyncData(:final value),
-                    AsyncData(value: final comparison),
-                    AsyncData(value: final dailySummaries),
-                  ) =>
-                    _HomeContent(
-                      transactions: value,
-                      comparison: comparison,
-                      dailySummaries: dailySummaries,
-                    ),
-                  (AsyncError(:final error), _, _) ||
-                  (_, AsyncError(:final error), _) ||
-                  (
-                    _,
-                    _,
-                    AsyncError(:final error),
-                  ) => Center(child: Text('加载失败：$error')),
-                  _ => const Center(child: CircularProgressIndicator()),
-                },
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            HomeHeader(
+              visibleMonth: _visibleMonth,
+              onMonthPressed: _pickMonth,
+              onPreviousMonth: () => _shiftMonth(-1),
+              onNextMonth: () => _shiftMonth(1),
+            ),
+            Expanded(
+              child: switch ((
+                transactionsAsync,
+                summaryAsync,
+                dailySummariesAsync,
+              )) {
+                (
+                  AsyncData(:final value),
+                  AsyncData(value: final comparison),
+                  AsyncData(value: final dailySummaries),
+                ) =>
+                  _HomeContent(
+                    transactions: value,
+                    comparison: comparison,
+                    dailySummaries: dailySummaries,
+                  ),
+                (AsyncError(:final error), _, _) ||
+                (_, AsyncError(:final error), _) ||
+                (
+                  _,
+                  _,
+                  AsyncError(:final error),
+                ) => Center(child: Text('加载失败：$error')),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -117,14 +113,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     setState(() {
       _visibleMonth = DateTime(selected.year, selected.month);
     });
-  }
-
-  void _handleMonthSwipe(DragEndDetails details) {
-    final velocity = details.primaryVelocity ?? 0;
-    if (velocity.abs() < 260) {
-      return;
-    }
-    _shiftMonth(velocity < 0 ? 1 : -1);
   }
 
   void _shiftMonth(int delta) {

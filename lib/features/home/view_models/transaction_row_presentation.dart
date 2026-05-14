@@ -107,6 +107,22 @@ String formatTransactionAmount(TransactionListItem item) {
   return '$prefix${formatMinorAmount(item.primaryAmount.minorUnits)}';
 }
 
+bool canQuickEditTransaction(TransactionListItem item) {
+  return switch (item.businessPurpose) {
+    BusinessPurpose.dailyExpense ||
+    BusinessPurpose.reimbursementAdvance ||
+    BusinessPurpose.dailyIncome ||
+    BusinessPurpose.transfer ||
+    BusinessPurpose.borrowing => true,
+    BusinessPurpose.debtRepayment ||
+    BusinessPurpose.openingBalance ||
+    BusinessPurpose.balanceAdjustment ||
+    BusinessPurpose.refund ||
+    BusinessPurpose.reimbursementReceipt ||
+    BusinessPurpose.reimbursementClose => false,
+  };
+}
+
 String formatMinorAmount(int minorUnits) {
   return Money(minorUnits: minorUnits.abs()).format();
 }
