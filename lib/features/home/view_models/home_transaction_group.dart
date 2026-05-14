@@ -1,4 +1,5 @@
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/services/financial_metrics_service.dart';
 import '../../../domain/services/transaction_query_service.dart';
 
 /// 同一日的主交易聚合，用于按日分组卡片。
@@ -18,6 +19,7 @@ class HomeTransactionDayGroup {
 
 List<HomeTransactionDayGroup> groupTransactionsByDay(
   List<TransactionListItem> items,
+  List<DailyCashflowSummary> dailySummaries,
 ) {
   final groups = <DateTime, List<TransactionListItem>>{};
   for (final item in items) {
@@ -29,40 +31,29 @@ List<HomeTransactionDayGroup> groupTransactionsByDay(
     groups.putIfAbsent(date, () => []).add(item);
   }
 
-  final dates = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+  final totalsByDate = _dailySummariesByDate(dailySummaries);
+  final dates =
+      {...groups.keys, ...totalsByDate.keys}.toList()
+        ..sort((a, b) => b.compareTo(a));
   return [
     for (final date in dates)
       HomeTransactionDayGroup(
         date: date,
-        items: groups[date]!,
-        incomeMinor: sumIncomeMinor(groups[date]!),
-        expenseMinor: sumExpenseMinor(groups[date]!),
+        items: groups[date] ?? const [],
+        incomeMinor: totalsByDate[date]?.income.minorUnits ?? 0,
+        expenseMinor: totalsByDate[date]?.expense.minorUnits ?? 0,
       ),
   ];
 }
 
-int sumIncomeMinor(Iterable<TransactionListItem> items) {
-  return items.fold(0, (sum, item) => sum + incomeMinorForDayTotal(item));
-}
-
-int sumExpenseMinor(Iterable<TransactionListItem> items) {
-  return items.fold(0, (sum, item) => sum + expenseMinorForDayTotal(item));
-}
-
-int incomeMinorForDayTotal(TransactionListItem item) {
-  if (!isIncomePurpose(item.businessPurpose)) {
-    return 0;
-  }
-  return item.primaryAmount.minorUnits.abs();
-}
-
-int expenseMinorForDayTotal(TransactionListItem item) {
-  if (!isExpensePurpose(item.businessPurpose)) {
-    return 0;
-  }
-  final refundedMinor = item.refundedTotal?.minorUnits.abs() ?? 0;
-  final netExpense = item.primaryAmount.minorUnits.abs() - refundedMinor;
-  return netExpense < 0 ? 0 : netExpense;
+Map<DateTime, DailyCashflowSummary> _dailySummariesByDate(
+  List<DailyCashflowSummary> summaries,
+) {
+  return {
+    for (final summary in summaries)
+      DateTime(summary.date.year, summary.date.month, summary.date.day):
+          summary,
+  };
 }
 
 /// 主交易级别的"收入"判定。

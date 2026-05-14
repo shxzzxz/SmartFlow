@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/enums/accounting_enums.dart';
+import 'package:smartflow/domain/services/financial_metrics_service.dart';
 import 'package:smartflow/domain/services/transaction_query_service.dart';
 import 'package:smartflow/features/calendar/view_models/calendar_month_presentation.dart';
 import 'package:smartflow/features/calendar/view_models/lunar_label_resolver.dart';
@@ -47,6 +48,13 @@ void main() {
               amountMinor: 19800,
             ),
           ],
+          dailySummaries: [
+            _dailySummary(
+              DateTime(2024, 5, 3),
+              incomeMinor: 30000,
+              expenseMinor: 19800,
+            ),
+          ],
           lunarLabelResolver: const _FakeLunarLabelResolver(),
         );
 
@@ -80,11 +88,14 @@ void main() {
             amountMinor: 19800,
           ),
         ],
+        dailySummaries: [
+          _dailySummary(DateTime(2024, 5, 3), incomeMinor: 42000),
+        ],
       );
 
       expect(group.date, DateTime(2024, 5, 3));
       expect(group.items, hasLength(1));
-      expect(group.incomeMinor, 30000);
+      expect(group.incomeMinor, 42000);
       expect(group.expenseMinor, 0);
     });
   });
@@ -122,6 +133,18 @@ class _FakeLunarLabelResolver implements CalendarLunarLabelResolver {
   @override
   CalendarLunarLabel labelFor(DateTime date) =>
       const CalendarLunarLabel(text: '农历');
+}
+
+DailyCashflowSummary _dailySummary(
+  DateTime date, {
+  int incomeMinor = 0,
+  int expenseMinor = 0,
+}) {
+  return DailyCashflowSummary(
+    date: date,
+    income: Money(minorUnits: incomeMinor),
+    expense: Money(minorUnits: expenseMinor),
+  );
 }
 
 TransactionListItem _item({

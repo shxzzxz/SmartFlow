@@ -11,6 +11,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/services/financial_metrics_service.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/business_icon_bubble.dart';
 import '../../../widgets/business/finance_labels.dart';
@@ -29,22 +30,32 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountListProvider);
+    final balanceSheetAsync = ref.watch(balanceSheetComparisonProvider);
+    final trendAsync = ref.watch(netAssetTrendProvider());
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: colors.surface,
       body: SafeArea(
-        child: accountsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stackTrace) => _AccountsErrorView(error: error),
-          data:
-              (accounts) => _AccountsContent(
-                accounts: accounts,
-                hideBalances: _hideBalances,
-                onToggleHide:
-                    () => setState(() => _hideBalances = !_hideBalances),
-              ),
-        ),
+        child: switch ((accountsAsync, balanceSheetAsync, trendAsync)) {
+          (
+            AsyncData(value: final accounts),
+            AsyncData(value: final balanceSheet),
+            AsyncData(value: final trend),
+          ) =>
+            _AccountsContent(
+              accounts: accounts,
+              balanceSheet: balanceSheet,
+              trend: trend,
+              hideBalances: _hideBalances,
+              onToggleHide:
+                  () => setState(() => _hideBalances = !_hideBalances),
+            ),
+          (AsyncError(:final error), _, _) ||
+          (_, AsyncError(:final error), _) ||
+          (_, _, AsyncError(:final error)) => _AccountsErrorView(error: error),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
       ),
     );
   }
@@ -53,11 +64,15 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
 class _AccountsContent extends StatelessWidget {
   const _AccountsContent({
     required this.accounts,
+    required this.balanceSheet,
+    required this.trend,
     required this.hideBalances,
     required this.onToggleHide,
   });
 
   final List<Account> accounts;
+  final BalanceSheetComparison balanceSheet;
+  final List<NetAssetTrendPoint> trend;
   final bool hideBalances;
   final VoidCallback onToggleHide;
 
@@ -67,11 +82,7 @@ class _AccountsContent extends StatelessWidget {
     final liabilities = accounts.where(_isLiabilityAccount).toList();
     final reimbursementAccounts =
         accounts.where(_isReimbursementAccount).toList();
-    final assets = [...fundAccounts, ...reimbursementAccounts];
     final fundMinor = fundAccounts.fold(0, (sum, account) {
-      return sum + account.balance.minorUnits;
-    });
-    final assetMinor = assets.fold(0, (sum, account) {
       return sum + account.balance.minorUnits;
     });
     final liabilityMinor = liabilities.fold(0, (sum, account) {
@@ -91,11 +102,7 @@ class _AccountsContent extends StatelessWidget {
       children: [
         _AssetsHeader(hideBalances: hideBalances, onToggleHide: onToggleHide),
         const SizedBox(height: AppSpacing.space18),
-        _NetAssetCard(
-          assetMinor: assetMinor,
-          liabilityMinor: liabilityMinor,
-          hideBalances: hideBalances,
-        ),
+        _NetAssetCard(comparison: balanceSheet, hideBalances: hideBalances),
         const SizedBox(height: AppSpacing.space24),
         _AccountSection(
           title: '资金账户',
@@ -125,7 +132,8 @@ class _AccountsContent extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space24),
         _TrendSection(
-          netAsset: Money(minorUnits: assetMinor - liabilityMinor),
+          comparison: balanceSheet,
+          trend: trend,
           hideBalances: hideBalances,
         ),
       ],
@@ -179,20 +187,17 @@ class _AssetsHeader extends StatelessWidget {
 }
 
 class _NetAssetCard extends StatelessWidget {
-  const _NetAssetCard({
-    required this.assetMinor,
-    required this.liabilityMinor,
-    required this.hideBalances,
-  });
+  const _NetAssetCard({required this.comparison, required this.hideBalances});
 
-  final int assetMinor;
-  final int liabilityMinor;
+  final BalanceSheetComparison comparison;
   final bool hideBalances;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
+    final assetMinor = comparison.current.assets.minorUnits;
+    final liabilityMinor = comparison.current.liabilities.minorUnits;
     final netMinor = assetMinor - liabilityMinor;
     final totalForRatio = (assetMinor.abs() + liabilityMinor.abs()).clamp(
       1,
@@ -247,7 +252,11 @@ class _NetAssetCard extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.space12),
                     Text(
-                      hideBalances ? '较上月 ****' : '较上月 +1,250.60 (+5.32%)',
+                      hideBalances
+                          ? '较上月 ****'
+                          : _formatNetAssetComparison(
+                            comparison.netAssetChange,
+                          ),
                       style: textStyles.onPrimarySupporting,
                     ),
                   ],
@@ -526,9 +535,14 @@ class _AccountRow extends StatelessWidget {
 }
 
 class _TrendSection extends StatelessWidget {
-  const _TrendSection({required this.netAsset, required this.hideBalances});
+  const _TrendSection({
+    required this.comparison,
+    required this.trend,
+    required this.hideBalances,
+  });
 
-  final Money netAsset;
+  final BalanceSheetComparison comparison;
+  final List<NetAssetTrendPoint> trend;
   final bool hideBalances;
 
   @override
@@ -558,7 +572,11 @@ class _TrendSection extends StatelessWidget {
                       Text('净资产变化', style: textStyles.formValue),
                       const SizedBox(height: AppSpacing.space14),
                       Text(
-                        hideBalances ? '+¥*,***.**' : '+¥1,250.60',
+                        hideBalances
+                            ? '+¥*,***.**'
+                            : _formatSignedMoney(
+                              comparison.netAssetChange.delta.minorUnits,
+                            ),
                         style: textStyles.amountPrimary.copyWith(
                           color: colors.primary,
                         ),
@@ -570,7 +588,13 @@ class _TrendSection extends StatelessWidget {
                   width: 190,
                   height: 86,
                   child: CustomPaint(
-                    painter: _TrendPainter(color: colors.primary),
+                    painter: _TrendPainter(
+                      color: colors.primary,
+                      values:
+                          trend
+                              .map((point) => point.netAssets.minorUnits)
+                              .toList(),
+                    ),
                   ),
                 ),
               ],
@@ -583,9 +607,10 @@ class _TrendSection extends StatelessWidget {
 }
 
 class _TrendPainter extends CustomPainter {
-  const _TrendPainter({required this.color});
+  const _TrendPainter({required this.color, required this.values});
 
   final Color color;
+  final List<int> values;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -600,15 +625,7 @@ class _TrendPainter extends CustomPainter {
       gridPaint,
     );
 
-    final points = [
-      Offset(0, size.height * 0.70),
-      Offset(size.width * 0.18, size.height * 0.48),
-      Offset(size.width * 0.34, size.height * 0.62),
-      Offset(size.width * 0.50, size.height * 0.38),
-      Offset(size.width * 0.66, size.height * 0.30),
-      Offset(size.width * 0.82, size.height * 0.44),
-      Offset(size.width, size.height * 0.20),
-    ];
+    final points = _pointsForValues(size);
     final path = Path()..moveTo(points.first.dx, points.first.dy);
     for (var i = 1; i < points.length; i++) {
       path.lineTo(points[i].dx, points[i].dy);
@@ -641,7 +658,30 @@ class _TrendPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TrendPainter oldDelegate) {
-    return oldDelegate.color != color;
+    return oldDelegate.color != color || oldDelegate.values != values;
+  }
+
+  List<Offset> _pointsForValues(Size size) {
+    final source = values.isEmpty ? const [0] : values;
+    if (source.length == 1) {
+      return [
+        Offset(0, size.height * 0.5),
+        Offset(size.width, size.height * 0.5),
+      ];
+    }
+
+    final minValue = source.reduce((a, b) => a < b ? a : b);
+    final maxValue = source.reduce((a, b) => a > b ? a : b);
+    final range = (maxValue - minValue).abs();
+    return [
+      for (var i = 0; i < source.length; i++)
+        Offset(
+          size.width * i / (source.length - 1),
+          range == 0
+              ? size.height * 0.5
+              : size.height * (0.82 - ((source[i] - minValue) / range) * 0.62),
+        ),
+    ];
   }
 }
 
@@ -650,10 +690,7 @@ class _HiddenMoneyText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      '¥ ****',
-      style: context.appTextStyles.amountList,
-    );
+    return Text('¥ ****', style: context.appTextStyles.amountList);
   }
 }
 
@@ -697,6 +734,24 @@ class _AccountsErrorView extends StatelessWidget {
 String _formatMoney(int minor) {
   final money = Money(minorUnits: minor);
   return money.format();
+}
+
+String _formatSignedMoney(int minor) {
+  final sign = minor >= 0 ? '+' : '-';
+  return '$sign¥${Money(minorUnits: minor.abs()).format()}';
+}
+
+String _formatNetAssetComparison(PeriodChange change) {
+  final delta = _formatSignedMoney(change.delta.minorUnits);
+  final ratio = change.ratio;
+  if (change.isFlat) {
+    return '与上月持平';
+  }
+  if (change.isNewValue || ratio == null) {
+    return '较上月 $delta';
+  }
+  final sign = ratio >= 0 ? '+' : '-';
+  return '较上月 $delta ($sign${(ratio.abs() * 100).toStringAsFixed(2)}%)';
 }
 
 String _liabilityDateText(Account account) {

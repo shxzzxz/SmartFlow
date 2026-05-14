@@ -1,3 +1,4 @@
+import '../../../domain/services/financial_metrics_service.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../home/view_models/home_transaction_group.dart';
 import '../../home/view_models/transaction_row_presentation.dart';
@@ -35,6 +36,7 @@ List<CalendarDayPresentation> buildCalendarMonthPresentation({
   required DateTime visibleMonth,
   required DateTime selectedDate,
   required List<TransactionListItem> transactions,
+  required List<DailyCashflowSummary> dailySummaries,
   DateTime? today,
   CalendarLunarLabelResolver lunarLabelResolver =
       const DefaultCalendarLunarLabelResolver(),
@@ -42,7 +44,7 @@ List<CalendarDayPresentation> buildCalendarMonthPresentation({
   final month = DateTime(visibleMonth.year, visibleMonth.month);
   final normalizedSelected = normalizeDate(selectedDate);
   final normalizedToday = normalizeDate(today ?? DateTime.now());
-  final totalsByDate = _totalsByDate(transactions);
+  final totalsByDate = _totalsByDate(dailySummaries);
 
   return [
     for (final date in calendarGridDates(month)) ...[
@@ -113,13 +115,15 @@ List<TransactionListItem> transactionsForDate(
 HomeTransactionDayGroup transactionGroupForDate({
   required DateTime date,
   required List<TransactionListItem> transactions,
+  required List<DailyCashflowSummary> dailySummaries,
 }) {
   final items = transactionsForDate(transactions, date);
+  final summary = _totalsByDate(dailySummaries)[normalizeDate(date)];
   return HomeTransactionDayGroup(
     date: normalizeDate(date),
     items: items,
-    incomeMinor: sumIncomeMinor(items),
-    expenseMinor: sumExpenseMinor(items),
+    incomeMinor: summary?.incomeMinor ?? 0,
+    expenseMinor: summary?.expenseMinor ?? 0,
   );
 }
 
@@ -131,17 +135,12 @@ bool isSameDate(DateTime a, DateTime b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-Map<DateTime, _DayTotals> _totalsByDate(List<TransactionListItem> items) {
-  final result = <DateTime, List<TransactionListItem>>{};
-  for (final item in items) {
-    final date = normalizeDate(item.occurredAt);
-    result.putIfAbsent(date, () => []).add(item);
-  }
+Map<DateTime, _DayTotals> _totalsByDate(List<DailyCashflowSummary> summaries) {
   return {
-    for (final entry in result.entries)
-      entry.key: _DayTotals(
-        incomeMinor: sumIncomeMinor(entry.value),
-        expenseMinor: sumExpenseMinor(entry.value),
+    for (final summary in summaries)
+      normalizeDate(summary.date): _DayTotals(
+        incomeMinor: summary.income.minorUnits,
+        expenseMinor: summary.expense.minorUnits,
       ),
   };
 }
