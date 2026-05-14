@@ -17,32 +17,64 @@ class DriftFinancialMetricsRepository implements FinancialMetricsRepository {
     CashflowComparisonQuery query,
   ) {
     final currentStart = query.month.start;
-    final currentUntil = query.month.nextMonthStart;
-    final previousStart = _previousMonth(query.month).start;
+    final previousMonth = _previousMonth(query.month);
+    final previousStart = previousMonth.start;
+    final isCurrentMonth =
+        query.asOfDate != null &&
+        query.asOfDate!.year == query.month.year &&
+        query.asOfDate!.month == query.month.month;
+    final currentUntil =
+        isCurrentMonth
+            ? DateTime(
+              query.month.year,
+              query.month.month,
+              query.asOfDate!.day + 1,
+            )
+            : query.month.nextMonthStart;
+    final previousSamePeriodUntil =
+        isCurrentMonth
+            ? _samePeriodUntil(previousMonth, query.asOfDate!.day)
+            : query.month.start;
 
     return _database
         .customSelect(
           'SELECT '
           "COALESCE(SUM(CASE WHEN t.occurred_at >= ? "
+          'AND t.occurred_at < ? '
           "AND a.account_type = 'income' THEN "
           "CASE WHEN e.direction = 'credit' THEN e.amount_minor "
           "WHEN e.direction = 'debit' THEN -e.amount_minor "
           'ELSE 0 END ELSE 0 END), 0) AS current_income_minor, '
           "COALESCE(SUM(CASE WHEN t.occurred_at >= ? "
+          'AND t.occurred_at < ? '
           "AND a.account_type = 'expense' THEN "
           "CASE WHEN e.direction = 'debit' THEN e.amount_minor "
           "WHEN e.direction = 'credit' THEN -e.amount_minor "
           'ELSE 0 END ELSE 0 END), 0) AS current_expense_minor, '
-          "COALESCE(SUM(CASE WHEN t.occurred_at < ? "
+          "COALESCE(SUM(CASE WHEN t.occurred_at >= ? "
+          'AND t.occurred_at < ? '
           "AND a.account_type = 'income' THEN "
           "CASE WHEN e.direction = 'credit' THEN e.amount_minor "
           "WHEN e.direction = 'debit' THEN -e.amount_minor "
-          'ELSE 0 END ELSE 0 END), 0) AS previous_income_minor, '
-          "COALESCE(SUM(CASE WHEN t.occurred_at < ? "
+          'ELSE 0 END ELSE 0 END), 0) AS previous_same_income_minor, '
+          "COALESCE(SUM(CASE WHEN t.occurred_at >= ? "
+          'AND t.occurred_at < ? '
           "AND a.account_type = 'expense' THEN "
           "CASE WHEN e.direction = 'debit' THEN e.amount_minor "
           "WHEN e.direction = 'credit' THEN -e.amount_minor "
-          'ELSE 0 END ELSE 0 END), 0) AS previous_expense_minor '
+          'ELSE 0 END ELSE 0 END), 0) AS previous_same_expense_minor, '
+          "COALESCE(SUM(CASE WHEN t.occurred_at >= ? "
+          'AND t.occurred_at < ? '
+          "AND a.account_type = 'income' THEN "
+          "CASE WHEN e.direction = 'credit' THEN e.amount_minor "
+          "WHEN e.direction = 'debit' THEN -e.amount_minor "
+          'ELSE 0 END ELSE 0 END), 0) AS previous_full_income_minor, '
+          "COALESCE(SUM(CASE WHEN t.occurred_at >= ? "
+          'AND t.occurred_at < ? '
+          "AND a.account_type = 'expense' THEN "
+          "CASE WHEN e.direction = 'debit' THEN e.amount_minor "
+          "WHEN e.direction = 'credit' THEN -e.amount_minor "
+          'ELSE 0 END ELSE 0 END), 0) AS previous_full_expense_minor '
           'FROM entries e '
           'JOIN transactions t ON t.id = e.transaction_id '
           'JOIN accounts a ON a.id = e.account_id '
@@ -54,8 +86,16 @@ class DriftFinancialMetricsRepository implements FinancialMetricsRepository {
           "AND a.account_type IN ('income', 'expense')",
           variables: [
             Variable<DateTime>(currentStart),
+            Variable<DateTime>(currentUntil),
             Variable<DateTime>(currentStart),
+            Variable<DateTime>(currentUntil),
+            Variable<DateTime>(previousStart),
+            Variable<DateTime>(previousSamePeriodUntil),
+            Variable<DateTime>(previousStart),
+            Variable<DateTime>(previousSamePeriodUntil),
+            Variable<DateTime>(previousStart),
             Variable<DateTime>(currentStart),
+            Variable<DateTime>(previousStart),
             Variable<DateTime>(currentStart),
             Variable<String>(query.currencyCode),
             Variable<DateTime>(previousStart),
@@ -81,9 +121,13 @@ class DriftFinancialMetricsRepository implements FinancialMetricsRepository {
               income: money('current_income_minor'),
               expense: money('current_expense_minor'),
             ),
-            previous: CashflowSummary(
-              income: money('previous_income_minor'),
-              expense: money('previous_expense_minor'),
+            previousSamePeriod: CashflowSummary(
+              income: money('previous_same_income_minor'),
+              expense: money('previous_same_expense_minor'),
+            ),
+            previousFullPeriod: CashflowSummary(
+              income: money('previous_full_income_minor'),
+              expense: money('previous_full_expense_minor'),
             ),
           );
         });
@@ -319,6 +363,13 @@ class DriftFinancialMetricsRepository implements FinancialMetricsRepository {
 
   MonthKey _previousMonth(MonthKey month) {
     return MonthKey.fromDate(DateTime(month.year, month.month - 1));
+  }
+
+  DateTime _samePeriodUntil(MonthKey month, int day) {
+    final nextMonthStart = month.nextMonthStart;
+    final lastDay = nextMonthStart.subtract(const Duration(days: 1)).day;
+    final inclusiveDay = day > lastDay ? lastDay : day;
+    return DateTime(month.year, month.month, inclusiveDay + 1);
   }
 }
 

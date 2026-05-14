@@ -56,10 +56,12 @@ class FinancialMetricsServiceImpl implements FinancialMetricsService {
 class CashflowComparisonQuery {
   const CashflowComparisonQuery({
     required this.month,
+    this.asOfDate,
     this.currencyCode = Money.defaultCurrency,
   });
 
   final MonthKey month;
+  final DateTime? asOfDate;
   final String currencyCode;
 }
 
@@ -118,17 +120,30 @@ class DailyCashflowSummary {
 }
 
 class CashflowComparison {
-  const CashflowComparison({required this.current, required this.previous});
+  const CashflowComparison({
+    required this.current,
+    required this.previousSamePeriod,
+    required this.previousFullPeriod,
+  });
 
   final CashflowSummary current;
-  final CashflowSummary previous;
+  final CashflowSummary previousSamePeriod;
+  final CashflowSummary previousFullPeriod;
 
   PeriodChange get incomeChange {
-    return PeriodChange(current: current.income, previous: previous.income);
+    return PeriodChange(
+      current: current.income,
+      previous: previousSamePeriod.income,
+      previousFullPeriod: previousFullPeriod.income,
+    );
   }
 
   PeriodChange get expenseChange {
-    return PeriodChange(current: current.expense, previous: previous.expense);
+    return PeriodChange(
+      current: current.expense,
+      previous: previousSamePeriod.expense,
+      previousFullPeriod: previousFullPeriod.expense,
+    );
   }
 }
 
@@ -163,10 +178,15 @@ class NetAssetTrendPoint {
 }
 
 class PeriodChange {
-  const PeriodChange({required this.current, required this.previous});
+  const PeriodChange({
+    required this.current,
+    required this.previous,
+    this.previousFullPeriod,
+  });
 
   final Money current;
   final Money previous;
+  final Money? previousFullPeriod;
 
   Money get delta => current - previous;
 
@@ -181,4 +201,12 @@ class PeriodChange {
 
   bool get isFlat => delta.minorUnits == 0;
   bool get isNewValue => previous.minorUnits == 0 && current.minorUnits != 0;
+
+  double? get fullPeriodRatio {
+    final fullPeriod = previousFullPeriod;
+    if (fullPeriod == null || fullPeriod.minorUnits == 0) {
+      return null;
+    }
+    return current.minorUnits / fullPeriod.minorUnits.abs();
+  }
 }

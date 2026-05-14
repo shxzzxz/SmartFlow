@@ -986,7 +986,7 @@ final class HomeMonthCashflowComparisonProvider
 }
 
 String _$homeMonthCashflowComparisonHash() =>
-    r'16e398d83416f5480791c481b1b990315efca0a9';
+    r'a28e1a5675e98d8b94361ccdb4cfba73bca464e3';
 
 final class HomeMonthCashflowComparisonFamily extends $Family
     with

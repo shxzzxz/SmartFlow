@@ -151,10 +151,18 @@ Stream<CashflowComparison> homeMonthCashflowComparison(
   required int year,
   required int month,
 }) {
+  final now = DateTime.now();
+  final selectedMonth = MonthKey(year: year, month: month);
   return ref
       .watch(financialMetricsServiceProvider)
       .watchCashflowComparison(
-        CashflowComparisonQuery(month: MonthKey(year: year, month: month)),
+        CashflowComparisonQuery(
+          month: selectedMonth,
+          asOfDate:
+              now.year == selectedMonth.year && now.month == selectedMonth.month
+                  ? now
+                  : null,
+        ),
       );
 }
 

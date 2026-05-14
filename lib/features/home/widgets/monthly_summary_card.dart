@@ -21,11 +21,6 @@ class MonthlySummaryCard extends StatelessWidget {
     final summary = comparison.current;
     final incomeMinor = summary.income.minorUnits;
     final expenseMinor = summary.expense.minorUnits;
-    final remainingBudgetMinor = _monthlyBudgetMinor - expenseMinor;
-    final remainingPercent =
-        (((_monthlyBudgetMinor - expenseMinor) / _monthlyBudgetMinor) * 100)
-            .clamp(0, 100)
-            .round();
 
     return AppSurface(
       child: Padding(
@@ -41,7 +36,7 @@ class MonthlySummaryCard extends StatelessWidget {
                   label: '本月收入',
                   amountMinor: incomeMinor,
                   amountColor: financeColors.income,
-                  caption: formatPeriodChangeCaption(comparison.incomeChange),
+                  caption: formatPeriodChangeMetrics(comparison.incomeChange),
                   showSign: true,
                 ),
               ),
@@ -51,16 +46,18 @@ class MonthlySummaryCard extends StatelessWidget {
                   label: '本月支出',
                   amountMinor: expenseMinor,
                   amountColor: financeColors.expense,
-                  caption: formatPeriodChangeCaption(comparison.expenseChange),
+                  caption: formatPeriodChangeMetrics(comparison.expenseChange),
                 ),
               ),
               _SummaryDivider(color: colors.outlineVariant),
               Expanded(
                 child: _SummaryMetric(
-                  label: '剩余预算',
-                  amountMinor: remainingBudgetMinor,
+                  label: '本月预算',
+                  amountMinor: _monthlyBudgetMinor,
                   amountColor: colors.primary,
-                  caption: '剩余 $remainingPercent%',
+                  caption:
+                      '${_formatPercent(expenseMinor / _monthlyBudgetMinor)}/'
+                      '${_formatRoundedMajor(_monthlyBudgetMinor)}',
                 ),
               ),
             ],
@@ -71,19 +68,32 @@ class MonthlySummaryCard extends StatelessWidget {
   }
 }
 
-String formatPeriodChangeCaption(PeriodChange change) {
-  if (change.isFlat) {
-    return '与上月持平';
-  }
-  if (change.isNewValue) {
-    return '较上月新增';
-  }
-  final ratio = change.ratio;
+String formatPeriodChangeMetrics(PeriodChange change) {
+  return [
+    _formatSignedCompactAmount(change.delta.minorUnits),
+    _formatOptionalPercent(change.ratio),
+    _formatOptionalPercent(change.fullPeriodRatio),
+  ].join('/');
+}
+
+String _formatSignedCompactAmount(int minorUnits) {
+  final sign = minorUnits >= 0 ? '+' : '-';
+  return '$sign${_formatRoundedMajor(minorUnits)}';
+}
+
+String _formatOptionalPercent(double? ratio) {
   if (ratio == null) {
-    return '上月无记录';
+    return '--%';
   }
-  final sign = ratio >= 0 ? '+' : '-';
-  return '较上月 $sign${(ratio.abs() * 100).toStringAsFixed(1)}%';
+  return _formatPercent(ratio);
+}
+
+String _formatPercent(double ratio) {
+  return '${(ratio * 100).round()}%';
+}
+
+String _formatRoundedMajor(int minorUnits) {
+  return (minorUnits.abs() / 100).round().toString();
 }
 
 class _SummaryDivider extends StatelessWidget {

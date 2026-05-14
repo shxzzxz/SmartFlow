@@ -22,66 +22,85 @@ void main() {
       await database.close();
     });
 
-    test('cashflow comparison aggregates current and previous month', () async {
-      final wallet = await _insertAccount(database, '钱包', AccountType.asset);
-      final food = await _insertAccount(database, '餐饮', AccountType.expense);
-      final salary = await _insertAccount(database, '工资', AccountType.income);
+    test(
+      'cashflow comparison aggregates same period and previous full month',
+      () async {
+        final wallet = await _insertAccount(database, '钱包', AccountType.asset);
+        final food = await _insertAccount(database, '餐饮', AccountType.expense);
+        final salary = await _insertAccount(database, '工资', AccountType.income);
 
-      await _post(
-        database,
-        occurredAt: DateTime(2026, 4, 10),
-        entries: [
-          _Entry(wallet, EntryDirection.debit, 100000),
-          _Entry(salary, EntryDirection.credit, 100000),
-        ],
-      );
-      await _post(
-        database,
-        occurredAt: DateTime(2026, 5, 10),
-        entries: [
-          _Entry(wallet, EntryDirection.debit, 150000),
-          _Entry(salary, EntryDirection.credit, 150000),
-        ],
-      );
-      await _post(
-        database,
-        occurredAt: DateTime(2026, 5, 11),
-        entries: [
-          _Entry(food, EntryDirection.debit, 50000),
-          _Entry(wallet, EntryDirection.credit, 50000),
-        ],
-      );
-      await _post(
-        database,
-        occurredAt: DateTime(2026, 5, 12),
-        entries: [
-          _Entry(wallet, EntryDirection.debit, 10000),
-          _Entry(food, EntryDirection.credit, 10000),
-        ],
-      );
-      await _post(
-        database,
-        occurredAt: DateTime(2026, 5, 13),
-        isExcludedFromStats: true,
-        entries: [
-          _Entry(wallet, EntryDirection.debit, 99900),
-          _Entry(salary, EntryDirection.credit, 99900),
-        ],
-      );
+        await _post(
+          database,
+          occurredAt: DateTime(2026, 4, 10),
+          entries: [
+            _Entry(wallet, EntryDirection.debit, 100000),
+            _Entry(salary, EntryDirection.credit, 100000),
+          ],
+        );
+        await _post(
+          database,
+          occurredAt: DateTime(2026, 4, 20),
+          entries: [
+            _Entry(wallet, EntryDirection.debit, 40000),
+            _Entry(salary, EntryDirection.credit, 40000),
+          ],
+        );
+        await _post(
+          database,
+          occurredAt: DateTime(2026, 5, 10),
+          entries: [
+            _Entry(wallet, EntryDirection.debit, 150000),
+            _Entry(salary, EntryDirection.credit, 150000),
+          ],
+        );
+        await _post(
+          database,
+          occurredAt: DateTime(2026, 5, 11),
+          entries: [
+            _Entry(food, EntryDirection.debit, 50000),
+            _Entry(wallet, EntryDirection.credit, 50000),
+          ],
+        );
+        await _post(
+          database,
+          occurredAt: DateTime(2026, 5, 12),
+          entries: [
+            _Entry(wallet, EntryDirection.debit, 10000),
+            _Entry(food, EntryDirection.credit, 10000),
+          ],
+        );
+        await _post(
+          database,
+          occurredAt: DateTime(2026, 5, 13),
+          isExcludedFromStats: true,
+          entries: [
+            _Entry(wallet, EntryDirection.debit, 99900),
+            _Entry(salary, EntryDirection.credit, 99900),
+          ],
+        );
 
-      final comparison =
-          await repository
-              .watchCashflowComparison(
-                CashflowComparisonQuery(month: MonthKey(year: 2026, month: 5)),
-              )
-              .first;
+        final comparison =
+            await repository
+                .watchCashflowComparison(
+                  CashflowComparisonQuery(
+                    month: MonthKey(year: 2026, month: 5),
+                    asOfDate: DateTime(2026, 5, 12),
+                  ),
+                )
+                .first;
 
-      expect(comparison.previous.income.minorUnits, 100000);
-      expect(comparison.current.income.minorUnits, 150000);
-      expect(comparison.incomeChange.delta.minorUnits, 50000);
-      expect(comparison.incomeChange.ratio, 0.5);
-      expect(comparison.current.expense.minorUnits, 40000);
-    });
+        expect(comparison.previousSamePeriod.income.minorUnits, 100000);
+        expect(comparison.previousFullPeriod.income.minorUnits, 140000);
+        expect(comparison.current.income.minorUnits, 150000);
+        expect(comparison.incomeChange.delta.minorUnits, 50000);
+        expect(comparison.incomeChange.ratio, 0.5);
+        expect(
+          comparison.incomeChange.fullPeriodRatio,
+          closeTo(1.0714, 0.0001),
+        );
+        expect(comparison.current.expense.minorUnits, 40000);
+      },
+    );
 
     test('daily cashflow summaries use entries statistics口径', () async {
       final wallet = await _insertAccount(database, '钱包', AccountType.asset);

@@ -23,7 +23,7 @@ void main() {
     expect(find.text('${now.year}年${now.month}月'), findsOneWidget);
     expect(find.text('本月收入'), findsOneWidget);
     expect(find.text('本月支出'), findsOneWidget);
-    expect(find.text('剩余预算'), findsOneWidget);
+    expect(find.text('本月预算'), findsOneWidget);
     expect(find.text('本月暂无交易记录'), findsOneWidget);
   });
 }
