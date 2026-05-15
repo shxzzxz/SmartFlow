@@ -736,10 +736,9 @@ class TransactionServiceImpl implements TransactionService {
             : command.interestExpenseAccountId;
     final discountIncomeAccountId =
         hasDiscount
-            ? await _requireSystemAccountResolver()
-                .resolveRepaymentDiscountIncome(
-                  currencyCode: principal.currency,
-                )
+            ? await _requireSystemAccountResolver().resolveDiscountIncome(
+              currencyCode: principal.currency,
+            )
             : null;
 
     final roleFailure = await _validateAccountRoles({

@@ -393,27 +393,29 @@ void main() {
       expect(await _balance(database, interest.id), 3000);
     });
 
-    test('repayment discount reduces cash paid and records income', () async {
-      final bank = await _createAsset(accountService, '招行');
-      final card = await _createLiability(accountService, '信用卡');
+    test(
+      'repayment discount reduces cash paid and uses discount income',
+      () async {
+        final bank = await _createAsset(accountService, '招行');
+        final card = await _createLiability(accountService, '信用卡');
 
-      final result = await service.createRepayment(
-        CreateRepaymentCommand(
-          principal: const Money(minorUnits: 10000),
-          discount: const Money(minorUnits: 500),
-          liabilityAccountId: card.id,
-          paidFromAccountId: bank.id,
-          occurredAt: DateTime(2026, 5, 10),
-        ),
-      );
-      expect(result, isA<Success<PostTransactionResult>>());
+        final result = await service.createRepayment(
+          CreateRepaymentCommand(
+            principal: const Money(minorUnits: 10000),
+            discount: const Money(minorUnits: 500),
+            liabilityAccountId: card.id,
+            paidFromAccountId: bank.id,
+            occurredAt: DateTime(2026, 5, 10),
+          ),
+        );
+        expect(result, isA<Success<PostTransactionResult>>());
 
-      final discountIncomeId =
-          await systemAccounts.resolveRepaymentDiscountIncome();
-      expect(await _balance(database, bank.id), -9500);
-      expect(await _balance(database, card.id), -10000);
-      expect(await _balance(database, discountIncomeId), 500);
-    });
+        final discountIncomeId = await systemAccounts.resolveDiscountIncome();
+        expect(await _balance(database, bank.id), -9500);
+        expect(await _balance(database, card.id), -10000);
+        expect(await _balance(database, discountIncomeId), 500);
+      },
+    );
 
     test(
       'borrowing without cash account uses opening balance equity',

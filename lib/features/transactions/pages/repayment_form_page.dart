@@ -2,21 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
-import '../../../design_system/theme/app_text_styles.dart';
-import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
-import '../../../design_system/widgets/app_surface.dart';
+import '../../../design_system/widgets/app_form_field.dart';
+import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_service.dart';
 import '../../../widgets/business/business_icon.dart';
-import '../../../widgets/business/finance_labels.dart';
 
 class RepaymentFormPage extends ConsumerStatefulWidget {
   const RepaymentFormPage({required this.liabilityAccountId, super.key});
@@ -28,14 +25,22 @@ class RepaymentFormPage extends ConsumerStatefulWidget {
 }
 
 class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
+  final _formKey = GlobalKey<FormState>();
   final _principalController = TextEditingController();
   final _interestController = TextEditingController();
   final _discountController = TextEditingController();
   final _noteController = TextEditingController();
 
   DateTime _occurredAt = DateTime.now();
+  late int? _liabilityAccountId;
   int? _paidFromAccountId;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _liabilityAccountId = widget.liabilityAccountId;
+  }
 
   @override
   void dispose() {
@@ -51,107 +56,164 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     final accountsAsync = ref.watch(accountListProvider);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('还款')),
       body: accountsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => Center(child: Text('加载失败：$error')),
         data: (accounts) {
-          final liability = _findAccount(accounts, widget.liabilityAccountId);
-          if (liability == null || liability.type != AccountType.liability) {
-            return const Center(child: Text('债务账户不存在'));
-          }
+          final liabilityAccounts =
+              accounts.where(_isSelectableLiabilityAccount).toList();
+          final liabilityAccountId = _selectedId(
+            _liabilityAccountId,
+            liabilityAccounts,
+          );
           final repaymentAccounts =
               accounts
                   .where(
                     (account) =>
                         _isSelectableRepaymentAccount(account) &&
-                        account.id != liability.id,
+                        account.id != liabilityAccountId,
                   )
                   .toList();
-          final paidFrom =
-              _findAccount(repaymentAccounts, _paidFromAccountId) ??
-              (repaymentAccounts.isEmpty ? null : repaymentAccounts.first);
+          final paidFromAccountId = _selectedId(
+            _paidFromAccountId,
+            repaymentAccounts,
+          );
+          final liabilityAccount = _findAccount(
+            liabilityAccounts,
+            liabilityAccountId,
+          );
+          final paidFromAccount = _findAccount(
+            repaymentAccounts,
+            paidFromAccountId,
+          );
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space16,
-              AppSpacing.space12,
-              AppSpacing.space16,
-              AppSpacing.space32,
-            ),
-            children: [
-              _DebtAccountCard(account: liability),
-              const SizedBox(height: AppSpacing.space16),
-              AppSurface(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.space16),
-                  child: Column(
-                    children: [
-                      _MoneyField(
-                        controller: _principalController,
-                        label: '金额',
-                        autofocus: true,
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                      _MoneyField(
-                        controller: _interestController,
-                        label: '利息',
-                        optional: true,
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                      _MoneyField(
-                        controller: _discountController,
-                        label: '优惠',
-                        optional: true,
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                      TextField(
-                        controller: _noteController,
-                        decoration: const InputDecoration(labelText: '备注'),
-                        maxLines: 2,
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                      _PlainSelector(
-                        icon: RemixIcons.calendar_line,
-                        label: '还款日期',
-                        value: _formatDateTime(_occurredAt),
-                        onTap: _pickDate,
-                      ),
-                      const SizedBox(height: AppSpacing.space8),
-                      _PlainSelector(
-                        icon: RemixIcons.wallet_3_line,
-                        label: '还款账户',
-                        value: paidFrom?.name ?? '暂无可选账户',
-                        leading:
-                            paidFrom == null
-                                ? null
-                                : BusinessIcon(
-                                  iconKey: paidFrom.iconKey,
-                                  size: 18,
-                                ),
-                        onTap:
-                            repaymentAccounts.isEmpty
-                                ? null
-                                : () => _showAccountSheet(repaymentAccounts),
-                      ),
-                    ],
+          return Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.space28,
+                AppSpacing.space18,
+                AppSpacing.space28,
+                AppSpacing.space24,
+              ),
+              children: [
+                const Divider(height: 1),
+                AppPlainFormRow(
+                  label: '债务账户',
+                  onTap:
+                      liabilityAccounts.isEmpty
+                          ? null
+                          : () => _showAccountSheet(
+                            title: '选择债务账户',
+                            accounts: liabilityAccounts,
+                            selectedId: liabilityAccountId,
+                            onSelected:
+                                (value) => setState(() {
+                                  _liabilityAccountId = value;
+                                  if (_paidFromAccountId == value) {
+                                    _paidFromAccountId = null;
+                                  }
+                                }),
+                          ),
+                  child: _AccountValue(
+                    account: liabilityAccount,
+                    placeholder: '请选择债务账户',
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.space20),
-              FilledButton(
-                onPressed:
-                    _submitting || repaymentAccounts.isEmpty ? null : _submit,
-                child:
-                    _submitting
-                        ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Text('完成'),
-              ),
-            ],
+                const Divider(height: 1),
+                AppPlainFormRow(
+                  label: '金额',
+                  child: AppPlainTextFormField(
+                    controller: _principalController,
+                    hintText: '请输入还款金额',
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [_moneyInputFormatter],
+                    validator: _validatePositiveMoney,
+                  ),
+                ),
+                const Divider(height: 1),
+                AppPlainFormRow(
+                  label: '利息',
+                  child: AppPlainTextFormField(
+                    controller: _interestController,
+                    hintText: '请输入利息（可选）',
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [_moneyInputFormatter],
+                    validator: _validateOptionalMoney,
+                  ),
+                ),
+                const Divider(height: 1),
+                AppPlainFormRow(
+                  label: '优惠',
+                  child: AppPlainTextFormField(
+                    controller: _discountController,
+                    hintText: '请输入优惠（可选）',
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [_moneyInputFormatter],
+                    validator: _validateOptionalMoney,
+                  ),
+                ),
+                const Divider(height: 1),
+                AppPlainFormRow(
+                  label: '还款日期',
+                  onTap: _pickDate,
+                  child: AppPlainValueText(text: _formatDateTime(_occurredAt)),
+                ),
+                const Divider(height: 1),
+                AppPlainFormRow(
+                  label: '还款账户',
+                  onTap:
+                      repaymentAccounts.isEmpty
+                          ? null
+                          : () => _showAccountSheet(
+                            title: '选择还款账户',
+                            accounts: repaymentAccounts,
+                            selectedId: paidFromAccountId,
+                            onSelected:
+                                (value) =>
+                                    setState(() => _paidFromAccountId = value),
+                          ),
+                  child: _AccountValue(
+                    account: paidFromAccount,
+                    placeholder: '请选择还款账户',
+                  ),
+                ),
+                const Divider(height: 1),
+                AppPlainFormRow(
+                  label: '备注',
+                  minHeight: 88,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  child: AppPlainTextFormField(
+                    controller: _noteController,
+                    hintText: '请输入备注（可选）',
+                    maxLines: 2,
+                  ),
+                ),
+                const Divider(height: 1),
+                const SizedBox(height: AppSpacing.space24),
+                SizedBox(
+                  height: AppSpacing.space48,
+                  child: FilledButton(
+                    onPressed: _submitting ? null : _submit,
+                    child:
+                        _submitting
+                            ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Text('保存'),
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -167,12 +229,18 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     if (picked == null || !mounted) {
       return;
     }
-    setState(() => _occurredAt = picked);
+    setState(() {
+      _occurredAt = picked;
+    });
   }
 
-  void _showAccountSheet(List<Account> accounts) {
-    final selectedId = _paidFromAccountId ?? accounts.first.id;
-    showModalBottomSheet<void>(
+  Future<void> _showAccountSheet({
+    required String title,
+    required List<Account> accounts,
+    required int? selectedId,
+    required ValueChanged<int> onSelected,
+  }) async {
+    final selected = await showModalBottomSheet<int>(
       context: context,
       showDragHandle: true,
       builder: (context) {
@@ -180,60 +248,71 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
           child: ListView(
             shrinkWrap: true,
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space16,
+                  0,
+                  AppSpacing.space16,
+                  AppSpacing.space8,
+                ),
+                child: Text(title),
+              ),
               for (final account in accounts)
                 ListTile(
-                  leading: Icon(
-                    account.id == selectedId
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
-                  ),
+                  leading: BusinessIcon(iconKey: account.iconKey),
                   title: Text(account.name),
-                  subtitle: Text(accountTypeLabel(account.type)),
-                  onTap: () {
-                    setState(() => _paidFromAccountId = account.id);
-                    Navigator.pop(context);
-                  },
+                  trailing:
+                      account.id == selectedId
+                          ? const Icon(Icons.check_rounded)
+                          : null,
+                  onTap: () => Navigator.of(context).pop(account.id),
                 ),
             ],
           ),
         );
       },
     );
+    if (!mounted || selected == null) return;
+    onSelected(selected);
   }
 
   Future<void> _submit() async {
-    final principal = _parseRequiredMoney(_principalController.text);
-    if (principal == null) {
-      _showError('请输入有效还款金额');
-      return;
-    }
-    final interest = _parseOptionalMoney(_interestController.text);
-    final discount = _parseOptionalMoney(_discountController.text);
-    if (interest == null || discount == null) {
-      _showError('请输入有效金额');
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
     final accounts = ref.read(accountListProvider).value ?? const <Account>[];
+    final liabilityAccounts =
+        accounts.where(_isSelectableLiabilityAccount).toList();
+    final liabilityAccountId = _selectedId(
+      _liabilityAccountId,
+      liabilityAccounts,
+    );
     final repaymentAccounts =
         accounts
             .where(
               (account) =>
                   _isSelectableRepaymentAccount(account) &&
-                  account.id != widget.liabilityAccountId,
+                  account.id != liabilityAccountId,
             )
             .toList();
-    final paidFromAccountId =
-        _paidFromAccountId ??
-        (repaymentAccounts.isEmpty ? null : repaymentAccounts.first.id);
+    final paidFromAccountId = _selectedId(
+      _paidFromAccountId,
+      repaymentAccounts,
+    );
+    if (liabilityAccountId == null) {
+      _showError('请选择债务账户');
+      return;
+    }
     if (paidFromAccountId == null) {
       _showError('请选择还款账户');
       return;
     }
+    final principal = Money.parse(_principalController.text);
+    final interest = _parseOptionalMoney(_interestController.text);
+    final discount = _parseOptionalMoney(_discountController.text);
 
     final note = _blankToNull(_noteController.text);
-    final effectiveNote =
-        discount.minorUnits > 0 && note == null ? '还款优惠' : note;
 
     setState(() => _submitting = true);
     final result = await ref
@@ -243,10 +322,10 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
             principal: principal,
             interest: interest.minorUnits > 0 ? interest : null,
             discount: discount.minorUnits > 0 ? discount : null,
-            liabilityAccountId: widget.liabilityAccountId,
+            liabilityAccountId: liabilityAccountId,
             paidFromAccountId: paidFromAccountId,
             occurredAt: _occurredAt,
-            note: effectiveNote,
+            note: note,
           ),
         );
     if (!mounted) {
@@ -262,26 +341,31 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     }
   }
 
-  Money? _parseRequiredMoney(String value) {
+  String? _validatePositiveMoney(String? value) {
     try {
-      final money = Money.parse(value);
-      return money.minorUnits > 0 ? money : null;
+      final money = Money.parse(value ?? '');
+      return money.minorUnits > 0 ? null : '金额必须大于 0';
     } on FormatException {
-      return null;
+      return '请输入有效金额';
     }
   }
 
-  Money? _parseOptionalMoney(String value) {
-    final trimmed = value.trim();
+  String? _validateOptionalMoney(String? value) {
+    final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) {
-      return Money.zero();
+      return null;
     }
     try {
       final money = Money.parse(trimmed);
-      return money.minorUnits >= 0 ? money : null;
+      return money.minorUnits >= 0 ? null : '金额不能小于 0';
     } on FormatException {
-      return null;
+      return '请输入有效金额';
     }
+  }
+
+  Money _parseOptionalMoney(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? Money.zero() : Money.parse(trimmed);
   }
 
   void _showError(String message) {
@@ -291,153 +375,51 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   }
 }
 
-class _DebtAccountCard extends StatelessWidget {
-  const _DebtAccountCard({required this.account});
+class _AccountValue extends StatelessWidget {
+  const _AccountValue({required this.account, required this.placeholder});
 
-  final Account account;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    final typeText =
-        account.subtype == null
-            ? accountTypeLabel(account.type)
-            : '${accountTypeLabel(account.type)} / '
-                '${accountSubtypeLabel(account.subtype!)}';
-
-    return AppSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Row(
-          children: [
-            BusinessIcon(iconKey: account.iconKey, size: AppSpacing.space32),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    account.name,
-                    style: textStyles.subsectionTitleStrong,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Text(
-                    typeText,
-                    style: textStyles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MoneyField extends StatelessWidget {
-  const _MoneyField({
-    required this.controller,
-    required this.label,
-    this.optional = false,
-    this.autofocus = false,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final bool optional;
-  final bool autofocus;
+  final Account? account;
+  final String placeholder;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      autofocus: autofocus,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+    final account = this.account;
+    if (account == null) {
+      return AppPlainValueText(text: placeholder);
+    }
+
+    return Row(
+      children: [
+        BusinessIcon(iconKey: account.iconKey, size: AppSpacing.space20),
+        const SizedBox(width: AppSpacing.space8),
+        Expanded(child: AppPlainValueText(text: account.name)),
       ],
-      decoration: InputDecoration(
-        labelText: optional ? '$label（可选）' : label,
-        prefixText: '¥ ',
-      ),
-    );
-  }
-}
-
-class _PlainSelector extends StatelessWidget {
-  const _PlainSelector({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onTap,
-    this.leading,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-  final Widget? leading;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space12,
-        ),
-        decoration: BoxDecoration(
-          border: Border.all(color: colors.outlineVariant),
-          borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: colors.onSurfaceVariant),
-            const SizedBox(width: AppSpacing.space10),
-            Text(label, style: textStyles.formLabel),
-            const Spacer(),
-            if (leading != null) ...[
-              leading!,
-              const SizedBox(width: AppSpacing.space6),
-            ],
-            Flexible(
-              child: Text(
-                value,
-                style: textStyles.formValue,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
 
 Account? _findAccount(List<Account> accounts, int? id) {
+  if (id == null) return null;
+  for (final account in accounts) {
+    if (account.id == id) return account;
+  }
+  return null;
+}
+
+int? _selectedId(int? id, List<Account> accounts) {
   if (id == null) {
     return null;
   }
   for (final account in accounts) {
     if (account.id == id) {
-      return account;
+      return id;
     }
   }
   return null;
+}
+
+bool _isSelectableLiabilityAccount(Account account) {
+  return account.archivedAt == null && account.type == AccountType.liability;
 }
 
 bool _isSelectableRepaymentAccount(Account account) {
@@ -459,3 +441,7 @@ String _formatDateTime(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')} $time';
 }
+
+final _moneyInputFormatter = FilteringTextInputFormatter.allow(
+  RegExp(r'^\d*\.?\d{0,2}'),
+);

@@ -13,7 +13,7 @@ abstract interface class SystemAccountResolver {
     String currencyCode = Money.defaultCurrency,
   });
 
-  Future<int> resolveRepaymentDiscountIncome({
+  Future<int> resolveDiscountIncome({
     String currencyCode = Money.defaultCurrency,
   });
 }

@@ -376,6 +376,13 @@ const businessIconSpecs = <BusinessIconSpec>[
     usage: BusinessIconUsage.system,
   ),
   BusinessIconSpec.remix(
+    iconKey: 'coupon-3-line',
+    icon: RemixIcons.coupon_3_line,
+    color: AppColors.categoryGenericIncome,
+    label: '优惠',
+    usage: BusinessIconUsage.incomeCategory,
+  ),
+  BusinessIconSpec.remix(
     iconKey: 'transfer',
     icon: RemixIcons.arrow_left_right_line,
     color: AppColors.categoryTransfer,

@@ -122,6 +122,7 @@ class TransactionListItem {
     required this.accountNames,
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
+    this.accountBalanceDelta,
     this.categoryName,
     this.categoryIconKey,
     this.flowOutAccountId,
@@ -145,6 +146,7 @@ class TransactionListItem {
   final BusinessPurpose businessPurpose;
   final DateTime occurredAt;
   final Money primaryAmount;
+  final Money? accountBalanceDelta;
   final String accountNames;
   final String? categoryName;
   final String? categoryIconKey;

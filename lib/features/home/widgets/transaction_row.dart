@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
 import '../../../design_system/tokens/spacing.dart';
@@ -32,7 +33,11 @@ class TransactionRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final financeColors = Theme.of(context).extension<AppThemeExtension>()!;
     final textStyles = context.appTextStyles;
-    final color = amountColor(colors, financeColors, item.businessPurpose);
+    final isAccountLedger = item.accountBalanceDelta != null;
+    final color =
+        isAccountLedger
+            ? colors.onSurface
+            : amountColor(colors, financeColors, item.businessPurpose);
     final title = transactionPrimaryLabel(item);
     final note = item.note?.trim();
     final hasNote = note != null && note.isNotEmpty;
@@ -46,13 +51,13 @@ class TransactionRow extends StatelessWidget {
       onTap: () => _openTransaction(context, item),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space14,
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space8,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CategoryAvatar(iconKey: resolveCategoryIconKey(item), size: 28),
+            CategoryAvatar(iconKey: resolveCategoryIconKey(item), size: 24),
             const SizedBox(width: AppSpacing.space8),
             Expanded(
               child: Column(
@@ -64,7 +69,7 @@ class TransactionRow extends StatelessWidget {
                     item: item,
                     hasBadges: hasBadges,
                   ),
-                  const SizedBox(height: AppSpacing.space4),
+                  const SizedBox(height: AppSpacing.space2),
                   Text(
                     subtitle,
                     style: textStyles.listSupporting,
@@ -81,12 +86,14 @@ class TransactionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    formatTransactionAmount(item),
+                    isAccountLedger
+                        ? _formatAccountDelta(item.accountBalanceDelta!)
+                        : formatTransactionAmount(item),
                     style: textStyles.amountList.copyWith(color: color),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: AppSpacing.space4),
+                  const SizedBox(height: AppSpacing.space2),
                   _AccountLine(item: item),
                 ],
               ),
@@ -119,6 +126,11 @@ class TransactionRow extends StatelessWidget {
       child: row,
     );
   }
+}
+
+String _formatAccountDelta(Money delta) {
+  final sign = delta.minorUnits >= 0 ? '+' : '-';
+  return '$sign${formatMinorAmount(delta.minorUnits)}';
 }
 
 void _openTransaction(BuildContext context, TransactionListItem item) {

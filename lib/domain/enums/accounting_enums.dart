@@ -60,7 +60,7 @@ enum SystemKey {
   reimbursementGapIncome,
   debtInterestExpense,
   debtFeeExpense,
-  repaymentDiscountIncome,
+  discountIncome,
   lendingExpense,
   borrowingIncome,
   importFallback,

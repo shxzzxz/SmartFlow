@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
-import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
@@ -14,10 +13,6 @@ import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../features/home/view_models/transaction_row_presentation.dart';
 import '../../../features/home/widgets/transaction_row.dart';
-import '../../../widgets/business/business_icon.dart';
-import '../../../widgets/business/business_icon_bubble.dart';
-import '../../../widgets/business/finance_labels.dart';
-import '../../../widgets/business/money_text.dart';
 
 class AccountDetailPage extends ConsumerWidget {
   const AccountDetailPage({required this.accountId, super.key});
@@ -66,24 +61,22 @@ class _AccountDetailContent extends StatelessWidget {
     final groups = _groupTransactionsByDay(transactions);
     return ListView(
       padding: const EdgeInsets.fromLTRB(
+        AppSpacing.space10,
+        AppSpacing.space6,
+        AppSpacing.space10,
         AppSpacing.space16,
-        AppSpacing.space12,
-        AppSpacing.space16,
-        AppSpacing.space32,
       ),
       children: [
         _AccountInfoSection(account: account),
-        const SizedBox(height: AppSpacing.space16),
+        const SizedBox(height: AppSpacing.space8),
         _AccountActionBar(account: account),
-        const SizedBox(height: AppSpacing.space20),
-        Text('账户流水', style: context.appTextStyles.sectionTitleStrong),
-        const SizedBox(height: AppSpacing.space12),
+        const SizedBox(height: AppSpacing.space8),
         if (groups.isEmpty)
           const _EmptyAccountTransactions()
         else
           for (final group in groups) ...[
             _AccountTransactionDaySection(group: group),
-            const SizedBox(height: AppSpacing.space10),
+            const SizedBox(height: AppSpacing.space8),
           ],
       ],
     );
@@ -98,168 +91,198 @@ class _AccountInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    final typeText =
-        account.subtype == null
-            ? accountTypeLabel(account.type)
-            : '${accountTypeLabel(account.type)} / '
-                '${accountSubtypeLabel(account.subtype!)}';
-    final note = account.note?.trim();
+    final rightItems = _rightInfoItems(account);
+    final balanceBlock = _AccountBalanceBlock(account: account);
+    final metricsBlock = _AccountMetricsBlock(items: rightItems);
 
     return AppSurface(
+      border: true,
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                BusinessIconBubble(
-                  size: AppSpacing.space48,
-                  child: BusinessIcon(
-                    iconKey: account.iconKey,
-                    size: AppSpacing.space32,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space12,
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            if (rightItems.isEmpty) {
+              return balanceBlock;
+            }
+
+            if (constraints.maxWidth < 380) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  balanceBlock,
+                  Divider(
+                    height: AppSpacing.space20,
+                    color: colors.outlineVariant.withValues(alpha: 0.7),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        account.name,
-                        style: textStyles.subsectionTitleStrong,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AppSpacing.space4),
-                      Text(
-                        typeText,
-                        style: textStyles.listSupporting.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                  metricsBlock,
+                ],
+              );
+            }
+
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 4, child: balanceBlock),
+                  const SizedBox(width: AppSpacing.space12),
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: colors.outlineVariant.withValues(alpha: 0.7),
                   ),
-                ),
-              ],
-            ),
-            if (note != null && note.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.space12),
-              Text(
-                note,
-                style: textStyles.listSupporting.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
+                  const SizedBox(width: AppSpacing.space12),
+                  Expanded(flex: 9, child: metricsBlock),
+                ],
               ),
-            ],
-            const SizedBox(height: AppSpacing.space16),
-            Wrap(
-              spacing: AppSpacing.space10,
-              runSpacing: AppSpacing.space10,
-              children: _metricItems(context, account),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-List<Widget> _metricItems(BuildContext context, Account account) {
-  final items = <Widget>[];
-  final isLiability = account.type == AccountType.liability;
-  final balanceLabel =
-      isLiability
-          ? '欠款'
-          : account.subtype == AccountSubtype.reimbursement
-          ? '应收'
-          : '余额';
-  items.add(
-    _AccountMetricTile(
-      label: balanceLabel,
-      money: account.balance,
-      semantic: isLiability ? MoneySemantic.liability : MoneySemantic.asset,
-    ),
-  );
+class _AccountBalanceBlock extends StatelessWidget {
+  const _AccountBalanceBlock({required this.account});
 
-  if (isLiability && account.creditLimit != null) {
-    final remaining = account.creditLimit! - account.balance;
-    items.add(
-      _AccountMetricTile(
-        label: '信用额度',
-        money: account.creditLimit!,
-        semantic: MoneySemantic.neutral,
-      ),
-    );
-    items.add(
-      _AccountMetricTile(
-        label: '剩余额度',
-        money: remaining,
-        semantic: MoneySemantic.asset,
-      ),
+  final Account account;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textStyles = context.appTextStyles;
+    final amountColor =
+        account.balance.minorUnits < 0 ? colors.error : colors.onSurface;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                _balanceTitle(account),
+                style: textStyles.detailLabel.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        Text(
+          account.balance.format(),
+          style: textStyles.amountPrimary.copyWith(color: amountColor),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
-  if (isLiability && account.billingDay != null) {
-    items.add(
-      _AccountMetricTile(label: '出账日', value: '${account.billingDay}日'),
-    );
-  }
-  if (isLiability && account.repaymentDay != null) {
-    items.add(
-      _AccountMetricTile(label: '还款日', value: '${account.repaymentDay}日'),
-    );
-  }
-  return items;
 }
 
-class _AccountMetricTile extends StatelessWidget {
-  const _AccountMetricTile({
-    required this.label,
-    this.money,
-    this.value,
-    this.semantic = MoneySemantic.neutral,
-  });
+class _AccountMetricsBlock extends StatelessWidget {
+  const _AccountMetricsBlock({required this.items});
+
+  final List<_InfoItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Expanded(child: _InfoPair(item: items[0])),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(child: _InfoPair(item: items[1])),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        Row(
+          children: [
+            Expanded(child: _InfoPair(item: items[2])),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(child: _InfoPair(item: items[3])),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+String _balanceTitle(Account account) {
+  return account.type == AccountType.liability ? '当前欠款' : '当前余额';
+}
+
+List<_InfoItem> _rightInfoItems(Account account) {
+  if (account.type != AccountType.liability) {
+    return const [];
+  }
+  final creditLimit = account.creditLimit;
+  return [
+    _InfoItem(label: '信用额度', value: creditLimit?.format() ?? '-'),
+    _InfoItem(
+      label: '剩余额度',
+      value:
+          creditLimit == null ? '-' : (creditLimit - account.balance).format(),
+    ),
+    _InfoItem(label: '出账日', value: _monthlyDay(account.billingDay)),
+    _InfoItem(label: '还款日', value: _monthlyDay(account.repaymentDay)),
+  ];
+}
+
+class _InfoItem {
+  const _InfoItem({required this.label, required this.value});
 
   final String label;
-  final Money? money;
-  final String? value;
-  final MoneySemantic semantic;
+  final String value;
+}
+
+class _InfoPair extends StatelessWidget {
+  const _InfoPair({required this.item});
+
+  final _InfoItem item;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final textStyles = context.appTextStyles;
 
-    return Container(
-      width: 150,
-      padding: const EdgeInsets.all(AppSpacing.space12),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: textStyles.detailLabel.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
+    return Row(
+      children: [
+        Text(
+          item.label,
+          style: textStyles.formLabel.copyWith(color: colors.onSurfaceVariant),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(width: AppSpacing.space4),
+        Flexible(
+          child: Text(
+            item.value,
+            style: textStyles.formLabel.copyWith(color: colors.onSurface),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: AppSpacing.space6),
-          if (money != null)
-            MoneyText(
-              money: money!,
-              semantic: semantic,
-              style: textStyles.amountList,
-            )
-          else
-            Text(value ?? '-', style: textStyles.formValue),
-        ],
-      ),
+        ),
+      ],
     );
   }
+}
+
+String _monthlyDay(int? day) {
+  if (day == null) {
+    return '-';
+  }
+  return '每月${day.toString().padLeft(2, '0')}日';
 }
 
 class _AccountActionBar extends StatelessWidget {
@@ -272,8 +295,8 @@ class _AccountActionBar extends StatelessWidget {
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space10,
-          vertical: AppSpacing.space8,
+          horizontal: AppSpacing.space8,
+          vertical: AppSpacing.space6,
         ),
         child: Row(
           children: [
@@ -285,7 +308,7 @@ class _AccountActionBar extends StatelessWidget {
               ),
             ),
             if (account.type == AccountType.liability) ...[
-              const SizedBox(width: AppSpacing.space8),
+              const SizedBox(width: AppSpacing.space6),
               Expanded(
                 child: _ActionButton(
                   icon: RemixIcons.bank_card_line,
@@ -295,7 +318,7 @@ class _AccountActionBar extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(width: AppSpacing.space8),
+            const SizedBox(width: AppSpacing.space6),
             Expanded(
               child: _ActionButton(
                 icon: RemixIcons.arrow_left_right_line,
@@ -333,13 +356,24 @@ class _ActionButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.radiusMd),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space10),
-        child: Column(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space6,
+          vertical: AppSpacing.space6,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: colors.primary),
-            const SizedBox(height: AppSpacing.space4),
-            Text(label, style: textStyles.formLabel),
+            Icon(icon, color: colors.primary, size: AppSpacing.space20),
+            const SizedBox(width: AppSpacing.space6),
+            Flexible(
+              child: Text(
+                label,
+                style: textStyles.formLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
@@ -365,7 +399,7 @@ class _AccountTransactionDaySection extends StatelessWidget {
             AppSpacing.space4,
             0,
             AppSpacing.space4,
-            AppSpacing.space8,
+            AppSpacing.space4,
           ),
           child: Row(
             children: [

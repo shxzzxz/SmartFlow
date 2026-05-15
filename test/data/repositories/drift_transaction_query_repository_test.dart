@@ -157,6 +157,8 @@ void main() {
       final transferItem = walletLedger.first;
       expect(transferItem.flowOutAccountName, '银行卡');
       expect(transferItem.flowInAccountName, '钱包');
+      expect(transferItem.accountBalanceDelta?.minorUnits, 1000);
+      expect(walletLedger.last.accountBalanceDelta?.minorUnits, -2000);
     });
   });
 }

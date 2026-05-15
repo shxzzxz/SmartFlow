@@ -10,6 +10,7 @@ class AppPlainFormRow extends StatelessWidget {
     this.onTap,
     this.labelWidth = 92,
     this.minHeight = 70,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
   });
 
   final String label;
@@ -17,12 +18,14 @@ class AppPlainFormRow extends StatelessWidget {
   final VoidCallback? onTap;
   final double labelWidth;
   final double minHeight;
+  final CrossAxisAlignment crossAxisAlignment;
 
   @override
   Widget build(BuildContext context) {
     final content = ConstrainedBox(
       constraints: BoxConstraints(minHeight: minHeight),
       child: Row(
+        crossAxisAlignment: crossAxisAlignment,
         children: [
           SizedBox(
             width: labelWidth,

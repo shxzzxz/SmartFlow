@@ -142,8 +142,7 @@ void main() {
       expect(
         rows.where(
           (row) =>
-              row.name == '优惠' &&
-              row.systemKey == SystemKey.repaymentDiscountIncome,
+              row.name == '优惠' && row.systemKey == SystemKey.discountIncome,
         ),
         hasLength(1),
       );

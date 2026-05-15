@@ -61,7 +61,7 @@ String transactionDetailTypeLabel(TransactionDetailType type) {
     TransactionDetailType.repaymentPrincipal => '还款本金',
     TransactionDetailType.repaymentInterest => '还款利息',
     TransactionDetailType.repaymentFee => '还款手续费',
-    TransactionDetailType.repaymentDiscount => '还款优惠',
+    TransactionDetailType.repaymentDiscount => '优惠',
     TransactionDetailType.borrowingPrincipal => '借入本金',
     TransactionDetailType.openingBalanceMain => '期初余额',
     TransactionDetailType.balanceAdjustmentMain => '余额调整',

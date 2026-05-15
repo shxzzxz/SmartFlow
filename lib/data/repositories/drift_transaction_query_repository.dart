@@ -29,7 +29,23 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
         query.occurredFrom == null ? '' : 'AND t.occurred_at >= ? ';
     final untilFilter =
         query.occurredUntil == null ? '' : 'AND t.occurred_at < ? ';
+    final accountDeltaSelect =
+        query.accountId == null
+            ? 'NULL AS account_delta_minor, '
+            : '(SELECT COALESCE(SUM('
+                "CASE WHEN aa.account_type IN ('asset', 'expense') THEN "
+                "CASE WHEN ae.direction = 'debit' THEN ae.amount_minor "
+                'ELSE -ae.amount_minor END '
+                'ELSE '
+                "CASE WHEN ae.direction = 'credit' THEN ae.amount_minor "
+                'ELSE -ae.amount_minor END END'
+                '), 0) '
+                'FROM entries ae '
+                'JOIN accounts aa ON aa.id = ae.account_id '
+                'WHERE ae.transaction_id = t.id AND ae.account_id = ?) '
+                'AS account_delta_minor, ';
     final variables = <Variable<Object>>[
+      if (query.accountId != null) Variable<int>(query.accountId!),
       Variable<String>(BusinessState.current.name),
       if (query.accountId != null) Variable<int>(query.accountId!),
       if (query.occurredFrom != null) Variable<DateTime>(query.occurredFrom!),
@@ -44,6 +60,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           'SELECT t.id, COALESCE(t.root_transaction_id, t.id) AS root_id, '
           't.parent_transaction_id, t.business_purpose, t.occurred_at, '
           't.currency_code, t.primary_amount_minor, t.counterparty_name, '
+          '$accountDeltaSelect'
           't.note, t.is_excluded_from_stats, t.is_excluded_from_budget, '
           "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
           "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
@@ -142,6 +159,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           ') '
           'SELECT p.id, p.business_purpose, p.occurred_at, '
           'p.currency_code, p.primary_amount_minor, p.counterparty_name, '
+          'p.account_delta_minor, '
           'p.note, p.is_excluded_from_stats, p.is_excluded_from_budget, '
           'p.account_names, p.category_name, p.category_icon_key, '
           'p.flow_out_account_id, p.flow_in_account_id, '
@@ -472,6 +490,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
             .customSelect(
               'SELECT t.id, t.business_purpose, t.occurred_at, '
               't.currency_code, t.primary_amount_minor, t.counterparty_name, '
+              'NULL AS account_delta_minor, '
               't.note, t.is_excluded_from_stats, t.is_excluded_from_budget, '
               "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
               'NULL AS category_name, NULL AS category_icon_key, '
@@ -519,6 +538,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
             .customSelect(
               'SELECT t.id, t.business_purpose, t.occurred_at, '
               't.currency_code, t.primary_amount_minor, t.counterparty_name, '
+              'NULL AS account_delta_minor, '
               't.note, t.is_excluded_from_stats, t.is_excluded_from_budget, '
               "COALESCE(group_concat(a.name, ' / '), '') AS account_names, "
               "MAX(CASE WHEN t.business_purpose = 'dailyExpense' "
@@ -595,6 +615,13 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
         minorUnits: row.read<int>('primary_amount_minor'),
         currency: currencyCode,
       ),
+      accountBalanceDelta:
+          row.read<int?>('account_delta_minor') == null
+              ? null
+              : Money(
+                minorUnits: row.read<int>('account_delta_minor'),
+                currency: currencyCode,
+              ),
       counterpartyName: row.read<String?>('counterparty_name'),
       note: row.read<String?>('note'),
       accountNames: row.read<String>('account_names'),
