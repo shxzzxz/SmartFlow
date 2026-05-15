@@ -173,6 +173,7 @@ bool _hasBadges(TransactionListItem item) {
       item.reimbursementReceivedTotal != null ||
       item.repaymentInterest != null ||
       item.repaymentFee != null ||
+      item.repaymentDiscount != null ||
       item.reimbursementGapIncome != null ||
       item.reimbursementGapExpense != null;
 }

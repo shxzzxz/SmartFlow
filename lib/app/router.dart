@@ -2,8 +2,8 @@ import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
 import '../domain/enums/accounting_enums.dart';
+import '../features/accounts/pages/account_detail_page.dart';
 import '../features/accounts/pages/account_form_page.dart';
-import '../features/accounts/pages/account_transactions_page.dart';
 import '../features/accounts/pages/accounts_page.dart';
 import '../features/categories/pages/categories_page.dart';
 import '../features/categories/pages/category_form_page.dart';
@@ -14,6 +14,7 @@ import '../features/profile/pages/profile_page.dart';
 import '../features/transactions/pages/refund_form_page.dart';
 import '../features/transactions/pages/reimbursement_close_form_page.dart';
 import '../features/transactions/pages/reimbursement_receipt_form_page.dart';
+import '../features/transactions/pages/repayment_form_page.dart';
 import '../features/transactions/pages/transaction_detail_page.dart';
 import '../features/transactions/pages/transaction_form_page.dart';
 
@@ -43,7 +44,23 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/transactions/new',
-      builder: (context, state) => const TransactionFormPage(),
+      builder: (context, state) {
+        final mode = switch (state.uri.queryParameters['mode']) {
+          'income' => TransactionFormInitialMode.income,
+          'transfer' => TransactionFormInitialMode.transfer,
+          'borrowing' => TransactionFormInitialMode.borrowing,
+          _ => TransactionFormInitialMode.expense,
+        };
+        return TransactionFormPage(
+          initialMode: mode,
+          initialFromAccountId: int.tryParse(
+            state.uri.queryParameters['fromAccountId'] ?? '',
+          ),
+          initialToAccountId: int.tryParse(
+            state.uri.queryParameters['toAccountId'] ?? '',
+          ),
+        );
+      },
     ),
     GoRoute(
       path: '/transactions/:id',
@@ -87,8 +104,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/accounts/:id',
       builder:
-          (context, state) => AccountTransactionsPage(
+          (context, state) => AccountDetailPage(
             accountId: int.parse(state.pathParameters['id']!),
+          ),
+    ),
+    GoRoute(
+      path: '/accounts/:id/repayment',
+      builder:
+          (context, state) => RepaymentFormPage(
+            liabilityAccountId: int.parse(state.pathParameters['id']!),
           ),
     ),
     GoRoute(

@@ -9,7 +9,7 @@ import '../../../domain/services/transaction_query_service.dart';
 
 /// 主交易行的"聚合 progress + 统计标记"badge 组。
 ///
-/// 表达：退/报/利/费/差收/差支/不计统计/不计预算。
+/// 表达：退/报/利/费/优/差收/差支/不计统计/不计预算。
 /// 金额为零的不显示；badge 保持单行展示。
 class TransactionProgressBadges extends StatelessWidget {
   const TransactionProgressBadges({required this.item, super.key});
@@ -87,6 +87,14 @@ List<_BadgeData> _resolveBadges(
       _BadgeData(
         label: '费 ${_format(item.repaymentFee!)}',
         color: financeColors.expense,
+      ),
+    );
+  }
+  if (item.repaymentDiscount != null) {
+    badges.add(
+      _BadgeData(
+        label: '优 ${_format(item.repaymentDiscount!)}',
+        color: financeColors.income,
       ),
     );
   }

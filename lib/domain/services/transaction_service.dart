@@ -667,6 +667,7 @@ class TransactionServiceImpl implements TransactionService {
     final principal = command.principal;
     final interest = command.interest;
     final fee = command.fee;
+    final discount = command.discount;
     if (principal.minorUnits <= 0) {
       return const Result.failure(
         Failure(
@@ -691,13 +692,11 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    if (interest != null &&
-        interest.minorUnits > 0 &&
-        command.interestExpenseAccountId == null) {
+    if (discount != null && discount.currency != principal.currency) {
       return const Result.failure(
         Failure(
-          code: 'repayment_interest_account_required',
-          message: 'Interest category is required when interest is positive.',
+          code: 'repayment_currency_mismatch',
+          message: 'Repayment discount currency mismatch.',
         ),
       );
     }
@@ -714,16 +713,41 @@ class TransactionServiceImpl implements TransactionService {
 
     final hasInterest = interest != null && interest.minorUnits > 0;
     final hasFee = fee != null && fee.minorUnits > 0;
+    final hasDiscount = discount != null && discount.minorUnits > 0;
     final totalPaid =
         principal +
         (hasInterest ? interest : Money.zero(currency: principal.currency)) +
-        (hasFee ? fee : Money.zero(currency: principal.currency));
+        (hasFee ? fee : Money.zero(currency: principal.currency)) -
+        (hasDiscount ? discount : Money.zero(currency: principal.currency));
+    if (totalPaid.minorUnits <= 0) {
+      return const Result.failure(
+        Failure(
+          code: 'repayment_total_paid_not_positive',
+          message: 'Repayment total paid must be positive.',
+        ),
+      );
+    }
+
+    final interestExpenseAccountId =
+        hasInterest && command.interestExpenseAccountId == null
+            ? await _requireSystemAccountResolver().resolveDebtInterestExpense(
+              currencyCode: principal.currency,
+            )
+            : command.interestExpenseAccountId;
+    final discountIncomeAccountId =
+        hasDiscount
+            ? await _requireSystemAccountResolver()
+                .resolveRepaymentDiscountIncome(
+                  currencyCode: principal.currency,
+                )
+            : null;
 
     final roleFailure = await _validateAccountRoles({
       command.liabilityAccountId: {AccountType.liability},
       command.paidFromAccountId: {AccountType.asset, AccountType.liability},
-      if (hasInterest) command.interestExpenseAccountId!: {AccountType.expense},
+      if (hasInterest) interestExpenseAccountId!: {AccountType.expense},
       if (hasFee) command.feeExpenseAccountId!: {AccountType.expense},
+      if (hasDiscount) discountIncomeAccountId!: {AccountType.income},
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -747,6 +771,12 @@ class TransactionServiceImpl implements TransactionService {
           type: TransactionDetailType.repaymentFee,
           amount: fee,
         ),
+      if (hasDiscount)
+        PostTransactionDetailInput(
+          lineNo: 2 + (hasInterest ? 1 : 0) + (hasFee ? 1 : 0),
+          type: TransactionDetailType.repaymentDiscount,
+          amount: discount,
+        ),
     ];
 
     final entries = <PostEntryInput>[
@@ -757,7 +787,7 @@ class TransactionServiceImpl implements TransactionService {
       ),
       if (hasInterest)
         PostEntryInput(
-          accountId: command.interestExpenseAccountId!,
+          accountId: interestExpenseAccountId!,
           direction: EntryDirection.debit,
           amount: interest,
         ),
@@ -766,6 +796,12 @@ class TransactionServiceImpl implements TransactionService {
           accountId: command.feeExpenseAccountId!,
           direction: EntryDirection.debit,
           amount: fee,
+        ),
+      if (hasDiscount)
+        PostEntryInput(
+          accountId: discountIncomeAccountId!,
+          direction: EntryDirection.credit,
+          amount: discount,
         ),
       PostEntryInput(
         accountId: command.paidFromAccountId,
@@ -2001,6 +2037,7 @@ class CreateRepaymentCommand {
     required this.occurredAt,
     this.interest,
     this.fee,
+    this.discount,
     this.interestExpenseAccountId,
     this.feeExpenseAccountId,
     this.counterpartyName,
@@ -2012,6 +2049,7 @@ class CreateRepaymentCommand {
   final Money principal;
   final Money? interest;
   final Money? fee;
+  final Money? discount;
   final int liabilityAccountId;
   final int paidFromAccountId;
   final int? interestExpenseAccountId;

@@ -83,7 +83,12 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           'FROM transaction_details td '
           'WHERE td.transaction_id = t.id '
           "AND td.detail_type = 'repaymentFee') "
-          'AS repayment_fee_minor '
+          'AS repayment_fee_minor, '
+          '(SELECT COALESCE(SUM(td.amount_minor), 0) '
+          'FROM transaction_details td '
+          'WHERE td.transaction_id = t.id '
+          "AND td.detail_type = 'repaymentDiscount') "
+          'AS repayment_discount_minor '
           'FROM transactions t '
           'LEFT JOIN entries e ON e.transaction_id = t.id '
           'LEFT JOIN accounts a ON a.id = e.account_id '
@@ -165,7 +170,8 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
           "AND p.business_purpose = 'reimbursementAdvance' "
           'THEN COALESCE(ga.gap_expense_minor, 0) ELSE 0 END '
           'AS reimbursement_gap_expense_minor, '
-          'p.repayment_interest_minor, p.repayment_fee_minor '
+          'p.repayment_interest_minor, p.repayment_fee_minor, '
+          'p.repayment_discount_minor '
           'FROM page p '
           'LEFT JOIN refund_agg ra ON ra.root_id = p.root_id '
           'LEFT JOIN reimbursement_agg ba ON ba.root_id = p.root_id '
@@ -485,7 +491,8 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
               '0 AS reimbursement_received_minor, 0 AS reimbursement_child_count, '
               '0 AS reimbursement_gap_income_minor, '
               '0 AS reimbursement_gap_expense_minor, '
-              '0 AS repayment_interest_minor, 0 AS repayment_fee_minor '
+              '0 AS repayment_interest_minor, 0 AS repayment_fee_minor, '
+              '0 AS repayment_discount_minor '
               'FROM transactions t '
               'LEFT JOIN entries e ON e.transaction_id = t.id '
               'LEFT JOIN accounts a ON a.id = e.account_id '
@@ -544,7 +551,8 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
               '0 AS reimbursement_received_minor, 0 AS reimbursement_child_count, '
               '0 AS reimbursement_gap_income_minor, '
               '0 AS reimbursement_gap_expense_minor, '
-              '0 AS repayment_interest_minor, 0 AS repayment_fee_minor '
+              '0 AS repayment_interest_minor, 0 AS repayment_fee_minor, '
+              '0 AS repayment_discount_minor '
               'FROM transactions t '
               'LEFT JOIN entries e ON e.transaction_id = t.id '
               'LEFT JOIN accounts a ON a.id = e.account_id '
@@ -606,6 +614,7 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       reimbursementGapExpense: optionalMoney('reimbursement_gap_expense_minor'),
       repaymentInterest: optionalMoney('repayment_interest_minor'),
       repaymentFee: optionalMoney('repayment_fee_minor'),
+      repaymentDiscount: optionalMoney('repayment_discount_minor'),
     );
   }
 

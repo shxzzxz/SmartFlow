@@ -4,7 +4,7 @@ import '../../domain/enums/accounting_enums.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';
-const currentBuiltinDataVersion = 3;
+const currentBuiltinDataVersion = 4;
 const _currency = 'CNY';
 
 Future<void> ensureBuiltinData(AppDatabase database) async {
@@ -22,6 +22,9 @@ Future<void> ensureBuiltinData(AppDatabase database) async {
     }
     if (version < 3) {
       await _upgradeBuiltinIncomeIcons(database);
+    }
+    if (version < 4) {
+      await _upgradeRepaymentDiscountIncome(database);
     }
 
     await _writeBuiltinDataVersion(database, currentBuiltinDataVersion);
@@ -246,6 +249,25 @@ Future<void> _upgradeBuiltinIncomeIcons(AppDatabase database) async {
     type: AccountType.income,
     systemKey: SystemKey.reimbursementGapIncome,
     iconKey: 'currency-line',
+  );
+}
+
+Future<void> _upgradeRepaymentDiscountIncome(AppDatabase database) async {
+  final other = await _findBuiltinAccount(
+    database,
+    name: '其他',
+    type: AccountType.income,
+  );
+  await _ensureCategory(
+    database,
+    _BuiltinCategory(
+      name: '优惠',
+      type: AccountType.income,
+      parentId: other?.id,
+      iconKey: 'coupon-3-line',
+      sortOrder: 30,
+      systemKey: SystemKey.repaymentDiscountIncome,
+    ),
   );
 }
 
@@ -635,6 +657,12 @@ const _incomeCategories = [
         iconKey: 'currency-line',
         sortOrder: 20,
         systemKey: SystemKey.reimbursementGapIncome,
+      ),
+      _BuiltinCategory(
+        name: '优惠',
+        iconKey: 'coupon-3-line',
+        sortOrder: 30,
+        systemKey: SystemKey.repaymentDiscountIncome,
       ),
     ],
   ),

@@ -90,6 +90,10 @@ void main() {
         incomeRows.singleWhere((row) => row.name == '报销收入').iconKey,
         'currency-line',
       );
+      expect(
+        incomeRows.singleWhere((row) => row.name == '优惠').iconKey,
+        'coupon-3-line',
+      );
       expect(metadataRow.value, currentBuiltinDataVersion.toString());
       expect(
         expenseRows.every((row) => row.source == AccountSource.builtin),
@@ -132,6 +136,14 @@ void main() {
         rows.where(
           (row) =>
               row.name == '手续费' && row.systemKey == SystemKey.debtFeeExpense,
+        ),
+        hasLength(1),
+      );
+      expect(
+        rows.where(
+          (row) =>
+              row.name == '优惠' &&
+              row.systemKey == SystemKey.repaymentDiscountIncome,
         ),
         hasLength(1),
       );
@@ -250,6 +262,10 @@ void main() {
       expect(
         rows.singleWhere((row) => row.name == '报销收入').iconKey,
         'currency-line',
+      );
+      expect(
+        rows.singleWhere((row) => row.name == '优惠').iconKey,
+        'coupon-3-line',
       );
       expect(metadataRow.value, currentBuiltinDataVersion.toString());
     });

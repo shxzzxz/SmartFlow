@@ -8,4 +8,12 @@ abstract interface class SystemAccountResolver {
   Future<int> resolveReimbursementGapIncome({
     String currencyCode = Money.defaultCurrency,
   });
+
+  Future<int> resolveDebtInterestExpense({
+    String currencyCode = Money.defaultCurrency,
+  });
+
+  Future<int> resolveRepaymentDiscountIncome({
+    String currencyCode = Money.defaultCurrency,
+  });
 }

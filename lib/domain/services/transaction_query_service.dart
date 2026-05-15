@@ -138,6 +138,7 @@ class TransactionListItem {
     this.reimbursementGapExpense,
     this.repaymentInterest,
     this.repaymentFee,
+    this.repaymentDiscount,
   });
 
   final int id;
@@ -181,6 +182,9 @@ class TransactionListItem {
 
   /// 还款主交易的手续费分项合计，仅还款可能非空。
   final Money? repaymentFee;
+
+  /// 还款主交易的优惠分项合计，仅还款可能非空。
+  final Money? repaymentDiscount;
 }
 
 class TransactionDetailView {

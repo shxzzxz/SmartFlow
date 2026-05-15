@@ -279,7 +279,7 @@ void main() {
     );
 
     test(
-      'repayment list item exposes interest and fee from own details',
+      'repayment list item exposes interest fee and discount from own details',
       () async {
         final bank =
             (await accountService.createAccount(
@@ -323,6 +323,7 @@ void main() {
             principal: const Money(minorUnits: 50000),
             interest: const Money(minorUnits: 1500),
             fee: const Money(minorUnits: 200),
+            discount: const Money(minorUnits: 300),
             liabilityAccountId: card.id,
             paidFromAccountId: bank.id,
             interestExpenseAccountId: interestCat.id,
@@ -341,6 +342,7 @@ void main() {
         );
         expect(repayment.repaymentInterest?.minorUnits, 1500);
         expect(repayment.repaymentFee?.minorUnits, 200);
+        expect(repayment.repaymentDiscount?.minorUnits, 300);
       },
     );
 

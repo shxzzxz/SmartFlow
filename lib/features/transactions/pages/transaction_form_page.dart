@@ -27,10 +27,21 @@ import '../../../widgets/business/money_text.dart';
 
 enum _TransactionFormMode { expense, income, transfer, borrowing }
 
+enum TransactionFormInitialMode { expense, income, transfer, borrowing }
+
 class TransactionFormPage extends ConsumerStatefulWidget {
-  const TransactionFormPage({this.editTransactionId, super.key});
+  const TransactionFormPage({
+    this.editTransactionId,
+    this.initialMode = TransactionFormInitialMode.expense,
+    this.initialFromAccountId,
+    this.initialToAccountId,
+    super.key,
+  });
 
   final int? editTransactionId;
+  final TransactionFormInitialMode initialMode;
+  final int? initialFromAccountId;
+  final int? initialToAccountId;
 
   @override
   ConsumerState<TransactionFormPage> createState() =>
@@ -56,6 +67,14 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   int? _toAccountId;
   int? _reimbursementAccountId;
   int? _liabilityAccountId;
+
+  @override
+  void initState() {
+    super.initState();
+    _mode = _toPrivateMode(widget.initialMode);
+    _fromAccountId = widget.initialFromAccountId;
+    _toAccountId = widget.initialToAccountId;
+  }
 
   @override
   void dispose() {
@@ -1665,6 +1684,15 @@ String _modeLabel(_TransactionFormMode mode) {
     _TransactionFormMode.income => '收入',
     _TransactionFormMode.transfer => '转账',
     _TransactionFormMode.borrowing => '借入',
+  };
+}
+
+_TransactionFormMode _toPrivateMode(TransactionFormInitialMode mode) {
+  return switch (mode) {
+    TransactionFormInitialMode.expense => _TransactionFormMode.expense,
+    TransactionFormInitialMode.income => _TransactionFormMode.income,
+    TransactionFormInitialMode.transfer => _TransactionFormMode.transfer,
+    TransactionFormInitialMode.borrowing => _TransactionFormMode.borrowing,
   };
 }
 
