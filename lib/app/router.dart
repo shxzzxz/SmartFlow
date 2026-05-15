@@ -11,6 +11,7 @@ import '../features/calendar/pages/calendar_page.dart';
 import '../features/home/pages/home_page.dart';
 import '../features/placeholder/pages/placeholder_page.dart';
 import '../features/profile/pages/profile_page.dart';
+import '../features/profile/pages/software_version_page.dart';
 import '../features/transactions/pages/refund_form_page.dart';
 import '../features/transactions/pages/reimbursement_close_form_page.dart';
 import '../features/transactions/pages/reimbursement_receipt_form_page.dart';
@@ -94,6 +95,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/categories',
       builder: (context, state) => const CategoriesPage(),
+    ),
+    GoRoute(
+      path: '/profile/software-version',
+      builder: (context, state) => const SoftwareVersionPage(),
     ),
     GoRoute(
       path: '/categories/new',
