@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,13 +6,15 @@ import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/widgets/app_form_field.dart';
-import '../../../design_system/widgets/app_form_section.dart';
+import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_page_header.dart';
+import '../../../design_system/widgets/app_plain_form_row.dart';
+import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
+import '../../../widgets/business/plain_transaction_fields.dart';
 
 class ReimbursementReceiptFormPage extends ConsumerStatefulWidget {
   const ReimbursementReceiptFormPage({
@@ -33,6 +34,7 @@ class _ReimbursementReceiptFormPageState
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
+  DateTime _occurredAt = DateTime.now();
   int? _receiveAccountId;
   bool _submitting = false;
 
@@ -46,6 +48,7 @@ class _ReimbursementReceiptFormPageState
   @override
   Widget build(BuildContext context) {
     final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+    final receiveAccount = _findAccount(_receiveAccountId, accounts);
     final detail =
         ref.watch(transactionDetailProvider(widget.advanceTransactionId)).value;
     final summary = detail?.reimbursementSummary;
@@ -75,59 +78,36 @@ class _ReimbursementReceiptFormPageState
                   padding: const EdgeInsets.only(bottom: AppSpacing.space12),
                   child: Text('剩余应收：${summary.outstanding.format()}'),
                 ),
-              AppFormSection(
+              AppPlainFormSection(
                 children: [
-                  AppTextFormField(
+                  MoneyPlainFormRow(
+                    label: '到账金额',
                     controller: _amountController,
-                    labelText: '到账金额',
-                    prefixIcon: const Icon(Icons.payments_outlined),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
+                    hintText: '请输入到账金额',
                     validator: _validatePositive,
                   ),
-                  AppDropdownFormField<int>(
-                    initialValue: _receiveAccountId,
-                    labelText: '到账账户',
-                    prefixIcon: const Icon(Icons.account_balance),
-                    items: [
-                      for (final account in accounts)
-                        DropdownMenuItem(
-                          value: account.id,
-                          child: Text(account.name),
-                        ),
-                    ],
-                    onChanged:
-                        (value) => setState(() => _receiveAccountId = value),
+                  AccountPlainFormRow(
+                    label: '到账账户',
+                    account: receiveAccount,
+                    selectedId: _receiveAccountId,
+                    placeholder: '请选择到账账户',
+                    onTap: () => _pickReceiveAccount(accounts),
                     validator: (value) => value == null ? '请选择账户' : null,
                   ),
-                  AppTextFormField(
-                    controller: _noteController,
-                    labelText: '备注',
-                    prefixIcon: const Icon(Icons.notes),
-                    maxLines: 2,
+                  DateTimePlainFormRow(
+                    label: '到账时间',
+                    value: _formatDateTime(_occurredAt),
+                    onTap: _pickOccurredAt,
                   ),
+                  NotePlainFormRow(controller: _noteController),
                 ],
               ),
               const SizedBox(height: AppSpacing.space24),
-              SizedBox(
-                height: AppSpacing.space48,
-                child: FilledButton(
-                  onPressed:
-                      (_submitting || receivable == null)
-                          ? null
-                          : () => _submit(receivable),
-                  child:
-                      _submitting
-                          ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : const Text('保存'),
-                ),
+              AppSubmitButton(
+                label: '保存',
+                loading: _submitting,
+                onPressed:
+                    receivable == null ? null : () => _submit(receivable),
               ),
             ],
           ),
@@ -156,6 +136,27 @@ class _ReimbursementReceiptFormPageState
     return null;
   }
 
+  Future<void> _pickReceiveAccount(List<Account> accounts) async {
+    final selected = await showAccountPickerSheet(
+      context: context,
+      title: '选择到账账户',
+      accounts: accounts,
+      selectedId: _receiveAccountId,
+    );
+    if (!mounted || selected == null) return;
+    setState(() => _receiveAccountId = selected);
+  }
+
+  Future<void> _pickOccurredAt() async {
+    final picked = await showAppDateTimePicker(
+      context: context,
+      initialDateTime: _occurredAt,
+      title: '选择到账时间',
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _occurredAt = picked);
+  }
+
   Future<void> _submit(int receivableAccountId) async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -168,7 +169,7 @@ class _ReimbursementReceiptFormPageState
         advanceTransactionId: widget.advanceTransactionId,
         receivableAccountId: receivableAccountId,
         receiveAccountId: _receiveAccountId!,
-        occurredAt: DateTime.now(),
+        occurredAt: _occurredAt,
         note:
             _noteController.text.trim().isEmpty
                 ? null
@@ -186,4 +187,20 @@ class _ReimbursementReceiptFormPageState
         ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
+}
+
+Account? _findAccount(int? accountId, List<Account> accounts) {
+  if (accountId == null) return null;
+  for (final account in accounts) {
+    if (account.id == accountId) return account;
+  }
+  return null;
+}
+
+String _formatDateTime(DateTime date) {
+  final time =
+      '${date.hour.toString().padLeft(2, '0')}:'
+      '${date.minute.toString().padLeft(2, '0')}';
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')} $time';
 }

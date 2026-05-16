@@ -173,8 +173,6 @@ class _AppMonthPickerDialogState extends State<AppMonthPickerDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(widget.title, style: context.appTextStyles.sectionTitle),
-              const SizedBox(height: AppSpacing.space16),
               SizedBox(
                 height: 220,
                 child: Stack(

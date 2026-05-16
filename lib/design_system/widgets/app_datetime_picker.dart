@@ -44,7 +44,8 @@ class AppDateTimePickerDialog extends StatefulWidget {
 }
 
 class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
-  static const _timeItemExtent = 40.0;
+  static const _timeItemExtent = 34.0;
+  static const _loopBase = 120;
   static const _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 
   late DateTime _selectedDate;
@@ -62,9 +63,11 @@ class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
     _visibleMonth = DateTime(initial.year, initial.month);
     _selectedHour = initial.hour;
     _selectedMinute = initial.minute;
-    _hourController = FixedExtentScrollController(initialItem: _selectedHour);
+    _hourController = FixedExtentScrollController(
+      initialItem: _loopInitialItem(_selectedHour, 24),
+    );
     _minuteController = FixedExtentScrollController(
-      initialItem: _selectedMinute,
+      initialItem: _loopInitialItem(_selectedMinute, 60),
     );
   }
 
@@ -77,65 +80,68 @@ class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final maxDialogHeight =
+        MediaQuery.sizeOf(context).height - AppSpacing.space48;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.space24,
         vertical: AppSpacing.space24,
       ),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.radiusXl),
+        borderRadius: BorderRadius.circular(AppRadius.radiusLg),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space20,
-            AppSpacing.space20,
-            AppSpacing.space20,
-            AppSpacing.space16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(widget.title, style: context.appTextStyles.sectionTitle),
-              const SizedBox(height: AppSpacing.space16),
-              _CalendarPanel(
-                visibleMonth: _visibleMonth,
-                selectedDate: _selectedDate,
-                onPreviousMonth: _canPreviousMonth ? _previousMonth : null,
-                onNextMonth: _canNextMonth ? _nextMonth : null,
-                onMonthPressed: _pickVisibleMonth,
-                onDateSelected: (date) => setState(() => _selectedDate = date),
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              _TimeWheelPanel(
-                selectedHour: _selectedHour,
-                selectedMinute: _selectedMinute,
-                hourController: _hourController,
-                minuteController: _minuteController,
-                itemExtent: _timeItemExtent,
-                onHourChanged: (hour) => setState(() => _selectedHour = hour),
-                onMinuteChanged:
-                    (minute) => setState(() => _selectedMinute = minute),
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('取消'),
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  FilledButton(
-                    onPressed:
-                        () => Navigator.of(context).pop(_selectedDateTime),
-                    child: const Text('确定'),
-                  ),
-                ],
-              ),
-            ],
+        constraints: BoxConstraints(maxWidth: 336, maxHeight: maxDialogHeight),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space12,
+              AppSpacing.space12,
+              AppSpacing.space12,
+              AppSpacing.space10,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CalendarPanel(
+                  visibleMonth: _visibleMonth,
+                  selectedDate: _selectedDate,
+                  onPreviousMonth: _canPreviousMonth ? _previousMonth : null,
+                  onNextMonth: _canNextMonth ? _nextMonth : null,
+                  onMonthPressed: _pickVisibleMonth,
+                  onDateSelected:
+                      (date) => setState(() => _selectedDate = date),
+                ),
+                const SizedBox(height: AppSpacing.space10),
+                _TimeWheelPanel(
+                  selectedHour: _selectedHour,
+                  selectedMinute: _selectedMinute,
+                  hourController: _hourController,
+                  minuteController: _minuteController,
+                  itemExtent: _timeItemExtent,
+                  onHourChanged: (hour) => setState(() => _selectedHour = hour),
+                  onMinuteChanged:
+                      (minute) => setState(() => _selectedMinute = minute),
+                ),
+                const SizedBox(height: AppSpacing.space10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('取消'),
+                    ),
+                    const SizedBox(width: AppSpacing.space8),
+                    FilledButton(
+                      onPressed:
+                          () => Navigator.of(context).pop(_selectedDateTime),
+                      child: const Text('确定'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -198,6 +204,10 @@ class _AppDateTimePickerDialogState extends State<AppDateTimePickerDialog> {
     if (value.isAfter(last)) return last;
     return value;
   }
+
+  int _loopInitialItem(int value, int itemCount) {
+    return itemCount * _loopBase + value;
+  }
 }
 
 class _CalendarPanel extends StatelessWidget {
@@ -238,7 +248,7 @@ class _CalendarPanel extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.space6,
-                    vertical: AppSpacing.space6,
+                    vertical: AppSpacing.space4,
                   ),
                   child: Text(
                     '${visibleMonth.year}年${visibleMonth.month}月',
@@ -255,7 +265,7 @@ class _CalendarPanel extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.space8),
+        const SizedBox(height: AppSpacing.space4),
         Row(
           children: [
             for (final weekday in _AppDateTimePickerDialogState._weekdays)
@@ -268,15 +278,16 @@ class _CalendarPanel extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: AppSpacing.space6),
+        const SizedBox(height: AppSpacing.space2),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: days.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
-            mainAxisSpacing: AppSpacing.space4,
-            crossAxisSpacing: AppSpacing.space4,
+            mainAxisSpacing: AppSpacing.space2,
+            crossAxisSpacing: AppSpacing.space2,
+            childAspectRatio: 1,
           ),
           itemBuilder: (context, index) {
             final date = days[index];
@@ -312,10 +323,10 @@ class _CalendarDayButton extends StatelessWidget {
 
     return Material(
       color: selected ? colors.primary : Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+      borderRadius: BorderRadius.circular(AppRadius.radiusSm),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+        borderRadius: BorderRadius.circular(AppRadius.radiusSm),
         child: Center(
           child: Text(
             '${date.day}',
@@ -353,60 +364,44 @@ class _TimeWheelPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Text('时间', style: context.appTextStyles.subsectionTitle),
-            const Spacer(),
-            Text(
-              '${_two(selectedHour)}:${_two(selectedMinute)}',
-              style: context.appTextStyles.detailValue,
+    return SizedBox(
+      height: 102,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            height: itemExtent,
+            decoration: BoxDecoration(
+              color: colors.primaryContainer.withValues(alpha: 0.26),
+              borderRadius: BorderRadius.circular(AppRadius.radiusMd),
             ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.space8),
-        SizedBox(
-          height: 128,
-          child: Stack(
-            alignment: Alignment.center,
+          ),
+          Row(
             children: [
-              Container(
-                height: itemExtent,
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer.withValues(alpha: 0.26),
-                  borderRadius: BorderRadius.circular(AppRadius.radiusMd),
+              Expanded(
+                child: _TimeWheel(
+                  controller: hourController,
+                  itemCount: 24,
+                  selectedIndex: selectedHour,
+                  itemExtent: itemExtent,
+                  labelBuilder: (index) => '${_two(index)} 时',
+                  onSelectedItemChanged: onHourChanged,
                 ),
               ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _TimeWheel(
-                      controller: hourController,
-                      itemCount: 24,
-                      selectedIndex: selectedHour,
-                      itemExtent: itemExtent,
-                      labelBuilder: (index) => '${_two(index)} 时',
-                      onSelectedItemChanged: onHourChanged,
-                    ),
-                  ),
-                  Expanded(
-                    child: _TimeWheel(
-                      controller: minuteController,
-                      itemCount: 60,
-                      selectedIndex: selectedMinute,
-                      itemExtent: itemExtent,
-                      labelBuilder: (index) => '${_two(index)} 分',
-                      onSelectedItemChanged: onMinuteChanged,
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: _TimeWheel(
+                  controller: minuteController,
+                  itemCount: 60,
+                  selectedIndex: selectedMinute,
+                  itemExtent: itemExtent,
+                  labelBuilder: (index) => '${_two(index)} 分',
+                  onSelectedItemChanged: onMinuteChanged,
+                ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -439,25 +434,27 @@ class _TimeWheel extends StatelessWidget {
       diameterRatio: 1.25,
       perspective: 0.003,
       overAndUnderCenterOpacity: 0.42,
-      onSelectedItemChanged: onSelectedItemChanged,
-      childDelegate: ListWheelChildBuilderDelegate(
-        childCount: itemCount,
-        builder: (context, index) {
-          final selected = index == selectedIndex;
-          return Center(
-            child: Text(
-              labelBuilder(index),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.appTextStyles
-                  .segmentedControlLabel(selected: selected)
-                  .copyWith(
-                    color:
-                        selected ? colors.onSurface : colors.onSurfaceVariant,
-                  ),
+      onSelectedItemChanged:
+          (index) => onSelectedItemChanged(index % itemCount),
+      childDelegate: ListWheelChildLoopingListDelegate(
+        children: [
+          for (var index = 0; index < itemCount; index++)
+            Center(
+              child: Text(
+                labelBuilder(index),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.appTextStyles
+                    .segmentedControlLabel(selected: index == selectedIndex)
+                    .copyWith(
+                      color:
+                          index == selectedIndex
+                              ? colors.onSurface
+                              : colors.onSurfaceVariant,
+                    ),
+              ),
             ),
-          );
-        },
+        ],
       ),
     );
   }

@@ -29,8 +29,14 @@ class AccountEndpointView extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        BusinessIcon(iconKey: endpoint.iconKey, size: iconSize),
+        SizedBox.square(
+          dimension: iconSize,
+          child: Center(
+            child: BusinessIcon(iconKey: endpoint.iconKey, size: iconSize),
+          ),
+        ),
         const SizedBox(width: AppSpacing.space4),
         Flexible(
           child: Text(

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
+import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/spacing.dart';
-import '../../../design_system/widgets/app_form_field.dart';
-import '../../../design_system/widgets/app_form_section.dart';
+import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_page_header.dart';
+import '../../../design_system/widgets/app_plain_form_row.dart';
+import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/services/transaction_service.dart';
+import '../../../widgets/business/money_text.dart';
+import '../../../widgets/business/plain_transaction_fields.dart';
 
 class RefundFormPage extends ConsumerStatefulWidget {
   const RefundFormPage({required this.parentTransactionId, super.key});
@@ -26,6 +29,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
+  DateTime _occurredAt = DateTime.now();
   int? _refundToAccountId;
   bool _submitting = false;
 
@@ -39,6 +43,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
   @override
   Widget build(BuildContext context) {
     final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+    final refundToAccount = _findAccount(_refundToAccountId, accounts);
     final detailAsync = ref.watch(
       transactionDetailProvider(widget.parentTransactionId),
     );
@@ -64,67 +69,45 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
               AppSpacing.space24,
             ),
             children: [
-              const AppPageHeader(
-                title: '退款',
-                subtitle: '退还到指定账户，并自然抵减原支出统计',
-                showBackButton: true,
-              ),
+              const AppPageHeader(title: '退款', showBackButton: true),
               const SizedBox(height: AppSpacing.space14),
-              if (remaining != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-                  child: Text('当前可退余额：${remaining.format()}'),
-                ),
-              AppFormSection(
+              AppPlainFormSection(
                 children: [
-                  AppTextFormField(
-                    controller: _amountController,
-                    labelText: '退款金额',
-                    prefixIcon: const Icon(Icons.payments_outlined),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                  if (remaining != null)
+                    AppPlainValueRow(
+                      label: '可退余额',
+                      child: MoneyText(
+                        money: remaining,
+                        style: context.appTextStyles.formPlainValue,
+                      ),
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
+                  MoneyPlainFormRow(
+                    label: '退款金额',
+                    controller: _amountController,
+                    hintText: '请输入退款金额',
                     validator: _validatePositive,
                   ),
-                  AppDropdownFormField<int>(
-                    initialValue: _refundToAccountId,
-                    labelText: '退款到账户',
-                    prefixIcon: const Icon(Icons.account_balance),
-                    items: [
-                      for (final account in accounts)
-                        DropdownMenuItem(
-                          value: account.id,
-                          child: Text(account.name),
-                        ),
-                    ],
-                    onChanged:
-                        (value) => setState(() => _refundToAccountId = value),
+                  AccountPlainFormRow(
+                    label: '退款账户',
+                    account: refundToAccount,
+                    selectedId: _refundToAccountId,
+                    placeholder: '请选择退款账户',
+                    onTap: () => _pickRefundAccount(accounts),
                     validator: (value) => value == null ? '请选择账户' : null,
                   ),
-                  AppTextFormField(
-                    controller: _noteController,
-                    labelText: '备注',
-                    prefixIcon: const Icon(Icons.notes),
-                    maxLines: 2,
+                  DateTimePlainFormRow(
+                    label: '退款时间',
+                    value: _formatDateTime(_occurredAt),
+                    onTap: _pickOccurredAt,
                   ),
+                  NotePlainFormRow(controller: _noteController),
                 ],
               ),
               const SizedBox(height: AppSpacing.space24),
-              SizedBox(
-                height: AppSpacing.space48,
-                child: FilledButton(
-                  onPressed: _submitting ? null : _submit,
-                  child:
-                      _submitting
-                          ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : const Text('保存'),
-                ),
+              AppSubmitButton(
+                label: '保存',
+                loading: _submitting,
+                onPressed: _submit,
               ),
             ],
           ),
@@ -142,6 +125,27 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
     }
   }
 
+  Future<void> _pickRefundAccount(List<Account> accounts) async {
+    final selected = await showAccountPickerSheet(
+      context: context,
+      title: '选择退款账户',
+      accounts: accounts,
+      selectedId: _refundToAccountId,
+    );
+    if (!mounted || selected == null) return;
+    setState(() => _refundToAccountId = selected);
+  }
+
+  Future<void> _pickOccurredAt() async {
+    final picked = await showAppDateTimePicker(
+      context: context,
+      initialDateTime: _occurredAt,
+      title: '选择退款时间',
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _occurredAt = picked);
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -153,7 +157,7 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         amount: Money.parse(_amountController.text),
         parentTransactionId: widget.parentTransactionId,
         refundToAccountId: _refundToAccountId!,
-        occurredAt: DateTime.now(),
+        occurredAt: _occurredAt,
         note:
             _noteController.text.trim().isEmpty
                 ? null
@@ -171,6 +175,22 @@ class _RefundFormPageState extends ConsumerState<RefundFormPage> {
         ).showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
+}
+
+Account? _findAccount(int? accountId, List<Account> accounts) {
+  if (accountId == null) return null;
+  for (final account in accounts) {
+    if (account.id == accountId) return account;
+  }
+  return null;
+}
+
+String _formatDateTime(DateTime date) {
+  final time =
+      '${date.hour.toString().padLeft(2, '0')}:'
+      '${date.minute.toString().padLeft(2, '0')}';
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')} $time';
 }
 
 extension<T> on T {

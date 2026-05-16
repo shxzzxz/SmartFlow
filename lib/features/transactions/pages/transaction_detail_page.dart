@@ -11,6 +11,7 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
+import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
@@ -334,14 +335,21 @@ class _RefundReimbursementCard extends StatelessWidget {
       final refunded = detail.refundedTotal;
       final hasRefund = refunded != null && refunded.minorUnits > 0;
       rows.add(
-        _ChevronRow(
+        AppPlainValueRow(
           label: '退款金额',
-          value: hasRefund ? refunded.format() : '无退款',
-          valueSemantic: hasRefund ? MoneySemantic.income : null,
+          value: hasRefund ? null : '无退款',
           enabled: hasRefund,
           onTap:
               hasRefund
                   ? () => _showRefundList(context, detail.children)
+                  : null,
+          child:
+              hasRefund
+                  ? MoneyText(
+                    money: refunded,
+                    semantic: MoneySemantic.income,
+                    style: context.appTextStyles.formPlainValue,
+                  )
                   : null,
         ),
       );
@@ -359,7 +367,7 @@ class _RefundReimbursementCard extends StatelessWidget {
               ? '已收 ${summary.receivedAmount.format()} / 应收 ${summary.advanceAmount.format()}'
               : '未报销';
       rows.add(
-        _ChevronRow(
+        AppPlainValueRow(
           label: '报销详情',
           value: value,
           enabled: hasActivity,
@@ -424,37 +432,32 @@ class _PrimaryMetaCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     final rows = <Widget>[
-      _ChevronRow(
+      AppPlainValueRow(
         label: '交易时间',
         value: _formatDateTime(transaction.occurredAt),
-        showChevron: false,
         onTap: onOccurredAtTap,
       ),
-      _ChevronRow(
+      AppPlainValueRow(
         label: '创建时间',
         value: _formatDateTime(transaction.createdAt),
-        showChevron: false,
       ),
       for (final accountRow in accountRows)
-        _ChevronRow(
+        AppPlainValueRow(
           label: accountRow.label,
-          value: '',
-          trailing: AccountEndpointView(
-            endpoint: accountRow.endpoint,
-            style: context.appTextStyles.detailValue,
-          ),
-          showChevron: false,
           onTap:
               accountRow.editKind == null
                   ? null
                   : () => onAccountTap(accountRow),
+          child: AccountEndpointView(
+            endpoint: accountRow.endpoint,
+            style: context.appTextStyles.formPlainValue,
+          ),
         ),
-      _ChevronRow(
+      AppPlainValueRow(
         label: '备注',
         value: hasNote ? note : '点击添加备注',
         valueColor: hasNote ? null : colors.onSurfaceVariant,
         onTap: onNoteTap,
-        showChevron: false,
       ),
     ];
 
@@ -471,7 +474,7 @@ class _HistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _RowCard(
       rows: [
-        _ChevronRow(
+        AppPlainValueRow(
           label: '历史链路',
           value: '${detail.history.length} 条记录',
           onTap:
@@ -497,13 +500,13 @@ class _ExclusionCard extends ConsumerWidget {
     final rows = <Widget>[
       if (transaction.businessPurpose == BusinessPurpose.dailyExpense ||
           transaction.businessPurpose == BusinessPurpose.dailyIncome)
-        _SwitchRow(
+        AppPlainSwitchRow(
           label: '不计入收支',
           value: transaction.isExcludedFromStats,
           onChanged: (next) => _toggleExcludeStats(context, ref, next),
         ),
       if (transaction.businessPurpose == BusinessPurpose.dailyExpense)
-        _SwitchRow(
+        AppPlainSwitchRow(
           label: '不计入预算',
           value: transaction.isExcludedFromBudget,
           onChanged: (next) => _toggleExcludeBudget(context, ref, next),
@@ -556,150 +559,12 @@ class _RowCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (rows.isEmpty) return const SizedBox.shrink();
     return AppSurface(
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-                child: Divider(height: 1),
-              ),
-            rows[i],
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ChevronRow extends StatelessWidget {
-  const _ChevronRow({
-    required this.label,
-    required this.value,
-    this.onTap,
-    this.showChevron = true,
-    this.enabled = true,
-    this.valueSemantic,
-    this.valueColor,
-    this.trailing,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-  final bool showChevron;
-  final bool enabled;
-  final MoneySemantic? valueSemantic;
-  final Color? valueColor;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textStyles = context.appTextStyles;
-    final tappable = onTap != null && enabled;
-    final resolvedValueColor = valueColor ?? colors.onSurface;
-
-    return InkWell(
-      onTap: tappable ? onTap : null,
-      borderRadius: BorderRadius.circular(AppRadius.radiusMd),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space14,
+          vertical: AppSpacing.space6,
         ),
-        child: Row(
-          children: [
-            Text(
-              label,
-              style: textStyles.detailLabel.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.space16),
-            if (trailing == null)
-              Expanded(
-                child: Text(
-                  value,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textStyles.detailValue.copyWith(
-                    color: resolvedValueColor,
-                  ),
-                ),
-              )
-            else
-              Expanded(
-                child: Align(alignment: Alignment.centerRight, child: trailing),
-              ),
-            if (tappable && showChevron) ...[
-              const SizedBox(width: AppSpacing.space4),
-              Icon(
-                RemixIcons.arrow_right_s_line,
-                size: 20,
-                color: colors.onSurfaceVariant,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space4,
-      ),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: context.appTextStyles.detailLabel.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          const Spacer(),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            trackOutlineColor: WidgetStateProperty.resolveWith(
-              (states) =>
-                  states.contains(WidgetState.selected)
-                      ? colors.primary
-                      : colors.outlineVariant,
-            ),
-            trackColor: WidgetStateProperty.resolveWith(
-              (states) =>
-                  states.contains(WidgetState.selected)
-                      ? colors.primary.withValues(alpha: 0.24)
-                      : colors.surfaceContainerHighest,
-            ),
-            thumbColor: WidgetStateProperty.resolveWith(
-              (states) =>
-                  states.contains(WidgetState.selected)
-                      ? colors.primary
-                      : colors.surface,
-            ),
-          ),
-        ],
+        child: AppPlainFormSection(children: rows),
       ),
     );
   }
@@ -1171,7 +1036,7 @@ class _DialogRowCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0) const Divider(height: 1),
+          if (i > 0) const SizedBox(height: AppSpacing.space4),
           rows[i],
         ],
       ],
