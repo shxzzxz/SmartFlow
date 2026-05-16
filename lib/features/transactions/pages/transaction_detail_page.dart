@@ -13,6 +13,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_surface.dart';
+import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/posting_command.dart';
@@ -23,6 +24,7 @@ import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/business_icon_bubble.dart';
 import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
+import '../../../widgets/business/plain_transaction_fields.dart';
 
 class TransactionDetailPage extends ConsumerWidget {
   const TransactionDetailPage({required this.transactionId, super.key});
@@ -105,6 +107,12 @@ class _DetailBody extends ConsumerWidget {
     final purpose = transaction.businessPurpose;
     final semantic = _semanticForPurpose(purpose);
     final accountRows = _resolveAccountRows(detail);
+    final settlementAccounts =
+        ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
+        const <Account>[];
+    final reimbursementAccounts =
+        ref.watch(accountsForUsageProvider(AccountUsage.reimbursement)).value ??
+        const <Account>[];
 
     final showRefund = purpose == BusinessPurpose.dailyExpense;
     final showReimbursement = purpose == BusinessPurpose.reimbursementAdvance;
@@ -134,7 +142,14 @@ class _DetailBody extends ConsumerWidget {
                 detail: detail,
                 accountRows: accountRows,
                 onOccurredAtTap: () => _editOccurredAt(context, ref),
-                onAccountTap: (row) => _editAccount(context, ref, row),
+                onAccountTap:
+                    (row) => _editAccount(
+                      context,
+                      ref,
+                      row,
+                      settlementAccounts: settlementAccounts,
+                      reimbursementAccounts: reimbursementAccounts,
+                    ),
                 onNoteTap: () => _editNote(context, ref),
               ),
               if (detail.history.isNotEmpty) ...[
@@ -226,18 +241,19 @@ class _DetailBody extends ConsumerWidget {
   Future<void> _editAccount(
     BuildContext context,
     WidgetRef ref,
-    _AccountRowInfo row,
-  ) async {
-    final accounts = ref.read(accountListProvider).value ?? const <Account>[];
+    _AccountRowInfo row, {
+    required List<Account> settlementAccounts,
+    required List<Account> reimbursementAccounts,
+  }) async {
     final options =
         row.editKind == _AccountEditKind.reimbursement
-            ? accounts.where(_isSelectableReimbursementAccount).toList()
-            : accounts.where(_isSelectableSettlementAccount).toList();
-    final selectedId = await _showAccountPicker(
-      context,
-      title: row.label,
+            ? reimbursementAccounts
+            : settlementAccounts;
+    final selectedId = await showAccountPickerSheet(
+      context: context,
+      title: '选择${row.label}',
       accounts: options,
-      selectedId: row.accountId,
+      selectedId: row.accountId == 0 ? null : row.accountId,
     );
     if (selectedId == null || selectedId == row.accountId) return;
     final result = await ref
@@ -729,9 +745,9 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
     final receiveAccounts =
-        accounts.where(_isSelectableReceiveAccount).toList();
+        ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
+        const <Account>[];
     final selectedAccountId = _effectiveAccountId(
       _receiveAccountId,
       receiveAccounts,
@@ -903,12 +919,11 @@ class _ReimbursementDialogState extends ConsumerState<_ReimbursementDialog> {
   }
 
   Future<void> _pickReceiveAccount(List<Account> accounts) async {
-    final picked = await _showAccountPicker(
-      context,
+    final picked = await showAccountPickerSheet(
+      context: context,
       title: '报销到账账户',
       accounts: accounts,
-      selectedId:
-          _receiveAccountId ?? (accounts.isEmpty ? 0 : accounts.first.id),
+      selectedId: _effectiveAccountId(_receiveAccountId, accounts),
     );
     if (picked == null || !mounted) return;
     setState(() => _receiveAccountId = picked);
@@ -1260,23 +1275,6 @@ int? _resolveReceivableAccountId(TransactionDetailView detail) {
   return null;
 }
 
-bool _isSelectableReceiveAccount(Account account) {
-  return _isSelectableSettlementAccount(account);
-}
-
-bool _isSelectableSettlementAccount(Account account) {
-  return account.archivedAt == null &&
-      account.subtype != AccountSubtype.reimbursement &&
-      (account.type == AccountType.asset ||
-          account.type == AccountType.liability);
-}
-
-bool _isSelectableReimbursementAccount(Account account) {
-  return account.archivedAt == null &&
-      account.type == AccountType.asset &&
-      account.subtype == AccountSubtype.reimbursement;
-}
-
 int? _effectiveAccountId(int? selectedId, List<Account> options) {
   if (selectedId != null &&
       options.any((account) => account.id == selectedId)) {
@@ -1315,54 +1313,6 @@ InputDecoration _dialogInlineInputDecoration(
     errorBorder: InputBorder.none,
     focusedErrorBorder: InputBorder.none,
     contentPadding: EdgeInsets.zero,
-  );
-}
-
-Future<int?> _showAccountPicker(
-  BuildContext context, {
-  required String title,
-  required List<Account> accounts,
-  required int selectedId,
-}) {
-  return showModalBottomSheet<int>(
-    context: context,
-    showDragHandle: true,
-    builder: (ctx) {
-      return SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space16,
-                0,
-                AppSpacing.space16,
-                AppSpacing.space8,
-              ),
-              child: Text(title, style: ctx.appTextStyles.subsectionTitle),
-            ),
-            for (final account in accounts)
-              ListTile(
-                leading: BusinessIcon(iconKey: account.iconKey, size: 24),
-                title: Text(account.name),
-                trailing:
-                    account.id == selectedId
-                        ? Icon(
-                          Icons.check,
-                          color: Theme.of(ctx).colorScheme.primary,
-                        )
-                        : null,
-                onTap: () => Navigator.of(ctx).pop(account.id),
-              ),
-            if (accounts.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.space20),
-                child: Text('暂无可选账户', style: ctx.appTextStyles.inputText),
-              ),
-          ],
-        ),
-      );
-    },
   );
 }
 

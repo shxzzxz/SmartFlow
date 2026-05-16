@@ -373,6 +373,7 @@ void main() {
                       const CreateAccountCommand(
                         name: '公司报销',
                         type: AccountType.asset,
+                        subtype: AccountSubtype.reimbursement,
                       ),
                     )
                     as Success)

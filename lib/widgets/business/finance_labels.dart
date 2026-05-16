@@ -18,8 +18,8 @@ String accountSubtypeLabel(AccountSubtype subtype) {
     AccountSubtype.investment => '投资资产',
     AccountSubtype.reimbursement => '报销账户',
     AccountSubtype.creditCard => '信用卡',
-    AccountSubtype.loan => '借款',
-    AccountSubtype.consumerCredit => '消费信贷',
+    AccountSubtype.loan => '贷款账户',
+    AccountSubtype.consumerCredit => '信用账户',
   };
 }
 

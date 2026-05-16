@@ -24,6 +24,23 @@ Future<DateTime?> showAppDateTimePicker({
   );
 }
 
+Future<int?> showAppDayOfMonthPicker({
+  required BuildContext context,
+  required int? selectedDay,
+  String title = '选择日期',
+}) async {
+  final picked = await showDialog<int>(
+    context: context,
+    builder:
+        (context) =>
+            AppDayOfMonthPickerDialog(selectedDay: selectedDay, title: title),
+  );
+  if (picked == null) {
+    return selectedDay;
+  }
+  return picked == 0 ? null : picked;
+}
+
 class AppDateTimePickerDialog extends StatefulWidget {
   const AppDateTimePickerDialog({
     required this.initialDateTime,
@@ -330,6 +347,149 @@ class _CalendarDayButton extends StatelessWidget {
         child: Center(
           child: Text(
             '${date.day}',
+            style: context.appTextStyles.detailValue.copyWith(
+              color: selected ? colors.onPrimary : colors.onSurface,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AppDayOfMonthPickerDialog extends StatefulWidget {
+  const AppDayOfMonthPickerDialog({
+    required this.selectedDay,
+    required this.title,
+    super.key,
+  });
+
+  final int? selectedDay;
+  final String title;
+
+  @override
+  State<AppDayOfMonthPickerDialog> createState() =>
+      _AppDayOfMonthPickerDialogState();
+}
+
+class _AppDayOfMonthPickerDialogState extends State<AppDayOfMonthPickerDialog> {
+  late int? _selectedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = widget.selectedDay;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxDialogHeight =
+        MediaQuery.sizeOf(context).height - AppSpacing.space48;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space24,
+        vertical: AppSpacing.space24,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.radiusLg),
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 336, maxHeight: maxDialogHeight),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space12,
+            AppSpacing.space12,
+            AppSpacing.space12,
+            AppSpacing.space10,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space6,
+                  vertical: AppSpacing.space4,
+                ),
+                child: Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  style: context.appTextStyles.subsectionTitle,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space6),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 31,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  mainAxisSpacing: AppSpacing.space2,
+                  crossAxisSpacing: AppSpacing.space2,
+                  childAspectRatio: 1,
+                ),
+                itemBuilder: (context, index) {
+                  final day = index + 1;
+                  return _DayOfMonthButton(
+                    day: day,
+                    selected: day == _selectedDay,
+                    onTap: () => setState(() => _selectedDay = day),
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.space10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(0),
+                    child: const Text('不设置'),
+                  ),
+                  const SizedBox(width: AppSpacing.space8),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('取消'),
+                  ),
+                  const SizedBox(width: AppSpacing.space8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(_selectedDay),
+                    child: const Text('确定'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayOfMonthButton extends StatelessWidget {
+  const _DayOfMonthButton({
+    required this.day,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final int day;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected ? colors.primary : Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+        child: Center(
+          child: Text(
+            '$day',
             style: context.appTextStyles.detailValue.copyWith(
               color: selected ? colors.onPrimary : colors.onSurface,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w400,

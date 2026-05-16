@@ -10,6 +10,7 @@ import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_page_header.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
+import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
@@ -53,7 +54,9 @@ class _ReimbursementCloseFormPageState
 
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(accountListProvider).value ?? const <Account>[];
+    final accounts =
+        ref.watch(accountsForUsageProvider(AccountUsage.settlement)).value ??
+        const <Account>[];
     final receiveAccount = _findAccount(_receiveAccountId, accounts);
     final detail =
         ref.watch(transactionDetailProvider(widget.advanceTransactionId)).value;

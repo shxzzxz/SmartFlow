@@ -604,6 +604,81 @@ final class AccountListProvider
 
 String _$accountListHash() => r'604f0ccedf8e249a36081a3c95152268e618d6a8';
 
+@ProviderFor(accountsForUsage)
+final accountsForUsageProvider = AccountsForUsageFamily._();
+
+final class AccountsForUsageProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Account>>,
+          List<Account>,
+          Stream<List<Account>>
+        >
+    with $FutureModifier<List<Account>>, $StreamProvider<List<Account>> {
+  AccountsForUsageProvider._({
+    required AccountsForUsageFamily super.from,
+    required AccountUsage super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountsForUsageProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountsForUsageHash();
+
+  @override
+  String toString() {
+    return r'accountsForUsageProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Account>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Account>> create(Ref ref) {
+    final argument = this.argument as AccountUsage;
+    return accountsForUsage(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountsForUsageProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountsForUsageHash() => r'17bbd29addec4cbe5a3312330dcaf7ee16636991';
+
+final class AccountsForUsageFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Account>>, AccountUsage> {
+  AccountsForUsageFamily._()
+    : super(
+        retry: null,
+        name: r'accountsForUsageProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountsForUsageProvider call(AccountUsage usage) =>
+      AccountsForUsageProvider._(argument: usage, from: this);
+
+  @override
+  String toString() => r'accountsForUsageProvider';
+}
+
 @ProviderFor(accountsByTypes)
 final accountsByTypesProvider = AccountsByTypesFamily._();
 

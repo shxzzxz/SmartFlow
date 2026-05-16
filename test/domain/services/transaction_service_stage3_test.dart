@@ -127,7 +127,11 @@ void main() {
     test('reimbursement advance + receipt + close (over-receive)', () async {
       final card = await _createLiability(accountService, '信用卡');
       final bank = await _createAsset(accountService, '招行');
-      final receivable = await _createAsset(accountService, '公司报销');
+      final receivable = await _createAsset(
+        accountService,
+        '公司报销',
+        subtype: AccountSubtype.reimbursement,
+      );
       final travel = await _createCategory(
         categoryService,
         '差旅',
@@ -195,7 +199,11 @@ void main() {
       () async {
         final card = await _createLiability(accountService, '信用卡');
         final bank = await _createAsset(accountService, '招行');
-        final receivable = await _createAsset(accountService, '公司报销');
+        final receivable = await _createAsset(
+          accountService,
+          '公司报销',
+          subtype: AccountSubtype.reimbursement,
+        );
         final electricity = await _createCategory(
           categoryService,
           '电费',
@@ -323,7 +331,11 @@ void main() {
     test('receipt after close is rejected', () async {
       final card = await _createLiability(accountService, '信用卡');
       final bank = await _createAsset(accountService, '招行');
-      final receivable = await _createAsset(accountService, '公司报销');
+      final receivable = await _createAsset(
+        accountService,
+        '公司报销',
+        subtype: AccountSubtype.reimbursement,
+      );
       final cat = await _createCategory(
         categoryService,
         '差旅',

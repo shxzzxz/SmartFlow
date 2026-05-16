@@ -14,6 +14,7 @@ import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_surface.dart';
+import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/category_service.dart';
@@ -22,8 +23,8 @@ import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/category_grid_picker.dart';
-import '../../../widgets/business/finance_labels.dart';
 import '../../../widgets/business/money_text.dart';
+import '../../../widgets/business/plain_transaction_fields.dart';
 
 enum _TransactionFormMode { expense, income, transfer, borrowing }
 
@@ -147,7 +148,18 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(accountListProvider);
+    final moneyAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.settlement),
+    );
+    final fundAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.fund),
+    );
+    final liabilityAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.borrowingLiability),
+    );
+    final reimbursementAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.reimbursement),
+    );
     final expenseTreeAsync = ref.watch(
       categoryTreeProvider(AccountType.expense),
     );
@@ -158,23 +170,21 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
             ? null
             : ref.watch(transactionDetailProvider(editTransactionId));
     if (editTransactionId != null &&
-        (!accountsAsync.hasValue ||
+        (!moneyAccountsAsync.hasValue ||
+            !fundAccountsAsync.hasValue ||
+            !liabilityAccountsAsync.hasValue ||
+            !reimbursementAccountsAsync.hasValue ||
             !expenseTreeAsync.hasValue ||
             !incomeTreeAsync.hasValue ||
             !(editDetailAsync?.hasValue ?? false))) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final accounts = accountsAsync.value ?? const <Account>[];
-    final moneyAccounts =
-        accounts.where(_isSelectableSettlementAccount).toList();
-    final fundAccounts = accounts.where(_isSelectableFundAccount).toList();
-    final liabilityAccounts =
-        moneyAccounts
-            .where((account) => account.type == AccountType.liability)
-            .toList();
+    final moneyAccounts = moneyAccountsAsync.value ?? const <Account>[];
+    final fundAccounts = fundAccountsAsync.value ?? const <Account>[];
+    final liabilityAccounts = liabilityAccountsAsync.value ?? const <Account>[];
     final reimbursementAccounts =
-        accounts.where(_isSelectableReimbursementAccount).toList();
+        reimbursementAccountsAsync.value ?? const <Account>[];
     final expenseTree = expenseTreeAsync.value ?? const [];
     final incomeTree = incomeTreeAsync.value ?? const [];
     final editDetail = editDetailAsync?.value;
@@ -453,16 +463,20 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
       return;
     }
 
-    final accounts = ref.read(accountListProvider).value ?? const <Account>[];
     final moneyAccounts =
-        accounts.where(_isSelectableSettlementAccount).toList();
-    final fundAccounts = accounts.where(_isSelectableFundAccount).toList();
+        ref.read(accountsForUsageProvider(AccountUsage.settlement)).value ??
+        const <Account>[];
+    final fundAccounts =
+        ref.read(accountsForUsageProvider(AccountUsage.fund)).value ??
+        const <Account>[];
     final liabilityAccounts =
-        moneyAccounts
-            .where((account) => account.type == AccountType.liability)
-            .toList();
+        ref
+            .read(accountsForUsageProvider(AccountUsage.borrowingLiability))
+            .value ??
+        const <Account>[];
     final reimbursementAccounts =
-        accounts.where(_isSelectableReimbursementAccount).toList();
+        ref.read(accountsForUsageProvider(AccountUsage.reimbursement)).value ??
+        const <Account>[];
 
     final service = ref.read(transactionServiceProvider);
     final note = _blankToNull(_noteController.text);
@@ -862,24 +876,6 @@ class _TransactionFormPageState extends ConsumerState<TransactionFormPage> {
   }
 }
 
-bool _isSelectableSettlementAccount(Account account) {
-  return account.archivedAt == null &&
-      account.subtype != AccountSubtype.reimbursement &&
-      (account.type == AccountType.asset ||
-          account.type == AccountType.liability);
-}
-
-bool _isSelectableFundAccount(Account account) {
-  return account.archivedAt == null &&
-      account.type == AccountType.asset &&
-      account.subtype != AccountSubtype.reimbursement;
-}
-
-bool _isSelectableReimbursementAccount(Account account) {
-  return account.archivedAt == null &&
-      account.subtype == AccountSubtype.reimbursement;
-}
-
 Account? _effectiveAccount(int? selectedId, List<Account> options) {
   if (selectedId != null) {
     for (final account in options) {
@@ -1100,43 +1096,15 @@ class _MainAccountPickerTile extends StatelessWidget {
     );
   }
 
-  void _showAccountSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+  Future<void> _showAccountSheet(BuildContext context) async {
+    final selected = await showAccountPickerSheet(
       context: context,
-      showDragHandle: true,
-      builder: (context) {
-        final effective = _effectiveAccount(selectedId, accounts);
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final account in accounts)
-                ListTile(
-                  leading: Icon(
-                    account.id == effective?.id
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
-                  ),
-                  title: Text(account.name),
-                  subtitle: Text(accountTypeLabel(account.type)),
-                  onTap: () {
-                    onChanged(account.id);
-                    Navigator.pop(context);
-                  },
-                ),
-              if (accounts.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.space20),
-                  child: Text(
-                    '$label暂无可选账户',
-                    style: context.appTextStyles.inputText,
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
+      title: '选择$label',
+      accounts: accounts,
+      selectedId: _effectiveAccount(selectedId, accounts)?.id,
     );
+    if (selected == null) return;
+    onChanged(selected);
   }
 }
 
@@ -1356,57 +1324,28 @@ class _AccountSelectorChip extends StatelessWidget {
     );
   }
 
-  void _showAccountSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+  Future<void> _showAccountSheet(BuildContext context) async {
+    if (allowNone) {
+      final selected = await showOptionalAccountPickerSheet(
+        context: context,
+        title: '选择$label',
+        accounts: accounts,
+        selectedId: selectedId,
+        noneLabel: noneLabel,
+      );
+      if (selected == null) return;
+      onChanged(selected.accountId);
+      return;
+    }
+
+    final selected = await showAccountPickerSheet(
       context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              if (allowNone)
-                ListTile(
-                  leading: Icon(
-                    selectedId == null
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
-                  ),
-                  title: Text(noneLabel),
-                  onTap: () {
-                    onChanged(null);
-                    Navigator.pop(context);
-                  },
-                ),
-              for (final account in accounts)
-                ListTile(
-                  leading: Icon(
-                    account.id ==
-                            (selectedId ??
-                                (allowNone ? null : accounts.first.id))
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_unchecked,
-                  ),
-                  title: Text(account.name),
-                  subtitle: Text(accountTypeLabel(account.type)),
-                  onTap: () {
-                    onChanged(account.id);
-                    Navigator.pop(context);
-                  },
-                ),
-              if (accounts.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.space20),
-                  child: Text(
-                    '$label暂无可选账户',
-                    style: context.appTextStyles.inputText,
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
+      title: '选择$label',
+      accounts: accounts,
+      selectedId: _effectiveAccount(selectedId, accounts)?.id,
     );
+    if (selected == null) return;
+    onChanged(selected);
   }
 }
 

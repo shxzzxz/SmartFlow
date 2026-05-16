@@ -79,13 +79,17 @@ class _AccountsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fundAccounts = accounts.where(_isFundAccount).toList();
-    final liabilities = accounts.where(_isLiabilityAccount).toList();
+    final creditAccounts = accounts.where(_isCreditAccount).toList();
+    final loanAccounts = accounts.where(_isLoanAccount).toList();
     final reimbursementAccounts =
         accounts.where(_isReimbursementAccount).toList();
     final fundMinor = fundAccounts.fold(0, (sum, account) {
       return sum + account.balance.minorUnits;
     });
-    final liabilityMinor = liabilities.fold(0, (sum, account) {
+    final creditMinor = creditAccounts.fold(0, (sum, account) {
+      return sum + account.balance.minorUnits;
+    });
+    final loanMinor = loanAccounts.fold(0, (sum, account) {
       return sum + account.balance.minorUnits;
     });
     final reimbursementMinor = reimbursementAccounts.fold(0, (sum, account) {
@@ -114,11 +118,20 @@ class _AccountsContent extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space24),
         _AccountSection(
-          title: '负债账户',
-          totalLabel: '总负债',
-          total: Money(minorUnits: liabilityMinor),
+          title: '信用账户',
+          totalLabel: '信用欠款',
+          total: Money(minorUnits: creditMinor),
           totalSemantic: MoneySemantic.liability,
-          accounts: liabilities,
+          accounts: creditAccounts,
+          hideBalances: hideBalances,
+        ),
+        const SizedBox(height: AppSpacing.space24),
+        _AccountSection(
+          title: '贷款账户',
+          totalLabel: '贷款欠款',
+          total: Money(minorUnits: loanMinor),
+          totalSemantic: MoneySemantic.liability,
+          accounts: loanAccounts,
           hideBalances: hideBalances,
         ),
         const SizedBox(height: AppSpacing.space24),
@@ -146,8 +159,14 @@ bool _isFundAccount(Account account) {
       account.subtype != AccountSubtype.reimbursement;
 }
 
-bool _isLiabilityAccount(Account account) {
-  return account.type == AccountType.liability;
+bool _isCreditAccount(Account account) {
+  return account.type == AccountType.liability &&
+      account.subtype != AccountSubtype.loan;
+}
+
+bool _isLoanAccount(Account account) {
+  return account.type == AccountType.liability &&
+      account.subtype == AccountSubtype.loan;
 }
 
 bool _isReimbursementAccount(Account account) {
@@ -493,9 +512,7 @@ class _AccountRow extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Text(
-                    account.subtype == null
-                        ? accountTypeLabel(account.type)
-                        : accountSubtypeLabel(account.subtype!),
+                    _accountRowTypeLabel(account),
                     style: textStyles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
@@ -763,4 +780,18 @@ String _liabilityDateText(Account account) {
     parts.add('还款日 ${account.repaymentDay}');
   }
   return parts.join('   ');
+}
+
+String _accountRowTypeLabel(Account account) {
+  if (account.type == AccountType.liability) {
+    return switch (account.subtype) {
+      AccountSubtype.loan => '贷款账户',
+      AccountSubtype.creditCard => '信用卡',
+      AccountSubtype.consumerCredit || null => '信用账户',
+      _ => accountSubtypeLabel(account.subtype!),
+    };
+  }
+  return account.subtype == null
+      ? accountTypeLabel(account.type)
+      : accountSubtypeLabel(account.subtype!);
 }

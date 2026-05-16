@@ -1,6 +1,7 @@
 import '../../core/errors/failure.dart';
 import '../../core/money/money.dart';
 import '../../core/result/result.dart';
+import '../accounts/account_usage.dart';
 import '../entities/transaction.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/account_repository.dart';
@@ -89,10 +90,12 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<PostTransactionResult>> createExpense(
     CreateExpenseCommand command,
   ) async {
-    final roleFailure = await _validateAccountRoles({
-      command.paidFromAccountId: {AccountType.asset, AccountType.liability},
-      command.expenseAccountId: {AccountType.expense},
-    });
+    final roleFailure = await _validateAccountConstraints(
+      usages: {command.paidFromAccountId: AccountUsage.settlement},
+      types: {
+        command.expenseAccountId: {AccountType.expense},
+      },
+    );
     if (roleFailure != null) {
       return Result.failure(roleFailure);
     }
@@ -134,10 +137,12 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<PostTransactionResult>> createIncome(
     CreateIncomeCommand command,
   ) async {
-    final roleFailure = await _validateAccountRoles({
-      command.receiveAccountId: {AccountType.asset, AccountType.liability},
-      command.incomeAccountId: {AccountType.income},
-    });
+    final roleFailure = await _validateAccountConstraints(
+      usages: {command.receiveAccountId: AccountUsage.settlement},
+      types: {
+        command.incomeAccountId: {AccountType.income},
+      },
+    );
     if (roleFailure != null) {
       return Result.failure(roleFailure);
     }
@@ -197,11 +202,15 @@ class TransactionServiceImpl implements TransactionService {
     final hasFee = feeAmount != null && feeAmount.minorUnits > 0;
     final totalPaid = hasFee ? command.amount + feeAmount : command.amount;
     final accountRoles = <int, Set<AccountType>>{
-      command.fromAccountId: {AccountType.asset, AccountType.liability},
-      command.toAccountId: {AccountType.asset, AccountType.liability},
       if (hasFee) feeExpenseAccountId!: {AccountType.expense},
     };
-    final roleFailure = await _validateAccountRoles(accountRoles);
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        command.fromAccountId: AccountUsage.settlement,
+        command.toAccountId: AccountUsage.settlement,
+      },
+      types: accountRoles,
+    );
     if (roleFailure != null) {
       return Result.failure(roleFailure);
     }
@@ -342,8 +351,8 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final roleFailure = await _validateAccountRoles({
-      command.refundToAccountId: {AccountType.asset, AccountType.liability},
+    final roleFailure = await _validateAccountUsages({
+      command.refundToAccountId: AccountUsage.settlement,
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -396,11 +405,15 @@ class TransactionServiceImpl implements TransactionService {
         ),
       );
     }
-    final roleFailure = await _validateAccountRoles({
-      command.receivableAccountId: {AccountType.asset},
-      command.paidFromAccountId: {AccountType.asset, AccountType.liability},
-      command.expenseCategoryId: {AccountType.expense},
-    });
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        command.receivableAccountId: AccountUsage.reimbursement,
+        command.paidFromAccountId: AccountUsage.settlement,
+      },
+      types: {
+        command.expenseCategoryId: {AccountType.expense},
+      },
+    );
     if (roleFailure != null) {
       return Result.failure(roleFailure);
     }
@@ -487,8 +500,8 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final roleFailure = await _validateAccountRoles({
-      command.receiveAccountId: {AccountType.asset, AccountType.liability},
+    final roleFailure = await _validateAccountUsages({
+      command.receiveAccountId: AccountUsage.settlement,
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -633,9 +646,9 @@ class TransactionServiceImpl implements TransactionService {
       );
     }
 
-    final roleFailure = await _validateAccountRoles({
+    final roleFailure = await _validateAccountUsages({
       if (actual.minorUnits > 0)
-        command.receiveAccountId: {AccountType.asset, AccountType.liability},
+        command.receiveAccountId: AccountUsage.settlement,
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -741,13 +754,17 @@ class TransactionServiceImpl implements TransactionService {
             )
             : null;
 
-    final roleFailure = await _validateAccountRoles({
-      command.liabilityAccountId: {AccountType.liability},
-      command.paidFromAccountId: {AccountType.asset, AccountType.liability},
-      if (hasInterest) interestExpenseAccountId!: {AccountType.expense},
-      if (hasFee) command.feeExpenseAccountId!: {AccountType.expense},
-      if (hasDiscount) discountIncomeAccountId!: {AccountType.income},
-    });
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        command.liabilityAccountId: AccountUsage.repaymentTarget,
+        command.paidFromAccountId: AccountUsage.repaymentSource,
+      },
+      types: {
+        if (hasInterest) interestExpenseAccountId!: {AccountType.expense},
+        if (hasFee) command.feeExpenseAccountId!: {AccountType.expense},
+        if (hasDiscount) discountIncomeAccountId!: {AccountType.income},
+      },
+    );
     if (roleFailure != null) {
       return Result.failure(roleFailure);
     }
@@ -840,10 +857,9 @@ class TransactionServiceImpl implements TransactionService {
 
     final receiveAccountId = command.receiveAccountId;
     final useSystemEquity = receiveAccountId == null;
-    final roleFailure = await _validateAccountRoles({
-      command.liabilityAccountId: {AccountType.liability},
-      if (!useSystemEquity)
-        receiveAccountId: {AccountType.asset, AccountType.liability},
+    final roleFailure = await _validateAccountUsages({
+      command.liabilityAccountId: AccountUsage.borrowingLiability,
+      if (!useSystemEquity) receiveAccountId: AccountUsage.fund,
     });
     if (roleFailure != null) {
       return Result.failure(roleFailure);
@@ -1248,6 +1264,7 @@ class TransactionServiceImpl implements TransactionService {
         settlementAccountId,
         currencyCode: detail.transaction.currencyCode,
         expectedTypes: {AccountType.asset, AccountType.liability},
+        requiredUsage: AccountUsage.settlement,
         allowReimbursementSubtype: false,
       );
       if (failure != null) {
@@ -1369,6 +1386,7 @@ class TransactionServiceImpl implements TransactionService {
     required String currencyCode,
     required Set<AccountType> expectedTypes,
     AccountSubtype? requiredSubtype,
+    AccountUsage? requiredUsage,
     bool allowReimbursementSubtype = true,
   }) async {
     final repository = _accountRepository;
@@ -1401,6 +1419,12 @@ class TransactionServiceImpl implements TransactionService {
     if (requiredSubtype != null && account.subtype != requiredSubtype) {
       return Failure(
         code: 'account_subtype_invalid',
+        message: 'Account $accountId cannot be used for this transaction.',
+      );
+    }
+    if (requiredUsage != null && !accountMatchesUsage(account, requiredUsage)) {
+      return Failure(
+        code: 'account_role_invalid',
         message: 'Account $accountId cannot be used for this transaction.',
       );
     }
@@ -1514,36 +1538,35 @@ class TransactionServiceImpl implements TransactionService {
 
   Future<Failure?> _validateReplacementRoles(_ReplacementStructure structure) {
     return switch (structure.businessPurpose) {
-      BusinessPurpose.dailyExpense => _validateAccountRoles({
-        structure.paidFromAccountId!: {
-          AccountType.asset,
-          AccountType.liability,
+      BusinessPurpose.dailyExpense => _validateAccountConstraints(
+        usages: {structure.paidFromAccountId!: AccountUsage.settlement},
+        types: {
+          structure.expenseAccountId!: {AccountType.expense},
         },
-        structure.expenseAccountId!: {AccountType.expense},
-      }),
-      BusinessPurpose.reimbursementAdvance => _validateAccountRoles({
-        structure.receivableAccountId!: {AccountType.asset},
-        structure.paidFromAccountId!: {
-          AccountType.asset,
-          AccountType.liability,
+      ),
+      BusinessPurpose.reimbursementAdvance => _validateAccountConstraints(
+        usages: {
+          structure.receivableAccountId!: AccountUsage.reimbursement,
+          structure.paidFromAccountId!: AccountUsage.settlement,
         },
-        structure.expenseAccountId!: {AccountType.expense},
+        types: {
+          structure.expenseAccountId!: {AccountType.expense},
+        },
+      ),
+      BusinessPurpose.dailyIncome => _validateAccountConstraints(
+        usages: {structure.receiveAccountId!: AccountUsage.settlement},
+        types: {
+          structure.incomeAccountId!: {AccountType.income},
+        },
+      ),
+      BusinessPurpose.transfer => _validateAccountUsages({
+        structure.fromAccountId!: AccountUsage.settlement,
+        structure.toAccountId!: AccountUsage.settlement,
       }),
-      BusinessPurpose.dailyIncome => _validateAccountRoles({
-        structure.receiveAccountId!: {AccountType.asset, AccountType.liability},
-        structure.incomeAccountId!: {AccountType.income},
-      }),
-      BusinessPurpose.transfer => _validateAccountRoles({
-        structure.fromAccountId!: {AccountType.asset, AccountType.liability},
-        structure.toAccountId!: {AccountType.asset, AccountType.liability},
-      }),
-      BusinessPurpose.borrowing => _validateAccountRoles({
-        structure.liabilityAccountId!: {AccountType.liability},
+      BusinessPurpose.borrowing => _validateAccountUsages({
+        structure.liabilityAccountId!: AccountUsage.borrowingLiability,
         if (structure.receiveAccountId != null)
-          structure.receiveAccountId!: {
-            AccountType.asset,
-            AccountType.liability,
-          },
+          structure.receiveAccountId!: AccountUsage.fund,
       }),
       _ => Future.value(
         const Failure(
@@ -1781,6 +1804,53 @@ class TransactionServiceImpl implements TransactionService {
       throw StateError('SystemAccountResolver is required for this operation.');
     }
     return resolver;
+  }
+
+  Future<Failure?> _validateAccountConstraints({
+    Map<int, Set<AccountType>> types = const {},
+    Map<int, AccountUsage> usages = const {},
+  }) async {
+    final typeFailure = await _validateAccountRoles(types);
+    if (typeFailure != null) {
+      return typeFailure;
+    }
+    return _validateAccountUsages(usages);
+  }
+
+  Future<Failure?> _validateAccountUsages(
+    Map<int, AccountUsage> expectedUsageByAccountId,
+  ) async {
+    final repository = _accountRepository;
+    if (repository == null || expectedUsageByAccountId.isEmpty) {
+      return null;
+    }
+
+    final accounts = await repository.findAccountsByIds(
+      expectedUsageByAccountId.keys.toSet(),
+    );
+    final accountsById = {for (final account in accounts) account.id: account};
+
+    for (final MapEntry(key: accountId, value: usage)
+        in expectedUsageByAccountId.entries) {
+      final account = accountsById[accountId];
+      if (account == null) {
+        return Failure(
+          code: 'account_not_found',
+          message: 'Account $accountId does not exist.',
+        );
+      }
+      if (!accountMatchesUsage(account, usage)) {
+        return Failure(
+          code:
+              account.archivedAt == null
+                  ? 'account_role_invalid'
+                  : 'account_archived',
+          message: 'Account $accountId cannot be used for this transaction.',
+        );
+      }
+    }
+
+    return null;
   }
 
   Future<Failure?> _validateAccountRoles(

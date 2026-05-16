@@ -9,8 +9,8 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
+import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
-import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
@@ -52,129 +52,138 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final accountsAsync = ref.watch(accountListProvider);
+    final liabilityAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.repaymentTarget),
+    );
+    final repaymentAccountsAsync = ref.watch(
+      accountsForUsageProvider(AccountUsage.repaymentSource),
+    );
+
+    final accountsError =
+        liabilityAccountsAsync.error ?? repaymentAccountsAsync.error;
+    if (accountsError != null) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: AppBar(title: const Text('还款')),
+        body: Center(child: Text('加载失败：$accountsError')),
+      );
+    }
+    if (!liabilityAccountsAsync.hasValue || !repaymentAccountsAsync.hasValue) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: AppBar(title: const Text('还款')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final liabilityAccounts = liabilityAccountsAsync.value ?? const <Account>[];
+    final allRepaymentAccounts =
+        repaymentAccountsAsync.value ?? const <Account>[];
+    final liabilityAccountId = _selectedId(
+      _liabilityAccountId,
+      liabilityAccounts,
+    );
+    final repaymentAccounts =
+        allRepaymentAccounts
+            .where((account) => account.id != liabilityAccountId)
+            .toList();
+    final paidFromAccountId = _selectedId(
+      _paidFromAccountId,
+      repaymentAccounts,
+    );
+    final liabilityAccount = _findAccount(
+      liabilityAccounts,
+      liabilityAccountId,
+    );
+    final paidFromAccount = _findAccount(repaymentAccounts, paidFromAccountId);
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('还款')),
-      body: accountsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(child: Text('加载失败：$error')),
-        data: (accounts) {
-          final liabilityAccounts =
-              accounts.where(_isSelectableLiabilityAccount).toList();
-          final liabilityAccountId = _selectedId(
-            _liabilityAccountId,
-            liabilityAccounts,
-          );
-          final repaymentAccounts =
-              accounts
-                  .where(
-                    (account) =>
-                        _isSelectableRepaymentAccount(account) &&
-                        account.id != liabilityAccountId,
-                  )
-                  .toList();
-          final paidFromAccountId = _selectedId(
-            _paidFromAccountId,
-            repaymentAccounts,
-          );
-          final liabilityAccount = _findAccount(
-            liabilityAccounts,
-            liabilityAccountId,
-          );
-          final paidFromAccount = _findAccount(
-            repaymentAccounts,
-            paidFromAccountId,
-          );
-
-          return Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space28,
-                AppSpacing.space18,
-                AppSpacing.space28,
-                AppSpacing.space24,
-              ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space28,
+            AppSpacing.space18,
+            AppSpacing.space28,
+            AppSpacing.space24,
+          ),
+          children: [
+            AppPlainFormSection(
               children: [
-                AppPlainFormSection(
-                  children: [
-                    AccountPlainFormRow(
-                      label: '债务账户',
-                      account: liabilityAccount,
-                      selectedId: liabilityAccountId,
-                      placeholder: '请选择债务账户',
-                      onTap:
-                          liabilityAccounts.isEmpty
-                              ? null
-                              : () => _pickAccount(
-                                title: '选择债务账户',
-                                accounts: liabilityAccounts,
-                                selectedId: liabilityAccountId,
-                                onSelected:
-                                    (value) => setState(() {
-                                      _liabilityAccountId = value;
-                                      if (_paidFromAccountId == value) {
-                                        _paidFromAccountId = null;
-                                      }
-                                    }),
-                              ),
-                    ),
-                    MoneyPlainFormRow(
-                      label: '金额',
-                      controller: _principalController,
-                      hintText: '请输入还款金额',
-                      validator: _validatePositiveMoney,
-                    ),
-                    MoneyPlainFormRow(
-                      label: '利息',
-                      controller: _interestController,
-                      hintText: '请输入利息（可选）',
-                      validator: _validateOptionalMoney,
-                    ),
-                    MoneyPlainFormRow(
-                      label: '优惠',
-                      controller: _discountController,
-                      hintText: '请输入优惠（可选）',
-                      validator: _validateOptionalMoney,
-                    ),
-                    DateTimePlainFormRow(
-                      label: '还款日期',
-                      value: _formatDateTime(_occurredAt),
-                      onTap: _pickDate,
-                    ),
-                    AccountPlainFormRow(
-                      label: '还款账户',
-                      account: paidFromAccount,
-                      selectedId: paidFromAccountId,
-                      placeholder: '请选择还款账户',
-                      onTap:
-                          repaymentAccounts.isEmpty
-                              ? null
-                              : () => _pickAccount(
-                                title: '选择还款账户',
-                                accounts: repaymentAccounts,
-                                selectedId: paidFromAccountId,
-                                onSelected:
-                                    (value) => setState(
-                                      () => _paidFromAccountId = value,
-                                    ),
-                              ),
-                    ),
-                    NotePlainFormRow(controller: _noteController),
-                  ],
+                AccountPlainFormRow(
+                  label: '债务账户',
+                  account: liabilityAccount,
+                  selectedId: liabilityAccountId,
+                  placeholder: '请选择债务账户',
+                  onTap:
+                      liabilityAccounts.isEmpty
+                          ? null
+                          : () => _pickAccount(
+                            title: '选择债务账户',
+                            accounts: liabilityAccounts,
+                            selectedId: liabilityAccountId,
+                            onSelected:
+                                (value) => setState(() {
+                                  _liabilityAccountId = value;
+                                  if (_paidFromAccountId == value) {
+                                    _paidFromAccountId = null;
+                                  }
+                                }),
+                          ),
                 ),
-                const SizedBox(height: AppSpacing.space24),
-                AppSubmitButton(
-                  label: '保存',
-                  loading: _submitting,
-                  onPressed: _submit,
+                MoneyPlainFormRow(
+                  label: '金额',
+                  controller: _principalController,
+                  hintText: '请输入还款金额',
+                  validator: _validatePositiveMoney,
                 ),
+                MoneyPlainFormRow(
+                  label: '利息',
+                  controller: _interestController,
+                  hintText: '请输入利息（可选）',
+                  validator: _validateOptionalMoney,
+                ),
+                MoneyPlainFormRow(
+                  label: '优惠',
+                  controller: _discountController,
+                  hintText: '请输入优惠（可选）',
+                  validator: _validateOptionalMoney,
+                ),
+                DateTimePlainFormRow(
+                  label: '还款日期',
+                  value: _formatDateTime(_occurredAt),
+                  onTap: _pickDate,
+                ),
+                AccountPlainFormRow(
+                  label: '还款账户',
+                  account: paidFromAccount,
+                  selectedId: paidFromAccountId,
+                  placeholder: '请选择还款账户',
+                  onTap:
+                      repaymentAccounts.isEmpty
+                          ? null
+                          : () => _pickAccount(
+                            title: '选择还款账户',
+                            accounts: repaymentAccounts,
+                            selectedId: paidFromAccountId,
+                            onSelected:
+                                (value) =>
+                                    setState(() => _paidFromAccountId = value),
+                          ),
+                ),
+                NotePlainFormRow(controller: _noteController),
               ],
             ),
-          );
-        },
+            const SizedBox(height: AppSpacing.space24),
+            AppSubmitButton(
+              label: '保存',
+              loading: _submitting,
+              onPressed: _submit,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -214,20 +223,23 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
       return;
     }
 
-    final accounts = ref.read(accountListProvider).value ?? const <Account>[];
     final liabilityAccounts =
-        accounts.where(_isSelectableLiabilityAccount).toList();
+        ref
+            .read(accountsForUsageProvider(AccountUsage.repaymentTarget))
+            .value ??
+        const <Account>[];
     final liabilityAccountId = _selectedId(
       _liabilityAccountId,
       liabilityAccounts,
     );
+    final allRepaymentAccounts =
+        ref
+            .read(accountsForUsageProvider(AccountUsage.repaymentSource))
+            .value ??
+        const <Account>[];
     final repaymentAccounts =
-        accounts
-            .where(
-              (account) =>
-                  _isSelectableRepaymentAccount(account) &&
-                  account.id != liabilityAccountId,
-            )
+        allRepaymentAccounts
+            .where((account) => account.id != liabilityAccountId)
             .toList();
     final paidFromAccountId = _selectedId(
       _paidFromAccountId,
@@ -326,17 +338,6 @@ int? _selectedId(int? id, List<Account> accounts) {
     }
   }
   return null;
-}
-
-bool _isSelectableLiabilityAccount(Account account) {
-  return account.archivedAt == null && account.type == AccountType.liability;
-}
-
-bool _isSelectableRepaymentAccount(Account account) {
-  return account.archivedAt == null &&
-      account.subtype != AccountSubtype.reimbursement &&
-      (account.type == AccountType.asset ||
-          account.type == AccountType.liability);
 }
 
 String? _blankToNull(String value) {

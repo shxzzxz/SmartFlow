@@ -56,6 +56,79 @@ void main() {
     expect(find.textContaining('报销账户'), findsNothing);
   });
 
+  testWidgets('expense account picker excludes loan accounts', (tester) async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final walletId = await _insertAccount(
+      database,
+      name: '钱包',
+      type: AccountType.asset,
+      subtype: AccountSubtype.cash,
+    );
+    await _insertAccount(
+      database,
+      name: '花呗',
+      type: AccountType.liability,
+      subtype: AccountSubtype.consumerCredit,
+    );
+    await _insertAccount(
+      database,
+      name: '借呗',
+      type: AccountType.liability,
+      subtype: AccountSubtype.loan,
+    );
+
+    await _pumpTransactionForm(
+      tester,
+      database: database,
+      initialFromAccountId: walletId,
+    );
+
+    await tester.tap(find.text('钱包').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('花呗'), findsWidgets);
+    expect(find.text('借呗'), findsNothing);
+  });
+
+  testWidgets('transfer account pickers exclude loan accounts', (tester) async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final walletId = await _insertAccount(
+      database,
+      name: '钱包',
+      type: AccountType.asset,
+      subtype: AccountSubtype.cash,
+    );
+    final creditId = await _insertAccount(
+      database,
+      name: '花呗',
+      type: AccountType.liability,
+      subtype: AccountSubtype.consumerCredit,
+    );
+    await _insertAccount(
+      database,
+      name: '借呗',
+      type: AccountType.liability,
+      subtype: AccountSubtype.loan,
+    );
+
+    await _pumpTransactionForm(
+      tester,
+      database: database,
+      initialFromAccountId: walletId,
+      initialToAccountId: creditId,
+    );
+
+    await tester.tap(find.text('转账'));
+    await tester.pump();
+    await tester.tap(find.text('转出账户'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('花呗'), findsWidgets);
+    expect(find.text('借呗'), findsNothing);
+  });
+
   testWidgets('expense submit keeps default reimbursement as none', (
     tester,
   ) async {
@@ -97,6 +170,8 @@ Future<void> _pumpTransactionForm(
   WidgetTester tester, {
   AppDatabase? database,
   TransactionService? transactionService,
+  int? initialFromAccountId,
+  int? initialToAccountId,
 }) async {
   final appDatabase = database ?? createTestDatabase();
   if (database == null) {
@@ -110,7 +185,12 @@ Future<void> _pumpTransactionForm(
         if (transactionService != null)
           transactionServiceProvider.overrideWithValue(transactionService),
       ],
-      child: const MaterialApp(home: TransactionFormPage()),
+      child: MaterialApp(
+        home: TransactionFormPage(
+          initialFromAccountId: initialFromAccountId,
+          initialToAccountId: initialToAccountId,
+        ),
+      ),
     ),
   );
   await tester.pump();

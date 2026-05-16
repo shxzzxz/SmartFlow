@@ -152,6 +152,84 @@ void main() {
       expect(result, isA<FailureResult<PostTransactionResult>>());
       expect(postingService.lastCommand, isNull);
     });
+
+    test('rejects loan accounts as expense settlement accounts', () async {
+      service = TransactionServiceImpl(
+        postingService,
+        accountRepository: _FakeAccountRepository({
+          1: _account(
+            id: 1,
+            type: AccountType.liability,
+            subtype: AccountSubtype.loan,
+          ),
+          101: _account(id: 101, type: AccountType.expense),
+        }),
+      );
+
+      final result = await service.createExpense(
+        CreateExpenseCommand(
+          amount: const Money(minorUnits: 2000),
+          paidFromAccountId: 1,
+          expenseAccountId: 101,
+          occurredAt: DateTime(2026, 5),
+        ),
+      );
+
+      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(postingService.lastCommand, isNull);
+    });
+
+    test('rejects loan accounts as income receive accounts', () async {
+      service = TransactionServiceImpl(
+        postingService,
+        accountRepository: _FakeAccountRepository({
+          1: _account(
+            id: 1,
+            type: AccountType.liability,
+            subtype: AccountSubtype.loan,
+          ),
+          201: _account(id: 201, type: AccountType.income),
+        }),
+      );
+
+      final result = await service.createIncome(
+        CreateIncomeCommand(
+          amount: const Money(minorUnits: 2000),
+          receiveAccountId: 1,
+          incomeAccountId: 201,
+          occurredAt: DateTime(2026, 5),
+        ),
+      );
+
+      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(postingService.lastCommand, isNull);
+    });
+
+    test('rejects loan accounts in transfers', () async {
+      service = TransactionServiceImpl(
+        postingService,
+        accountRepository: _FakeAccountRepository({
+          1: _account(id: 1, type: AccountType.asset),
+          2: _account(
+            id: 2,
+            type: AccountType.liability,
+            subtype: AccountSubtype.loan,
+          ),
+        }),
+      );
+
+      final result = await service.createTransfer(
+        CreateTransferCommand(
+          amount: const Money(minorUnits: 2000),
+          fromAccountId: 1,
+          toAccountId: 2,
+          occurredAt: DateTime(2026, 5),
+        ),
+      );
+
+      expect(result, isA<FailureResult<PostTransactionResult>>());
+      expect(postingService.lastCommand, isNull);
+    });
   });
 }
 
@@ -214,11 +292,16 @@ class _FakeAccountRepository implements AccountRepository {
   }
 }
 
-Account _account({required int id, required AccountType type}) {
+Account _account({
+  required int id,
+  required AccountType type,
+  AccountSubtype? subtype,
+}) {
   return Account(
     id: id,
     name: 'Account $id',
     type: type,
+    subtype: subtype,
     currencyCode: Money.defaultCurrency,
     balance: Money.zero(),
   );

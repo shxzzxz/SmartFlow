@@ -221,65 +221,162 @@ Future<int?> showAccountPickerSheet({
     context: context,
     showDragHandle: true,
     builder: (context) {
-      return SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.space16,
-                0,
-                AppSpacing.space16,
-                AppSpacing.space8,
-              ),
-              child: Text(title, style: context.appTextStyles.subsectionTitle),
-            ),
-            for (final account in accounts)
-              InkWell(
-                onTap: () => Navigator.of(context).pop(account.id),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space16,
-                    vertical: AppSpacing.space12,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox.square(
-                        dimension: AppSpacing.space24,
-                        child: Center(
-                          child: BusinessIcon(
-                            iconKey: account.iconKey,
-                            size: AppSpacing.space20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space12),
-                      Expanded(
-                        child: Text(
-                          account.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.appTextStyles.formPlainValue,
-                        ),
-                      ),
-                      if (account.id == selectedId)
-                        Icon(
-                          Icons.check_rounded,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            if (accounts.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.space20),
-                child: Text('暂无可选账户', style: context.appTextStyles.inputText),
-              ),
-          ],
-        ),
+      return _AccountPickerSheet(
+        title: title,
+        accounts: accounts,
+        selectedId: selectedId,
+        onAccountTap: (account) => Navigator.of(context).pop(account.id),
       );
     },
   );
+}
+
+class AccountPickerSheetSelection {
+  const AccountPickerSheetSelection(this.accountId);
+
+  final int? accountId;
+}
+
+Future<AccountPickerSheetSelection?> showOptionalAccountPickerSheet({
+  required BuildContext context,
+  required String title,
+  required List<Account> accounts,
+  required int? selectedId,
+  required String noneLabel,
+}) {
+  return showModalBottomSheet<AccountPickerSheetSelection>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) {
+      return _AccountPickerSheet(
+        title: title,
+        accounts: accounts,
+        selectedId: selectedId,
+        noneLabel: noneLabel,
+        onNoneTap:
+            () => Navigator.of(
+              context,
+            ).pop(const AccountPickerSheetSelection(null)),
+        onAccountTap:
+            (account) => Navigator.of(
+              context,
+            ).pop(AccountPickerSheetSelection(account.id)),
+      );
+    },
+  );
+}
+
+class _AccountPickerSheet extends StatelessWidget {
+  const _AccountPickerSheet({
+    required this.title,
+    required this.accounts,
+    required this.selectedId,
+    required this.onAccountTap,
+    this.noneLabel,
+    this.onNoneTap,
+  });
+
+  final String title;
+  final List<Account> accounts;
+  final int? selectedId;
+  final String? noneLabel;
+  final VoidCallback? onNoneTap;
+  final ValueChanged<Account> onAccountTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final noneLabel = this.noneLabel;
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space16,
+              0,
+              AppSpacing.space16,
+              AppSpacing.space8,
+            ),
+            child: Text(title, style: context.appTextStyles.subsectionTitle),
+          ),
+          if (noneLabel != null)
+            _AccountPickerRow(
+              label: noneLabel,
+              selected: selectedId == null,
+              onTap: onNoneTap,
+            ),
+          for (final account in accounts)
+            _AccountPickerRow(
+              label: account.name,
+              iconKey: account.iconKey,
+              selected: account.id == selectedId,
+              onTap: () => onAccountTap(account),
+            ),
+          if (accounts.isEmpty && noneLabel == null)
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.space20),
+              child: Text('暂无可选账户', style: context.appTextStyles.inputText),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountPickerRow extends StatelessWidget {
+  const _AccountPickerRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.iconKey,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+  final String? iconKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space12,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox.square(
+              dimension: AppSpacing.space24,
+              child: Center(
+                child:
+                    iconKey == null
+                        ? null
+                        : BusinessIcon(
+                          iconKey: iconKey,
+                          size: AppSpacing.space20,
+                        ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space12),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.appTextStyles.formPlainValue,
+              ),
+            ),
+            if (selected)
+              Icon(
+                Icons.check_rounded,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

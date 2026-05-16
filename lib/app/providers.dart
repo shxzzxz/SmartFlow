@@ -6,6 +6,7 @@ import '../data/repositories/drift_financial_metrics_repository.dart';
 import '../data/repositories/drift_posting_repository.dart';
 import '../data/repositories/drift_system_account_resolver.dart';
 import '../data/repositories/drift_transaction_query_repository.dart';
+import '../domain/accounts/account_usage.dart';
 import '../domain/entities/account.dart';
 import '../domain/enums/accounting_enums.dart';
 import '../domain/repositories/account_repository.dart';
@@ -102,6 +103,19 @@ FinancialMetricsService financialMetricsService(Ref ref) {
 @riverpod
 Stream<List<Account>> accountList(Ref ref) {
   return ref.watch(accountServiceProvider).watchAccounts();
+}
+
+@riverpod
+Stream<List<Account>> accountsForUsage(Ref ref, AccountUsage usage) {
+  return ref
+      .watch(accountServiceProvider)
+      .watchAccounts()
+      .map(
+        (accounts) =>
+            accounts
+                .where((account) => accountMatchesUsage(account, usage))
+                .toList(),
+      );
 }
 
 @riverpod
