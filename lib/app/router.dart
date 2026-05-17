@@ -9,6 +9,7 @@ import '../features/categories/pages/categories_page.dart';
 import '../features/categories/pages/category_form_page.dart';
 import '../features/calendar/pages/calendar_page.dart';
 import '../features/home/pages/home_page.dart';
+import '../features/installments/pages/installment_contract_edit_page.dart';
 import '../features/installments/pages/installment_detail_page.dart';
 import '../features/installments/pages/installment_form_page.dart';
 import '../features/installments/pages/installment_repayment_form_page.dart';
@@ -121,13 +122,27 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/accounts/:id/installments/new',
-      builder: (context, state) => InstallmentFormPage(
-        liabilityAccountId: int.parse(state.pathParameters['id']!),
-      ),
+      builder: (context, state) {
+        final lockedSourceType = switch (state.uri.queryParameters['source']) {
+          'disbursement' => InstallmentSourceType.disbursement,
+          'bill' => InstallmentSourceType.billConversion,
+          _ => null,
+        };
+        return InstallmentFormPage(
+          liabilityAccountId: int.parse(state.pathParameters['id']!),
+          lockedSourceType: lockedSourceType,
+        );
+      },
     ),
     GoRoute(
       path: '/installments/:contractId',
       builder: (context, state) => InstallmentDetailPage(
+        contractId: int.parse(state.pathParameters['contractId']!),
+      ),
+    ),
+    GoRoute(
+      path: '/installments/:contractId/edit',
+      builder: (context, state) => InstallmentContractEditPage(
         contractId: int.parse(state.pathParameters['contractId']!),
       ),
     ),

@@ -4093,17 +4093,41 @@ class $InstallmentContractsTable extends InstallmentContracts
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _startDateMeta = const VerificationMeta(
-    'startDate',
+  static const VerificationMeta _borrowingDateMeta = const VerificationMeta(
+    'borrowingDate',
   );
   @override
-  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
-    'start_date',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: true,
+  late final GeneratedColumn<DateTime> borrowingDate =
+      GeneratedColumn<DateTime>(
+        'start_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _firstRepaymentDateMeta =
+      const VerificationMeta('firstRepaymentDate');
+  @override
+  late final GeneratedColumn<DateTime> firstRepaymentDate =
+      GeneratedColumn<DateTime>(
+        'first_repayment_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _lastRepaymentDateMeta = const VerificationMeta(
+    'lastRepaymentDate',
   );
+  @override
+  late final GeneratedColumn<DateTime> lastRepaymentDate =
+      GeneratedColumn<DateTime>(
+        'last_repayment_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
   @override
   late final GeneratedColumnWithTypeConverter<
     InstallmentRepaymentMethod,
@@ -4139,6 +4163,18 @@ class $InstallmentContractsTable extends InstallmentContracts
     true,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalFeeMinorMeta = const VerificationMeta(
+    'totalFeeMinor',
+  );
+  @override
+  late final GeneratedColumn<int> totalFeeMinor = GeneratedColumn<int>(
+    'total_fee_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
   );
   static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
     'currencyCode',
@@ -4208,10 +4244,13 @@ class $InstallmentContractsTable extends InstallmentContracts
     disbursementTransactionId,
     principalMinor,
     totalPeriods,
-    startDate,
+    borrowingDate,
+    firstRepaymentDate,
+    lastRepaymentDate,
     repaymentMethod,
     interestRatePeriod,
     interestRatePpm,
+    totalFeeMinor,
     currencyCode,
     status,
     note,
@@ -4286,11 +4325,36 @@ class $InstallmentContractsTable extends InstallmentContracts
     }
     if (data.containsKey('start_date')) {
       context.handle(
-        _startDateMeta,
-        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+        _borrowingDateMeta,
+        borrowingDate.isAcceptableOrUnknown(
+          data['start_date']!,
+          _borrowingDateMeta,
+        ),
       );
     } else if (isInserting) {
-      context.missing(_startDateMeta);
+      context.missing(_borrowingDateMeta);
+    }
+    if (data.containsKey('first_repayment_date')) {
+      context.handle(
+        _firstRepaymentDateMeta,
+        firstRepaymentDate.isAcceptableOrUnknown(
+          data['first_repayment_date']!,
+          _firstRepaymentDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstRepaymentDateMeta);
+    }
+    if (data.containsKey('last_repayment_date')) {
+      context.handle(
+        _lastRepaymentDateMeta,
+        lastRepaymentDate.isAcceptableOrUnknown(
+          data['last_repayment_date']!,
+          _lastRepaymentDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastRepaymentDateMeta);
     }
     if (data.containsKey('interest_rate_ppm')) {
       context.handle(
@@ -4298,6 +4362,15 @@ class $InstallmentContractsTable extends InstallmentContracts
         interestRatePpm.isAcceptableOrUnknown(
           data['interest_rate_ppm']!,
           _interestRatePpmMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_fee_minor')) {
+      context.handle(
+        _totalFeeMinorMeta,
+        totalFeeMinor.isAcceptableOrUnknown(
+          data['total_fee_minor']!,
+          _totalFeeMinorMeta,
         ),
       );
     }
@@ -4373,10 +4446,20 @@ class $InstallmentContractsTable extends InstallmentContracts
             DriftSqlType.int,
             data['${effectivePrefix}total_periods'],
           )!,
-      startDate:
+      borrowingDate:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
             data['${effectivePrefix}start_date'],
+          )!,
+      firstRepaymentDate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}first_repayment_date'],
+          )!,
+      lastRepaymentDate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}last_repayment_date'],
           )!,
       repaymentMethod: $InstallmentContractsTable.$converterrepaymentMethod
           .fromSql(
@@ -4397,6 +4480,11 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.int,
         data['${effectivePrefix}interest_rate_ppm'],
       ),
+      totalFeeMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}total_fee_minor'],
+          )!,
       currencyCode:
           attachedDatabase.typeMapping.read(
             DriftSqlType.string,
@@ -4462,10 +4550,21 @@ class InstallmentContractRow extends DataClass
   final int? disbursementTransactionId;
   final int principalMinor;
   final int totalPeriods;
-  final DateTime startDate;
+
+  /// 借款日期 / 合同起算日（旧字段 start_date 沿用，语义统一为借款日期）。
+  final DateTime borrowingDate;
+
+  /// 首期还款日。
+  final DateTime firstRepaymentDate;
+
+  /// 末期还款日。默认 = 首期 + (期数-1) 月，可独调。
+  final DateTime lastRepaymentDate;
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+
+  /// 合同总手续费，用于编辑时按 method 重新分配。
+  final int totalFeeMinor;
   final String currencyCode;
   final InstallmentContractStatus status;
   final String? note;
@@ -4479,10 +4578,13 @@ class InstallmentContractRow extends DataClass
     this.disbursementTransactionId,
     required this.principalMinor,
     required this.totalPeriods,
-    required this.startDate,
+    required this.borrowingDate,
+    required this.firstRepaymentDate,
+    required this.lastRepaymentDate,
     required this.repaymentMethod,
     this.interestRatePeriod,
     this.interestRatePpm,
+    required this.totalFeeMinor,
     required this.currencyCode,
     required this.status,
     this.note,
@@ -4509,7 +4611,9 @@ class InstallmentContractRow extends DataClass
     }
     map['principal_minor'] = Variable<int>(principalMinor);
     map['total_periods'] = Variable<int>(totalPeriods);
-    map['start_date'] = Variable<DateTime>(startDate);
+    map['start_date'] = Variable<DateTime>(borrowingDate);
+    map['first_repayment_date'] = Variable<DateTime>(firstRepaymentDate);
+    map['last_repayment_date'] = Variable<DateTime>(lastRepaymentDate);
     {
       map['repayment_method'] = Variable<String>(
         $InstallmentContractsTable.$converterrepaymentMethod.toSql(
@@ -4527,6 +4631,7 @@ class InstallmentContractRow extends DataClass
     if (!nullToAbsent || interestRatePpm != null) {
       map['interest_rate_ppm'] = Variable<int>(interestRatePpm);
     }
+    map['total_fee_minor'] = Variable<int>(totalFeeMinor);
     map['currency_code'] = Variable<String>(currencyCode);
     {
       map['status'] = Variable<String>(
@@ -4556,7 +4661,9 @@ class InstallmentContractRow extends DataClass
               : Value(disbursementTransactionId),
       principalMinor: Value(principalMinor),
       totalPeriods: Value(totalPeriods),
-      startDate: Value(startDate),
+      borrowingDate: Value(borrowingDate),
+      firstRepaymentDate: Value(firstRepaymentDate),
+      lastRepaymentDate: Value(lastRepaymentDate),
       repaymentMethod: Value(repaymentMethod),
       interestRatePeriod:
           interestRatePeriod == null && nullToAbsent
@@ -4566,6 +4673,7 @@ class InstallmentContractRow extends DataClass
           interestRatePpm == null && nullToAbsent
               ? const Value.absent()
               : Value(interestRatePpm),
+      totalFeeMinor: Value(totalFeeMinor),
       currencyCode: Value(currencyCode),
       status: Value(status),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
@@ -4593,13 +4701,20 @@ class InstallmentContractRow extends DataClass
       ),
       principalMinor: serializer.fromJson<int>(json['principalMinor']),
       totalPeriods: serializer.fromJson<int>(json['totalPeriods']),
-      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      borrowingDate: serializer.fromJson<DateTime>(json['borrowingDate']),
+      firstRepaymentDate: serializer.fromJson<DateTime>(
+        json['firstRepaymentDate'],
+      ),
+      lastRepaymentDate: serializer.fromJson<DateTime>(
+        json['lastRepaymentDate'],
+      ),
       repaymentMethod: $InstallmentContractsTable.$converterrepaymentMethod
           .fromJson(serializer.fromJson<String>(json['repaymentMethod'])),
       interestRatePeriod: $InstallmentContractsTable
           .$converterinterestRatePeriodn
           .fromJson(serializer.fromJson<String?>(json['interestRatePeriod'])),
       interestRatePpm: serializer.fromJson<int?>(json['interestRatePpm']),
+      totalFeeMinor: serializer.fromJson<int>(json['totalFeeMinor']),
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
       status: $InstallmentContractsTable.$converterstatus.fromJson(
         serializer.fromJson<String>(json['status']),
@@ -4624,7 +4739,9 @@ class InstallmentContractRow extends DataClass
       ),
       'principalMinor': serializer.toJson<int>(principalMinor),
       'totalPeriods': serializer.toJson<int>(totalPeriods),
-      'startDate': serializer.toJson<DateTime>(startDate),
+      'borrowingDate': serializer.toJson<DateTime>(borrowingDate),
+      'firstRepaymentDate': serializer.toJson<DateTime>(firstRepaymentDate),
+      'lastRepaymentDate': serializer.toJson<DateTime>(lastRepaymentDate),
       'repaymentMethod': serializer.toJson<String>(
         $InstallmentContractsTable.$converterrepaymentMethod.toJson(
           repaymentMethod,
@@ -4636,6 +4753,7 @@ class InstallmentContractRow extends DataClass
         ),
       ),
       'interestRatePpm': serializer.toJson<int?>(interestRatePpm),
+      'totalFeeMinor': serializer.toJson<int>(totalFeeMinor),
       'currencyCode': serializer.toJson<String>(currencyCode),
       'status': serializer.toJson<String>(
         $InstallmentContractsTable.$converterstatus.toJson(status),
@@ -4654,10 +4772,13 @@ class InstallmentContractRow extends DataClass
     Value<int?> disbursementTransactionId = const Value.absent(),
     int? principalMinor,
     int? totalPeriods,
-    DateTime? startDate,
+    DateTime? borrowingDate,
+    DateTime? firstRepaymentDate,
+    DateTime? lastRepaymentDate,
     InstallmentRepaymentMethod? repaymentMethod,
     Value<InterestRatePeriod?> interestRatePeriod = const Value.absent(),
     Value<int?> interestRatePpm = const Value.absent(),
+    int? totalFeeMinor,
     String? currencyCode,
     InstallmentContractStatus? status,
     Value<String?> note = const Value.absent(),
@@ -4677,7 +4798,9 @@ class InstallmentContractRow extends DataClass
             : this.disbursementTransactionId,
     principalMinor: principalMinor ?? this.principalMinor,
     totalPeriods: totalPeriods ?? this.totalPeriods,
-    startDate: startDate ?? this.startDate,
+    borrowingDate: borrowingDate ?? this.borrowingDate,
+    firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
+    lastRepaymentDate: lastRepaymentDate ?? this.lastRepaymentDate,
     repaymentMethod: repaymentMethod ?? this.repaymentMethod,
     interestRatePeriod:
         interestRatePeriod.present
@@ -4685,6 +4808,7 @@ class InstallmentContractRow extends DataClass
             : this.interestRatePeriod,
     interestRatePpm:
         interestRatePpm.present ? interestRatePpm.value : this.interestRatePpm,
+    totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
     currencyCode: currencyCode ?? this.currencyCode,
     status: status ?? this.status,
     note: note.present ? note.value : this.note,
@@ -4716,7 +4840,18 @@ class InstallmentContractRow extends DataClass
           data.totalPeriods.present
               ? data.totalPeriods.value
               : this.totalPeriods,
-      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      borrowingDate:
+          data.borrowingDate.present
+              ? data.borrowingDate.value
+              : this.borrowingDate,
+      firstRepaymentDate:
+          data.firstRepaymentDate.present
+              ? data.firstRepaymentDate.value
+              : this.firstRepaymentDate,
+      lastRepaymentDate:
+          data.lastRepaymentDate.present
+              ? data.lastRepaymentDate.value
+              : this.lastRepaymentDate,
       repaymentMethod:
           data.repaymentMethod.present
               ? data.repaymentMethod.value
@@ -4729,6 +4864,10 @@ class InstallmentContractRow extends DataClass
           data.interestRatePpm.present
               ? data.interestRatePpm.value
               : this.interestRatePpm,
+      totalFeeMinor:
+          data.totalFeeMinor.present
+              ? data.totalFeeMinor.value
+              : this.totalFeeMinor,
       currencyCode:
           data.currencyCode.present
               ? data.currencyCode.value
@@ -4750,10 +4889,13 @@ class InstallmentContractRow extends DataClass
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('totalPeriods: $totalPeriods, ')
-          ..write('startDate: $startDate, ')
+          ..write('borrowingDate: $borrowingDate, ')
+          ..write('firstRepaymentDate: $firstRepaymentDate, ')
+          ..write('lastRepaymentDate: $lastRepaymentDate, ')
           ..write('repaymentMethod: $repaymentMethod, ')
           ..write('interestRatePeriod: $interestRatePeriod, ')
           ..write('interestRatePpm: $interestRatePpm, ')
+          ..write('totalFeeMinor: $totalFeeMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
@@ -4772,10 +4914,13 @@ class InstallmentContractRow extends DataClass
     disbursementTransactionId,
     principalMinor,
     totalPeriods,
-    startDate,
+    borrowingDate,
+    firstRepaymentDate,
+    lastRepaymentDate,
     repaymentMethod,
     interestRatePeriod,
     interestRatePpm,
+    totalFeeMinor,
     currencyCode,
     status,
     note,
@@ -4793,10 +4938,13 @@ class InstallmentContractRow extends DataClass
           other.disbursementTransactionId == this.disbursementTransactionId &&
           other.principalMinor == this.principalMinor &&
           other.totalPeriods == this.totalPeriods &&
-          other.startDate == this.startDate &&
+          other.borrowingDate == this.borrowingDate &&
+          other.firstRepaymentDate == this.firstRepaymentDate &&
+          other.lastRepaymentDate == this.lastRepaymentDate &&
           other.repaymentMethod == this.repaymentMethod &&
           other.interestRatePeriod == this.interestRatePeriod &&
           other.interestRatePpm == this.interestRatePpm &&
+          other.totalFeeMinor == this.totalFeeMinor &&
           other.currencyCode == this.currencyCode &&
           other.status == this.status &&
           other.note == this.note &&
@@ -4813,10 +4961,13 @@ class InstallmentContractsCompanion
   final Value<int?> disbursementTransactionId;
   final Value<int> principalMinor;
   final Value<int> totalPeriods;
-  final Value<DateTime> startDate;
+  final Value<DateTime> borrowingDate;
+  final Value<DateTime> firstRepaymentDate;
+  final Value<DateTime> lastRepaymentDate;
   final Value<InstallmentRepaymentMethod> repaymentMethod;
   final Value<InterestRatePeriod?> interestRatePeriod;
   final Value<int?> interestRatePpm;
+  final Value<int> totalFeeMinor;
   final Value<String> currencyCode;
   final Value<InstallmentContractStatus> status;
   final Value<String?> note;
@@ -4830,10 +4981,13 @@ class InstallmentContractsCompanion
     this.disbursementTransactionId = const Value.absent(),
     this.principalMinor = const Value.absent(),
     this.totalPeriods = const Value.absent(),
-    this.startDate = const Value.absent(),
+    this.borrowingDate = const Value.absent(),
+    this.firstRepaymentDate = const Value.absent(),
+    this.lastRepaymentDate = const Value.absent(),
     this.repaymentMethod = const Value.absent(),
     this.interestRatePeriod = const Value.absent(),
     this.interestRatePpm = const Value.absent(),
+    this.totalFeeMinor = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.status = const Value.absent(),
     this.note = const Value.absent(),
@@ -4848,10 +5002,13 @@ class InstallmentContractsCompanion
     this.disbursementTransactionId = const Value.absent(),
     required int principalMinor,
     required int totalPeriods,
-    required DateTime startDate,
+    required DateTime borrowingDate,
+    required DateTime firstRepaymentDate,
+    required DateTime lastRepaymentDate,
     required InstallmentRepaymentMethod repaymentMethod,
     this.interestRatePeriod = const Value.absent(),
     this.interestRatePpm = const Value.absent(),
+    this.totalFeeMinor = const Value.absent(),
     required String currencyCode,
     required InstallmentContractStatus status,
     this.note = const Value.absent(),
@@ -4861,7 +5018,9 @@ class InstallmentContractsCompanion
        sourceType = Value(sourceType),
        principalMinor = Value(principalMinor),
        totalPeriods = Value(totalPeriods),
-       startDate = Value(startDate),
+       borrowingDate = Value(borrowingDate),
+       firstRepaymentDate = Value(firstRepaymentDate),
+       lastRepaymentDate = Value(lastRepaymentDate),
        repaymentMethod = Value(repaymentMethod),
        currencyCode = Value(currencyCode),
        status = Value(status);
@@ -4873,10 +5032,13 @@ class InstallmentContractsCompanion
     Expression<int>? disbursementTransactionId,
     Expression<int>? principalMinor,
     Expression<int>? totalPeriods,
-    Expression<DateTime>? startDate,
+    Expression<DateTime>? borrowingDate,
+    Expression<DateTime>? firstRepaymentDate,
+    Expression<DateTime>? lastRepaymentDate,
     Expression<String>? repaymentMethod,
     Expression<String>? interestRatePeriod,
     Expression<int>? interestRatePpm,
+    Expression<int>? totalFeeMinor,
     Expression<String>? currencyCode,
     Expression<String>? status,
     Expression<String>? note,
@@ -4894,11 +5056,15 @@ class InstallmentContractsCompanion
         'disbursement_transaction_id': disbursementTransactionId,
       if (principalMinor != null) 'principal_minor': principalMinor,
       if (totalPeriods != null) 'total_periods': totalPeriods,
-      if (startDate != null) 'start_date': startDate,
+      if (borrowingDate != null) 'start_date': borrowingDate,
+      if (firstRepaymentDate != null)
+        'first_repayment_date': firstRepaymentDate,
+      if (lastRepaymentDate != null) 'last_repayment_date': lastRepaymentDate,
       if (repaymentMethod != null) 'repayment_method': repaymentMethod,
       if (interestRatePeriod != null)
         'interest_rate_period': interestRatePeriod,
       if (interestRatePpm != null) 'interest_rate_ppm': interestRatePpm,
+      if (totalFeeMinor != null) 'total_fee_minor': totalFeeMinor,
       if (currencyCode != null) 'currency_code': currencyCode,
       if (status != null) 'status': status,
       if (note != null) 'note': note,
@@ -4915,10 +5081,13 @@ class InstallmentContractsCompanion
     Value<int?>? disbursementTransactionId,
     Value<int>? principalMinor,
     Value<int>? totalPeriods,
-    Value<DateTime>? startDate,
+    Value<DateTime>? borrowingDate,
+    Value<DateTime>? firstRepaymentDate,
+    Value<DateTime>? lastRepaymentDate,
     Value<InstallmentRepaymentMethod>? repaymentMethod,
     Value<InterestRatePeriod?>? interestRatePeriod,
     Value<int?>? interestRatePpm,
+    Value<int>? totalFeeMinor,
     Value<String>? currencyCode,
     Value<InstallmentContractStatus>? status,
     Value<String?>? note,
@@ -4935,10 +5104,13 @@ class InstallmentContractsCompanion
           disbursementTransactionId ?? this.disbursementTransactionId,
       principalMinor: principalMinor ?? this.principalMinor,
       totalPeriods: totalPeriods ?? this.totalPeriods,
-      startDate: startDate ?? this.startDate,
+      borrowingDate: borrowingDate ?? this.borrowingDate,
+      firstRepaymentDate: firstRepaymentDate ?? this.firstRepaymentDate,
+      lastRepaymentDate: lastRepaymentDate ?? this.lastRepaymentDate,
       repaymentMethod: repaymentMethod ?? this.repaymentMethod,
       interestRatePeriod: interestRatePeriod ?? this.interestRatePeriod,
       interestRatePpm: interestRatePpm ?? this.interestRatePpm,
+      totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
       currencyCode: currencyCode ?? this.currencyCode,
       status: status ?? this.status,
       note: note ?? this.note,
@@ -4977,8 +5149,16 @@ class InstallmentContractsCompanion
     if (totalPeriods.present) {
       map['total_periods'] = Variable<int>(totalPeriods.value);
     }
-    if (startDate.present) {
-      map['start_date'] = Variable<DateTime>(startDate.value);
+    if (borrowingDate.present) {
+      map['start_date'] = Variable<DateTime>(borrowingDate.value);
+    }
+    if (firstRepaymentDate.present) {
+      map['first_repayment_date'] = Variable<DateTime>(
+        firstRepaymentDate.value,
+      );
+    }
+    if (lastRepaymentDate.present) {
+      map['last_repayment_date'] = Variable<DateTime>(lastRepaymentDate.value);
     }
     if (repaymentMethod.present) {
       map['repayment_method'] = Variable<String>(
@@ -4996,6 +5176,9 @@ class InstallmentContractsCompanion
     }
     if (interestRatePpm.present) {
       map['interest_rate_ppm'] = Variable<int>(interestRatePpm.value);
+    }
+    if (totalFeeMinor.present) {
+      map['total_fee_minor'] = Variable<int>(totalFeeMinor.value);
     }
     if (currencyCode.present) {
       map['currency_code'] = Variable<String>(currencyCode.value);
@@ -5027,10 +5210,13 @@ class InstallmentContractsCompanion
           ..write('disbursementTransactionId: $disbursementTransactionId, ')
           ..write('principalMinor: $principalMinor, ')
           ..write('totalPeriods: $totalPeriods, ')
-          ..write('startDate: $startDate, ')
+          ..write('borrowingDate: $borrowingDate, ')
+          ..write('firstRepaymentDate: $firstRepaymentDate, ')
+          ..write('lastRepaymentDate: $lastRepaymentDate, ')
           ..write('repaymentMethod: $repaymentMethod, ')
           ..write('interestRatePeriod: $interestRatePeriod, ')
           ..write('interestRatePpm: $interestRatePpm, ')
+          ..write('totalFeeMinor: $totalFeeMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('status: $status, ')
           ..write('note: $note, ')
@@ -8183,10 +8369,13 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
       Value<int?> disbursementTransactionId,
       required int principalMinor,
       required int totalPeriods,
-      required DateTime startDate,
+      required DateTime borrowingDate,
+      required DateTime firstRepaymentDate,
+      required DateTime lastRepaymentDate,
       required InstallmentRepaymentMethod repaymentMethod,
       Value<InterestRatePeriod?> interestRatePeriod,
       Value<int?> interestRatePpm,
+      Value<int> totalFeeMinor,
       required String currencyCode,
       required InstallmentContractStatus status,
       Value<String?> note,
@@ -8202,10 +8391,13 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
       Value<int?> disbursementTransactionId,
       Value<int> principalMinor,
       Value<int> totalPeriods,
-      Value<DateTime> startDate,
+      Value<DateTime> borrowingDate,
+      Value<DateTime> firstRepaymentDate,
+      Value<DateTime> lastRepaymentDate,
       Value<InstallmentRepaymentMethod> repaymentMethod,
       Value<InterestRatePeriod?> interestRatePeriod,
       Value<int?> interestRatePpm,
+      Value<int> totalFeeMinor,
       Value<String> currencyCode,
       Value<InstallmentContractStatus> status,
       Value<String?> note,
@@ -8262,8 +8454,18 @@ class $$InstallmentContractsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get startDate => $composableBuilder(
-    column: $table.startDate,
+  ColumnFilters<DateTime> get borrowingDate => $composableBuilder(
+    column: $table.borrowingDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstRepaymentDate => $composableBuilder(
+    column: $table.firstRepaymentDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastRepaymentDate => $composableBuilder(
+    column: $table.lastRepaymentDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8289,6 +8491,11 @@ class $$InstallmentContractsTableFilterComposer
 
   ColumnFilters<int> get interestRatePpm => $composableBuilder(
     column: $table.interestRatePpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalFeeMinor => $composableBuilder(
+    column: $table.totalFeeMinor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8367,8 +8574,18 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get startDate => $composableBuilder(
-    column: $table.startDate,
+  ColumnOrderings<DateTime> get borrowingDate => $composableBuilder(
+    column: $table.borrowingDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstRepaymentDate => $composableBuilder(
+    column: $table.firstRepaymentDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastRepaymentDate => $composableBuilder(
+    column: $table.lastRepaymentDate,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -8384,6 +8601,11 @@ class $$InstallmentContractsTableOrderingComposer
 
   ColumnOrderings<int> get interestRatePpm => $composableBuilder(
     column: $table.interestRatePpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalFeeMinor => $composableBuilder(
+    column: $table.totalFeeMinor,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -8456,8 +8678,20 @@ class $$InstallmentContractsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<DateTime> get startDate =>
-      $composableBuilder(column: $table.startDate, builder: (column) => column);
+  GeneratedColumn<DateTime> get borrowingDate => $composableBuilder(
+    column: $table.borrowingDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get firstRepaymentDate => $composableBuilder(
+    column: $table.firstRepaymentDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastRepaymentDate => $composableBuilder(
+    column: $table.lastRepaymentDate,
+    builder: (column) => column,
+  );
 
   GeneratedColumnWithTypeConverter<InstallmentRepaymentMethod, String>
   get repaymentMethod => $composableBuilder(
@@ -8473,6 +8707,11 @@ class $$InstallmentContractsTableAnnotationComposer
 
   GeneratedColumn<int> get interestRatePpm => $composableBuilder(
     column: $table.interestRatePpm,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalFeeMinor => $composableBuilder(
+    column: $table.totalFeeMinor,
     builder: (column) => column,
   );
 
@@ -8548,12 +8787,15 @@ class $$InstallmentContractsTableTableManager
                 Value<int?> disbursementTransactionId = const Value.absent(),
                 Value<int> principalMinor = const Value.absent(),
                 Value<int> totalPeriods = const Value.absent(),
-                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime> borrowingDate = const Value.absent(),
+                Value<DateTime> firstRepaymentDate = const Value.absent(),
+                Value<DateTime> lastRepaymentDate = const Value.absent(),
                 Value<InstallmentRepaymentMethod> repaymentMethod =
                     const Value.absent(),
                 Value<InterestRatePeriod?> interestRatePeriod =
                     const Value.absent(),
                 Value<int?> interestRatePpm = const Value.absent(),
+                Value<int> totalFeeMinor = const Value.absent(),
                 Value<String> currencyCode = const Value.absent(),
                 Value<InstallmentContractStatus> status = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -8567,10 +8809,13 @@ class $$InstallmentContractsTableTableManager
                 disbursementTransactionId: disbursementTransactionId,
                 principalMinor: principalMinor,
                 totalPeriods: totalPeriods,
-                startDate: startDate,
+                borrowingDate: borrowingDate,
+                firstRepaymentDate: firstRepaymentDate,
+                lastRepaymentDate: lastRepaymentDate,
                 repaymentMethod: repaymentMethod,
                 interestRatePeriod: interestRatePeriod,
                 interestRatePpm: interestRatePpm,
+                totalFeeMinor: totalFeeMinor,
                 currencyCode: currencyCode,
                 status: status,
                 note: note,
@@ -8586,11 +8831,14 @@ class $$InstallmentContractsTableTableManager
                 Value<int?> disbursementTransactionId = const Value.absent(),
                 required int principalMinor,
                 required int totalPeriods,
-                required DateTime startDate,
+                required DateTime borrowingDate,
+                required DateTime firstRepaymentDate,
+                required DateTime lastRepaymentDate,
                 required InstallmentRepaymentMethod repaymentMethod,
                 Value<InterestRatePeriod?> interestRatePeriod =
                     const Value.absent(),
                 Value<int?> interestRatePpm = const Value.absent(),
+                Value<int> totalFeeMinor = const Value.absent(),
                 required String currencyCode,
                 required InstallmentContractStatus status,
                 Value<String?> note = const Value.absent(),
@@ -8604,10 +8852,13 @@ class $$InstallmentContractsTableTableManager
                 disbursementTransactionId: disbursementTransactionId,
                 principalMinor: principalMinor,
                 totalPeriods: totalPeriods,
-                startDate: startDate,
+                borrowingDate: borrowingDate,
+                firstRepaymentDate: firstRepaymentDate,
+                lastRepaymentDate: lastRepaymentDate,
                 repaymentMethod: repaymentMethod,
                 interestRatePeriod: interestRatePeriod,
                 interestRatePpm: interestRatePpm,
+                totalFeeMinor: totalFeeMinor,
                 currencyCode: currencyCode,
                 status: status,
                 note: note,

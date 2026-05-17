@@ -1788,3 +1788,189 @@ final class InstallmentRepaymentsFamily extends $Family
   @override
   String toString() => r'installmentRepaymentsProvider';
 }
+
+/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
+/// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+
+@ProviderFor(installmentRepaymentCashflows)
+final installmentRepaymentCashflowsProvider =
+    InstallmentRepaymentCashflowsFamily._();
+
+/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
+/// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+
+final class InstallmentRepaymentCashflowsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<RepaymentCashflow>>,
+          List<RepaymentCashflow>,
+          FutureOr<List<RepaymentCashflow>>
+        >
+    with
+        $FutureModifier<List<RepaymentCashflow>>,
+        $FutureProvider<List<RepaymentCashflow>> {
+  /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
+  /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+  InstallmentRepaymentCashflowsProvider._({
+    required InstallmentRepaymentCashflowsFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'installmentRepaymentCashflowsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentRepaymentCashflowsHash();
+
+  @override
+  String toString() {
+    return r'installmentRepaymentCashflowsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<RepaymentCashflow>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<RepaymentCashflow>> create(Ref ref) {
+    final argument = this.argument as int;
+    return installmentRepaymentCashflows(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is InstallmentRepaymentCashflowsProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$installmentRepaymentCashflowsHash() =>
+    r'6c7320d77246a1c5ad5c8c3600b5f14dd209a101';
+
+/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
+/// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+
+final class InstallmentRepaymentCashflowsFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<RepaymentCashflow>>, int> {
+  InstallmentRepaymentCashflowsFamily._()
+    : super(
+        retry: null,
+        name: r'installmentRepaymentCashflowsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
+  /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+
+  InstallmentRepaymentCashflowsProvider call(int contractId) =>
+      InstallmentRepaymentCashflowsProvider._(argument: contractId, from: this);
+
+  @override
+  String toString() => r'installmentRepaymentCashflowsProvider';
+}
+
+/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+
+@ProviderFor(installmentMetrics)
+final installmentMetricsProvider = InstallmentMetricsFamily._();
+
+/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+
+final class InstallmentMetricsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<({ContractMetrics actual, ContractMetrics designed})>,
+          ({ContractMetrics actual, ContractMetrics designed}),
+          FutureOr<({ContractMetrics actual, ContractMetrics designed})>
+        >
+    with
+        $FutureModifier<({ContractMetrics actual, ContractMetrics designed})>,
+        $FutureProvider<({ContractMetrics actual, ContractMetrics designed})> {
+  /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+  InstallmentMetricsProvider._({
+    required InstallmentMetricsFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'installmentMetricsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentMetricsHash();
+
+  @override
+  String toString() {
+    return r'installmentMetricsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<({ContractMetrics actual, ContractMetrics designed})>
+  $createElement($ProviderPointer pointer) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<({ContractMetrics actual, ContractMetrics designed})> create(
+    Ref ref,
+  ) {
+    final argument = this.argument as int;
+    return installmentMetrics(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is InstallmentMetricsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$installmentMetricsHash() =>
+    r'219380daeeca75d7fcac740a0dcc9ff49a27bc51';
+
+/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+
+final class InstallmentMetricsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<({ContractMetrics actual, ContractMetrics designed})>,
+          int
+        > {
+  InstallmentMetricsFamily._()
+    : super(
+        retry: null,
+        name: r'installmentMetricsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+
+  InstallmentMetricsProvider call(int contractId) =>
+      InstallmentMetricsProvider._(argument: contractId, from: this);
+
+  @override
+  String toString() => r'installmentMetricsProvider';
+}

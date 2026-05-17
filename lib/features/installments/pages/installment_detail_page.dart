@@ -61,13 +61,11 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final paidPrincipal = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.paid)
+    // 剩余本金 = pending 期次应还本金合计。
+    // 提前还本时 service 已将 pending 行重算为剩余本金，故此处直接累加 pending。
+    final remainingPrincipal = schedules
+        .where((s) => s.status == InstallmentScheduleStatus.pending)
         .fold<int>(0, (acc, s) => acc + s.expectedPrincipal.minorUnits);
-    final extraPrincipal = _extraPrincipalSum(ref);
-    final remainingPrincipal = contract.principal.minorUnits -
-        paidPrincipal -
-        extraPrincipal;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -125,12 +123,6 @@ class _Body extends ConsumerWidget {
           ),
       ],
     );
-  }
-
-  int _extraPrincipalSum(WidgetRef ref) {
-    // 简化：在 UI 层不深入读 transaction_details；显示剩余本金时只考虑计划行 paid 累计。
-    // 提前还本数据由 service 层在重算时同步进 schedules，所以这里近似估算即可。
-    return 0;
   }
 }
 
@@ -198,7 +190,7 @@ class _Header extends StatelessWidget {
                 Expanded(
                   child: _LabelValue(
                     label: '起始日',
-                    value: _formatDate(contract.startDate),
+                    value: _formatDate(contract.borrowingDate),
                   ),
                 ),
                 Expanded(
@@ -312,6 +304,13 @@ class _ActionBar extends StatelessWidget {
                   '/installments/${contract.id}/repay?mode=settle',
                 ),
                 child: const Text('提前结清'),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: () =>
+                    context.push('/installments/${contract.id}/edit'),
+                child: const Text('编辑合同'),
               ),
             ),
           ],

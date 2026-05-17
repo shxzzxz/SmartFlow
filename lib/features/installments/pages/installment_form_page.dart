@@ -16,9 +16,14 @@ import '../../../domain/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 class InstallmentFormPage extends ConsumerStatefulWidget {
-  const InstallmentFormPage({required this.liabilityAccountId, super.key});
+  const InstallmentFormPage({
+    required this.liabilityAccountId,
+    this.lockedSourceType,
+    super.key,
+  });
 
   final int liabilityAccountId;
+  final InstallmentSourceType? lockedSourceType;
 
   @override
   ConsumerState<InstallmentFormPage> createState() =>
@@ -33,8 +38,11 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   final _totalFeeController = TextEditingController();
   final _noteController = TextEditingController();
 
-  DateTime _startDate = DateTime.now();
-  DateTime _occurredAt = DateTime.now();
+  DateTime _borrowingDate = DateTime.now();
+  DateTime _firstRepaymentDate =
+      DateTime(DateTime.now().year, DateTime.now().month + 1, DateTime.now().day);
+  // 用户是否手工调整过首期还款日；未调整时跟随借款日期联动。
+  bool _firstDateTouched = false;
   InstallmentRepaymentMethod _method = InstallmentRepaymentMethod.equalInstallment;
   InterestRatePeriod _ratePeriod = InterestRatePeriod.monthly;
   InstallmentSourceType? _sourceType;
@@ -82,7 +90,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
       return const Center(child: Text('负债账户不存在'));
     }
 
-    _sourceType ??= _defaultSourceType(liability);
+    _sourceType ??= widget.lockedSourceType ?? _defaultSourceType(liability);
     final isDisbursement = _sourceType == InstallmentSourceType.disbursement;
 
     return Form(
@@ -99,15 +107,16 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
             children: [
               AppPlainFormRow(
                 label: '负债账户',
-                child: Text(
-                  liability.name,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                child: AccountPlainValue(
+                  account: liability,
+                  placeholder: '',
                 ),
               ),
-              _SourceTypeRow(
-                value: _sourceType!,
-                onChanged: (value) => setState(() => _sourceType = value),
-              ),
+              if (widget.lockedSourceType == null)
+                _SourceTypeRow(
+                  value: _sourceType!,
+                  onChanged: (value) => setState(() => _sourceType = value),
+                ),
               if (isDisbursement)
                 AccountPlainFormRow(
                   label: '到账账户',
@@ -137,9 +146,14 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 validator: _validatePositiveInt,
               ),
               DateTimePlainFormRow(
-                label: '起始日',
-                value: _formatDate(_startDate),
-                onTap: _pickStartDate,
+                label: '借款日期',
+                value: _formatDate(_borrowingDate),
+                onTap: _pickBorrowingDate,
+              ),
+              DateTimePlainFormRow(
+                label: '首期还款日',
+                value: _formatDate(_firstRepaymentDate),
+                onTap: _pickFirstRepaymentDate,
               ),
               _MethodRow(
                 value: _method,
@@ -159,12 +173,6 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   controller: _totalFeeController,
                   hintText: '所有期次手续费合计（可选）',
                   validator: _validateOptionalMoney,
-                ),
-              if (isDisbursement)
-                DateTimePlainFormRow(
-                  label: '放款日期',
-                  value: _formatDateTime(_occurredAt),
-                  onTap: _pickOccurredAt,
                 ),
               NotePlainFormRow(controller: _noteController),
             ],
@@ -186,24 +194,32 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
         : InstallmentSourceType.billConversion;
   }
 
-  Future<void> _pickStartDate() async {
+  Future<void> _pickBorrowingDate() async {
     final picked = await showAppDateTimePicker(
       context: context,
-      initialDateTime: _startDate,
-      title: '选择起始日',
+      initialDateTime: _borrowingDate,
+      title: '选择借款日期',
     );
     if (picked == null || !mounted) return;
-    setState(() => _startDate = picked);
+    setState(() {
+      _borrowingDate = picked;
+      if (!_firstDateTouched) {
+        _firstRepaymentDate = _addMonths(picked, 1);
+      }
+    });
   }
 
-  Future<void> _pickOccurredAt() async {
+  Future<void> _pickFirstRepaymentDate() async {
     final picked = await showAppDateTimePicker(
       context: context,
-      initialDateTime: _occurredAt,
-      title: '选择放款日期',
+      initialDateTime: _firstRepaymentDate,
+      title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
-    setState(() => _occurredAt = picked);
+    setState(() {
+      _firstRepaymentDate = picked;
+      _firstDateTouched = true;
+    });
   }
 
   Future<void> _pickAccount({
@@ -246,12 +262,12 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
           disbursementAccountId: _disbursementAccountId!,
           principal: principal,
           totalPeriods: totalPeriods,
-          startDate: _startDate,
+          borrowingDate: _borrowingDate,
+          firstRepaymentDate: _firstRepaymentDate,
           repaymentMethod: _method,
           interestRatePeriod: ratePpm == null ? null : _ratePeriod,
           interestRatePpm: ratePpm,
           totalFeeMinor: totalFeeMinor,
-          occurredAt: _occurredAt,
           note: note,
         ),
       );
@@ -261,7 +277,8 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
           liabilityAccountId: liability.id,
           principal: principal,
           totalPeriods: totalPeriods,
-          startDate: _startDate,
+          borrowingDate: _borrowingDate,
+          firstRepaymentDate: _firstRepaymentDate,
           repaymentMethod: _method,
           interestRatePeriod: ratePpm == null ? null : _ratePeriod,
           interestRatePpm: ratePpm,
@@ -276,7 +293,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     switch (result) {
       case Success(:final value):
         ref.invalidate(installmentContractsByAccountProvider(liability.id));
-        context.go('/installments/${value.contractId}');
+        context.pushReplacement('/installments/${value.contractId}');
       case FailureResult(:final failure):
         _showError(failure.message);
     }
@@ -327,6 +344,10 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     if (percent == null || percent <= 0) return null;
     return (percent * 10000).round();
   }
+}
+
+DateTime _addMonths(DateTime date, int months) {
+  return DateTime(date.year, date.month + months, date.day);
 }
 
 class _SourceTypeRow extends StatelessWidget {
@@ -504,10 +525,4 @@ String? _blankToNull(String value) {
 String _formatDate(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
-}
-
-String _formatDateTime(DateTime date) {
-  final time = '${date.hour.toString().padLeft(2, '0')}:'
-      '${date.minute.toString().padLeft(2, '0')}';
-  return '${_formatDate(date)} $time';
 }

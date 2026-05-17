@@ -15,13 +15,29 @@ class InstallmentContracts extends Table {
       integer().named('disbursement_transaction_id').nullable()();
   IntColumn get principalMinor => integer().named('principal_minor')();
   IntColumn get totalPeriods => integer().named('total_periods')();
-  DateTimeColumn get startDate => dateTime().named('start_date')();
+
+  /// 借款日期 / 合同起算日（旧字段 start_date 沿用，语义统一为借款日期）。
+  DateTimeColumn get borrowingDate => dateTime().named('start_date')();
+
+  /// 首期还款日。
+  DateTimeColumn get firstRepaymentDate =>
+      dateTime().named('first_repayment_date')();
+
+  /// 末期还款日。默认 = 首期 + (期数-1) 月，可独调。
+  DateTimeColumn get lastRepaymentDate =>
+      dateTime().named('last_repayment_date')();
+
   TextColumn get repaymentMethod =>
       textEnum<InstallmentRepaymentMethod>().named('repayment_method')();
   TextColumn get interestRatePeriod =>
       textEnum<InterestRatePeriod>().named('interest_rate_period').nullable()();
   IntColumn get interestRatePpm =>
       integer().named('interest_rate_ppm').nullable()();
+
+  /// 合同总手续费，用于编辑时按 method 重新分配。
+  IntColumn get totalFeeMinor =>
+      integer().named('total_fee_minor').withDefault(const Constant(0))();
+
   TextColumn get currencyCode =>
       text().named('currency_code').withLength(min: 3, max: 3)();
   TextColumn get status =>
@@ -36,6 +52,7 @@ class InstallmentContracts extends Table {
   List<String> get customConstraints => [
     'CHECK (principal_minor > 0)',
     'CHECK (total_periods > 0)',
+    'CHECK (total_fee_minor >= 0)',
     'CHECK (interest_rate_ppm IS NULL OR interest_rate_ppm >= 0)',
     'CHECK ('
         '(source_type = \'disbursement\' '

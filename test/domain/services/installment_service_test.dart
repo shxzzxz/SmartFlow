@@ -67,9 +67,9 @@ void main() {
           disbursementAccountId: assetAccountId,
           principal: const Money(minorUnits: 100000),
           totalPeriods: 1,
-          startDate: DateTime(2026, 6, 10),
+          borrowingDate: DateTime(2026, 5, 10),
+          firstRepaymentDate: DateTime(2026, 6, 10),
           repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          occurredAt: DateTime(2026, 5, 10),
         ),
       );
       return (result as Success<CreateContractResult>).value.contractId;
@@ -82,11 +82,11 @@ void main() {
           disbursementAccountId: assetAccountId,
           principal: const Money(minorUnits: 1200000),
           totalPeriods: 12,
-          startDate: DateTime(2026, 6, 10),
+          borrowingDate: DateTime(2026, 5, 10),
+          firstRepaymentDate: DateTime(2026, 6, 10),
           repaymentMethod: InstallmentRepaymentMethod.equalInstallment,
           interestRatePeriod: InterestRatePeriod.monthly,
           interestRatePpm: 5000,
-          occurredAt: DateTime(2026, 5, 10),
         ),
       );
       expect(result, isA<Success<CreateContractResult>>());
@@ -98,6 +98,8 @@ void main() {
       expect(contract!.sourceType, InstallmentSourceType.disbursement);
       expect(contract.status, InstallmentContractStatus.active);
       expect(contract.disbursementTransactionId, isNotNull);
+      expect(contract.firstRepaymentDate, DateTime(2026, 6, 10));
+      expect(contract.lastRepaymentDate, DateTime(2027, 5, 10));
 
       final schedules = await service.listSchedules(contractId);
       expect(schedules, hasLength(12));
@@ -117,7 +119,8 @@ void main() {
           liabilityAccountId: liabilityAccountId,
           principal: const Money(minorUnits: 500000),
           totalPeriods: 12,
-          startDate: DateTime(2026, 6, 9),
+          borrowingDate: DateTime(2026, 5, 9),
+          firstRepaymentDate: DateTime(2026, 6, 9),
           repaymentMethod: InstallmentRepaymentMethod.flatFee,
           totalFeeMinor: 36000,
         ),
@@ -126,6 +129,7 @@ void main() {
           (result as Success<CreateContractResult>).value.contractId;
       final contract = await service.findContract(contractId);
       expect(contract!.disbursementTransactionId, isNull);
+      expect(contract.totalFeeMinor, 36000);
       expect(await _balanceOf(database, liabilityAccountId), 0);
       final schedules = await service.listSchedules(contractId);
       expect(schedules, hasLength(12));
@@ -162,13 +166,17 @@ void main() {
           disbursementAccountId: assetAccountId,
           principal: const Money(minorUnits: 1000000),
           totalPeriods: 10,
-          startDate: DateTime(2026, 6, 10),
+          borrowingDate: DateTime(2026, 5, 10),
+          firstRepaymentDate: DateTime(2026, 6, 10),
           repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          occurredAt: DateTime(2026, 5, 10),
         ),
       );
       final contractId =
           (result as Success<CreateContractResult>).value.contractId;
+
+      final beforeDates = (await service.listSchedules(contractId))
+          .map((s) => s.expectedRepaymentDate)
+          .toList();
 
       final extra = await service.createExtraPrincipalRepayment(
         CreateExtraPrincipalRepaymentCommand(
@@ -185,6 +193,42 @@ void main() {
           .where((s) => s.status == InstallmentScheduleStatus.pending)
           .fold<int>(0, (acc, s) => acc + s.expectedPrincipal.minorUnits);
       expect(pendingPrincipalSum, 700000);
+
+      // 提前还本后日期不能变。
+      final afterDates =
+          schedules.map((s) => s.expectedRepaymentDate).toList();
+      expect(afterDates, beforeDates);
+    });
+
+    test('createExtraPrincipalRepayment 支持利息', () async {
+      final contractResult = await service.createDisbursementContract(
+        CreateDisbursementContractCommand(
+          liabilityAccountId: liabilityAccountId,
+          disbursementAccountId: assetAccountId,
+          principal: const Money(minorUnits: 1000000),
+          totalPeriods: 10,
+          borrowingDate: DateTime(2026, 5, 10),
+          firstRepaymentDate: DateTime(2026, 6, 10),
+          repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+        ),
+      );
+      final contractId =
+          (contractResult as Success<CreateContractResult>).value.contractId;
+
+      final extra = await service.createExtraPrincipalRepayment(
+        CreateExtraPrincipalRepaymentCommand(
+          contractId: contractId,
+          principal: const Money(minorUnits: 300000),
+          interest: const Money(minorUnits: 1500),
+          paidFromAccountId: assetAccountId,
+          occurredAt: DateTime(2026, 6, 1),
+        ),
+      );
+      expect(extra, isA<Success>());
+
+      // 资产账户应扣减本金 + 利息
+      final assetBalance = await _balanceOf(database, assetAccountId);
+      expect(assetBalance, 5000000 + 1000000 - 300000 - 1500);
     });
 
     test('createEarlySettlement 剩余期次 skipped 且合同 closed', () async {
@@ -194,9 +238,9 @@ void main() {
           disbursementAccountId: assetAccountId,
           principal: const Money(minorUnits: 1000000),
           totalPeriods: 10,
-          startDate: DateTime(2026, 6, 10),
+          borrowingDate: DateTime(2026, 5, 10),
+          firstRepaymentDate: DateTime(2026, 6, 10),
           repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          occurredAt: DateTime(2026, 5, 10),
         ),
       );
       final contractId =
@@ -252,9 +296,9 @@ void main() {
           disbursementAccountId: assetAccountId,
           principal: const Money(minorUnits: 500000),
           totalPeriods: 5,
-          startDate: DateTime(2026, 6, 10),
+          borrowingDate: DateTime(2026, 5, 10),
+          firstRepaymentDate: DateTime(2026, 6, 10),
           repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-          occurredAt: DateTime(2026, 5, 10),
         ),
       );
       final contractId =
@@ -279,6 +323,206 @@ void main() {
       for (final s in schedules) {
         expect(s.status, InstallmentScheduleStatus.pending);
       }
+    });
+
+    group('updateContract', () {
+      test('调整末期还款日：仅末期日期变更，其它 pending 行日期不变', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 1200000),
+            totalPeriods: 12,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            totalPeriods: 12,
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            lastRepaymentDate: DateTime(2027, 6, 20), // 末期推后 10 天
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        expect(res, isA<Success>());
+        final schedules = await service.listSchedules(contractId);
+        expect(schedules.last.expectedRepaymentDate, DateTime(2027, 6, 20));
+        // 第 11 期保持原日期
+        expect(schedules[10].expectedRepaymentDate, DateTime(2027, 4, 10));
+      });
+
+      test('paid 后修改首期还款日应失败', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 600000),
+            totalPeriods: 6,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+        final schedules = await service.listSchedules(contractId);
+        await service.createRegularRepayment(
+          CreateRegularRepaymentCommand(
+            contractId: contractId,
+            scheduleId: schedules.first.id,
+            principal: const Money(minorUnits: 100000),
+            paidFromAccountId: assetAccountId,
+            occurredAt: DateTime(2026, 6, 10),
+          ),
+        );
+
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            totalPeriods: 6,
+            firstRepaymentDate: DateTime(2026, 7, 10), // 改了
+            lastRepaymentDate: DateTime(2026, 12, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        expect(res, isA<FailureResult>());
+      });
+
+      test('期数减少：超出的 pending 行被 skipped 清零', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 600000),
+            totalPeriods: 6,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            totalPeriods: 3,
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            lastRepaymentDate: DateTime(2026, 8, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        expect(res, isA<Success>());
+
+        final schedules = await service.listSchedules(contractId);
+        final pending = schedules
+            .where((s) => s.status == InstallmentScheduleStatus.pending)
+            .toList();
+        final skipped = schedules
+            .where((s) => s.status == InstallmentScheduleStatus.skipped)
+            .toList();
+        expect(pending, hasLength(3));
+        expect(skipped, hasLength(3));
+        final principalSum = pending.fold<int>(
+          0,
+          (acc, s) => acc + s.expectedPrincipal.minorUnits,
+        );
+        expect(principalSum, 600000);
+      });
+
+      test('schedulePatches 覆盖 pending 行金额', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 600000),
+            totalPeriods: 6,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+
+        await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            totalPeriods: 6,
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            lastRepaymentDate: DateTime(2026, 11, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+            schedulePatches: [
+              const SchedulePendingPatch(
+                periodNo: 3,
+                expectedPrincipal: Money(minorUnits: 200000),
+                expectedInterest: Money(minorUnits: 0),
+                expectedFee: Money(minorUnits: 0),
+              ),
+            ],
+          ),
+        );
+        final schedules = await service.listSchedules(contractId);
+        expect(
+          schedules.firstWhere((s) => s.periodNo == 3).expectedPrincipal
+              .minorUnits,
+          200000,
+        );
+      });
+
+      test('期数 < paidCount+1 失败', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 600000),
+            totalPeriods: 6,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+        final schedules = await service.listSchedules(contractId);
+        // 还掉前 2 期
+        await service.createRegularRepayment(
+          CreateRegularRepaymentCommand(
+            contractId: contractId,
+            scheduleId: schedules[0].id,
+            principal: const Money(minorUnits: 100000),
+            paidFromAccountId: assetAccountId,
+            occurredAt: DateTime(2026, 6, 10),
+          ),
+        );
+        await service.createRegularRepayment(
+          CreateRegularRepaymentCommand(
+            contractId: contractId,
+            scheduleId: schedules[1].id,
+            principal: const Money(minorUnits: 100000),
+            paidFromAccountId: assetAccountId,
+            occurredAt: DateTime(2026, 7, 10),
+          ),
+        );
+
+        // 试图把期数改成 2（应失败，因为 paid=2，至少要 3）
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            totalPeriods: 2,
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            lastRepaymentDate: DateTime(2026, 7, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        expect(res, isA<FailureResult>());
+      });
     });
   });
 }

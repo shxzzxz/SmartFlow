@@ -22,11 +22,13 @@ import '../domain/repositories/transaction_query_repository.dart';
 import '../domain/services/account_service.dart';
 import '../domain/services/category_service.dart';
 import '../domain/services/financial_metrics_service.dart';
+import '../domain/services/installment_metrics.dart';
 import '../domain/services/installment_service.dart';
 import '../domain/services/posting_service.dart';
 import '../domain/services/transaction_query_service.dart';
 import '../domain/services/transaction_service.dart';
 import '../core/time/month_key.dart';
+import '../core/money/money.dart';
 
 part 'providers.g.dart';
 
@@ -276,4 +278,81 @@ Future<List<InstallmentRepayment>> installmentRepayments(
   int contractId,
 ) {
   return ref.watch(installmentServiceProvider).listRepayments(contractId);
+}
+
+/// 提供 metrics 模块所需的 RepaymentCashflow 列表。
+/// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
+@riverpod
+Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
+  Ref ref,
+  int contractId,
+) async {
+  final repayments =
+      await ref.watch(installmentRepaymentsProvider(contractId).future);
+  final queryRepository = ref.watch(transactionQueryRepositoryProvider);
+  final result = <RepaymentCashflow>[];
+  for (final r in repayments) {
+    final view = await queryRepository.watchTransactionDetail(r.transactionId).first;
+    if (view == null) continue;
+    final currency = view.transaction.currencyCode;
+    var principalMinor = 0;
+    var interestMinor = 0;
+    var feeMinor = 0;
+    for (final d in view.details) {
+      switch (d.type) {
+        case TransactionDetailType.repaymentPrincipal:
+          principalMinor += d.amount.minorUnits;
+        case TransactionDetailType.repaymentInterest:
+          interestMinor += d.amount.minorUnits;
+        case TransactionDetailType.repaymentFee:
+          feeMinor += d.amount.minorUnits;
+        case TransactionDetailType.repaymentDiscount:
+          // 折扣抵减本金对外现金流（折扣不计入支出），可视为本金减项。
+          principalMinor -= d.amount.minorUnits;
+        default:
+          break;
+      }
+    }
+    result.add(
+      RepaymentCashflow(
+        id: r.id,
+        repaymentType: r.repaymentType,
+        scheduleId: r.scheduleId,
+        occurredAt: view.transaction.occurredAt,
+        principal: Money(minorUnits: principalMinor, currency: currency),
+        interest: Money(minorUnits: interestMinor, currency: currency),
+        fee: Money(minorUnits: feeMinor, currency: currency),
+      ),
+    );
+  }
+  return result;
+}
+
+/// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
+@riverpod
+Future<({ContractMetrics designed, ContractMetrics actual})>
+    installmentMetrics(Ref ref, int contractId) async {
+  final contract =
+      await ref.watch(installmentContractProvider(contractId).future);
+  final schedules =
+      await ref.watch(installmentSchedulesProvider(contractId).future);
+  final repayments =
+      await ref.watch(installmentRepaymentCashflowsProvider(contractId).future);
+  if (contract == null) {
+    throw StateError('Contract $contractId not found');
+  }
+  const calc = InstallmentMetricsCalculator();
+  return (
+    designed: calc.compute(
+      contract: contract,
+      schedules: schedules,
+      repayments: repayments,
+    ),
+    actual: calc.compute(
+      contract: contract,
+      schedules: schedules,
+      repayments: repayments,
+      view: ContractMetricsView.actual,
+    ),
+  );
 }

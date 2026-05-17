@@ -86,6 +86,31 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           'ON installment_repayments (transaction_id)',
         );
       }
+      if (from < 4) {
+        // 拓展合同表：首期/末期还款日、总手续费。
+        // 旧数据按"旧 generator 行为"回填：首期 = 起算日+1月，末期 = 起算日+N月。
+        await database.customStatement(
+          'ALTER TABLE installment_contracts ADD COLUMN '
+          'first_repayment_date INTEGER NOT NULL DEFAULT 0',
+        );
+        await database.customStatement(
+          'ALTER TABLE installment_contracts ADD COLUMN '
+          'last_repayment_date INTEGER NOT NULL DEFAULT 0',
+        );
+        await database.customStatement(
+          'ALTER TABLE installment_contracts ADD COLUMN '
+          'total_fee_minor INTEGER NOT NULL DEFAULT 0',
+        );
+        await database.customStatement(
+          "UPDATE installment_contracts SET "
+          "first_repayment_date = CAST(strftime('%s', "
+          "datetime(start_date, 'unixepoch', '+1 month')) AS INTEGER), "
+          "last_repayment_date = CAST(strftime('%s', "
+          "datetime(start_date, 'unixepoch', "
+          "'+' || total_periods || ' month')) AS INTEGER) "
+          "WHERE first_repayment_date = 0",
+        );
+      }
     },
     beforeOpen: (_) async {
       await ensureBuiltinData(database);

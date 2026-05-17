@@ -80,10 +80,7 @@ class _AccountDetailContent extends ConsumerWidget {
         _AccountActionBar(account: account),
         const SizedBox(height: AppSpacing.space8),
         if (showInstallments && contractsAsync != null) ...[
-          _InstallmentSection(
-            accountId: accountId,
-            contractsAsync: contractsAsync,
-          ),
+          _InstallmentSection(contractsAsync: contractsAsync),
           const SizedBox(height: AppSpacing.space8),
         ],
         if (groups.isEmpty)
@@ -307,6 +304,12 @@ class _AccountActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLiability = account.type == AccountType.liability;
+    final isLoan = account.subtype == AccountSubtype.loan;
+    final showRepayment = isLiability && !isLoan;
+    final showInstallment = isLiability;
+    final installmentSource = isLoan ? 'disbursement' : 'bill';
+
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.symmetric(
@@ -322,7 +325,7 @@ class _AccountActionBar extends StatelessWidget {
                 onTap: () => _openTransactionForm(context, account),
               ),
             ),
-            if (account.type == AccountType.liability) ...[
+            if (showRepayment) ...[
               const SizedBox(width: AppSpacing.space6),
               Expanded(
                 child: _ActionButton(
@@ -330,6 +333,19 @@ class _AccountActionBar extends StatelessWidget {
                   label: '还款',
                   onTap:
                       () => context.push('/accounts/${account.id}/repayment'),
+                ),
+              ),
+            ],
+            if (showInstallment) ...[
+              const SizedBox(width: AppSpacing.space6),
+              Expanded(
+                child: _ActionButton(
+                  icon: RemixIcons.calendar_schedule_line,
+                  label: '分期',
+                  onTap: () => context.push(
+                    '/accounts/${account.id}/installments/new'
+                    '?source=$installmentSource',
+                  ),
                 ),
               ),
             ],
@@ -476,12 +492,8 @@ class _EmptyAccountTransactions extends StatelessWidget {
 }
 
 class _InstallmentSection extends StatelessWidget {
-  const _InstallmentSection({
-    required this.accountId,
-    required this.contractsAsync,
-  });
+  const _InstallmentSection({required this.contractsAsync});
 
-  final int accountId;
   final AsyncValue<List<InstallmentContract>> contractsAsync;
 
   @override
@@ -497,18 +509,7 @@ class _InstallmentSection extends StatelessWidget {
             AppSpacing.space4,
             AppSpacing.space4,
           ),
-          child: Row(
-            children: [
-              Text('分期合同', style: styles.dateSectionTitle),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () =>
-                    context.push('/accounts/$accountId/installments/new'),
-                icon: const Icon(RemixIcons.add_line, size: 18),
-                label: const Text('新建'),
-              ),
-            ],
-          ),
+          child: Text('分期合同', style: styles.dateSectionTitle),
         ),
         switch (contractsAsync) {
           AsyncData(value: final contracts) => contracts.isEmpty

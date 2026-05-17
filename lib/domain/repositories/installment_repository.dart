@@ -11,13 +11,16 @@ class InstallmentContractDraft {
     required this.sourceType,
     required this.principal,
     required this.totalPeriods,
-    required this.startDate,
+    required this.borrowingDate,
+    required this.firstRepaymentDate,
+    required this.lastRepaymentDate,
     required this.repaymentMethod,
     required this.status,
     this.disbursementAccountId,
     this.disbursementTransactionId,
     this.interestRatePeriod,
     this.interestRatePpm,
+    this.totalFeeMinor = 0,
     this.note,
   });
 
@@ -27,12 +30,45 @@ class InstallmentContractDraft {
   final int? disbursementTransactionId;
   final Money principal;
   final int totalPeriods;
-  final DateTime startDate;
+  final DateTime borrowingDate;
+  final DateTime firstRepaymentDate;
+  final DateTime lastRepaymentDate;
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+  final int totalFeeMinor;
   final InstallmentContractStatus status;
   final String? note;
+}
+
+/// 合同字段编辑补丁，仅包含可变字段。
+/// 借款日期、source、放款交易等不可改字段不在此列。
+class InstallmentContractPatch {
+  const InstallmentContractPatch({
+    this.totalPeriods,
+    this.firstRepaymentDate,
+    this.lastRepaymentDate,
+    this.repaymentMethod,
+    this.interestRatePeriod,
+    this.interestRatePpm,
+    this.totalFeeMinor,
+    this.note,
+    this.clearRate = false,
+    this.clearNote = false,
+  });
+
+  final int? totalPeriods;
+  final DateTime? firstRepaymentDate;
+  final DateTime? lastRepaymentDate;
+  final InstallmentRepaymentMethod? repaymentMethod;
+  final InterestRatePeriod? interestRatePeriod;
+  final int? interestRatePpm;
+  final int? totalFeeMinor;
+  final String? note;
+
+  /// 设为 true 时清空利率字段（period + ppm 都置空）。
+  final bool clearRate;
+  final bool clearNote;
 }
 
 class InstallmentSchedulePatch {
@@ -86,7 +122,16 @@ abstract interface class InstallmentRepository {
 
   Future<int> insertContract(InstallmentContractDraft draft);
 
+  Future<void> updateContract(int contractId, InstallmentContractPatch patch);
+
   Future<void> replaceSchedules(
+    int contractId,
+    List<InstallmentScheduleDraft> drafts,
+  );
+
+  /// 追加 pending 期次行（不动现有 schedule 行）。
+  /// drafts 中的 periodNo 由调用方负责，保证全表 periodNo 唯一。
+  Future<void> appendSchedules(
     int contractId,
     List<InstallmentScheduleDraft> drafts,
   );

@@ -30,7 +30,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
     final rows =
         await (_database.select(_database.installmentContracts)
               ..where((c) => c.liabilityAccountId.equals(liabilityAccountId))
-              ..orderBy([(c) => OrderingTerm.desc(c.startDate)]))
+              ..orderBy([(c) => OrderingTerm.desc(c.borrowingDate)]))
             .get();
     return rows.map(_mapContract).toList();
   }
@@ -86,10 +86,13 @@ class DriftInstallmentRepository implements InstallmentRepository {
             disbursementTransactionId: Value(draft.disbursementTransactionId),
             principalMinor: draft.principal.minorUnits,
             totalPeriods: draft.totalPeriods,
-            startDate: draft.startDate,
+            borrowingDate: draft.borrowingDate,
+            firstRepaymentDate: draft.firstRepaymentDate,
+            lastRepaymentDate: draft.lastRepaymentDate,
             repaymentMethod: draft.repaymentMethod,
             interestRatePeriod: Value(draft.interestRatePeriod),
             interestRatePpm: Value(draft.interestRatePpm),
+            totalFeeMinor: Value(draft.totalFeeMinor),
             currencyCode: draft.principal.currency,
             status: draft.status,
             note: Value(draft.note),
@@ -97,6 +100,53 @@ class DriftInstallmentRepository implements InstallmentRepository {
             updatedAt: Value(now),
           ),
         );
+  }
+
+  @override
+  Future<void> updateContract(
+    int contractId,
+    InstallmentContractPatch patch,
+  ) async {
+    final ratePeriodValue = patch.clearRate
+        ? const Value<InterestRatePeriod?>(null)
+        : (patch.interestRatePeriod == null
+            ? const Value<InterestRatePeriod?>.absent()
+            : Value<InterestRatePeriod?>(patch.interestRatePeriod));
+    final ratePpmValue = patch.clearRate
+        ? const Value<int?>(null)
+        : (patch.interestRatePpm == null
+            ? const Value<int?>.absent()
+            : Value<int?>(patch.interestRatePpm));
+    final noteValue = patch.clearNote
+        ? const Value<String?>(null)
+        : (patch.note == null
+            ? const Value<String?>.absent()
+            : Value<String?>(patch.note));
+
+    final companion = InstallmentContractsCompanion(
+      totalPeriods: patch.totalPeriods == null
+          ? const Value.absent()
+          : Value(patch.totalPeriods!),
+      firstRepaymentDate: patch.firstRepaymentDate == null
+          ? const Value.absent()
+          : Value(patch.firstRepaymentDate!),
+      lastRepaymentDate: patch.lastRepaymentDate == null
+          ? const Value.absent()
+          : Value(patch.lastRepaymentDate!),
+      repaymentMethod: patch.repaymentMethod == null
+          ? const Value.absent()
+          : Value(patch.repaymentMethod!),
+      interestRatePeriod: ratePeriodValue,
+      interestRatePpm: ratePpmValue,
+      totalFeeMinor: patch.totalFeeMinor == null
+          ? const Value.absent()
+          : Value(patch.totalFeeMinor!),
+      note: noteValue,
+      updatedAt: Value(DateTime.now()),
+    );
+    await (_database.update(_database.installmentContracts)
+          ..where((c) => c.id.equals(contractId)))
+        .write(companion);
   }
 
   @override
@@ -127,6 +177,33 @@ class DriftInstallmentRepository implements InstallmentRepository {
           );
         }
       });
+    });
+  }
+
+  @override
+  Future<void> appendSchedules(
+    int contractId,
+    List<InstallmentScheduleDraft> drafts,
+  ) async {
+    if (drafts.isEmpty) return;
+    final now = DateTime.now();
+    await _database.batch((batch) {
+      for (final draft in drafts) {
+        batch.insert(
+          _database.installmentSchedules,
+          InstallmentSchedulesCompanion.insert(
+            contractId: contractId,
+            periodNo: draft.periodNo,
+            expectedRepaymentDate: draft.expectedRepaymentDate,
+            expectedPrincipalMinor: Value(draft.expectedPrincipal.minorUnits),
+            expectedInterestMinor: Value(draft.expectedInterest.minorUnits),
+            expectedFeeMinor: Value(draft.expectedFee.minorUnits),
+            status: InstallmentScheduleStatus.pending,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+      }
     });
   }
 
@@ -208,10 +285,13 @@ class DriftInstallmentRepository implements InstallmentRepository {
         currency: row.currencyCode,
       ),
       totalPeriods: row.totalPeriods,
-      startDate: row.startDate,
+      borrowingDate: row.borrowingDate,
+      firstRepaymentDate: row.firstRepaymentDate,
+      lastRepaymentDate: row.lastRepaymentDate,
       repaymentMethod: row.repaymentMethod,
       interestRatePeriod: row.interestRatePeriod,
       interestRatePpm: row.interestRatePpm,
+      totalFeeMinor: row.totalFeeMinor,
       status: row.status,
       note: row.note,
       createdAt: row.createdAt,
