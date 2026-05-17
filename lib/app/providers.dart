@@ -316,6 +316,7 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
     result.add(
       RepaymentCashflow(
         id: r.id,
+        transactionId: r.transactionId,
         repaymentType: r.repaymentType,
         scheduleId: r.scheduleId,
         occurredAt: view.transaction.occurredAt,

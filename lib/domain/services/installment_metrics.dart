@@ -10,6 +10,7 @@ import '../enums/accounting_enums.dart';
 class RepaymentCashflow {
   const RepaymentCashflow({
     required this.id,
+    required this.transactionId,
     required this.repaymentType,
     required this.occurredAt,
     required this.principal,
@@ -19,6 +20,7 @@ class RepaymentCashflow {
   });
 
   final int id;
+  final int transactionId;
   final InstallmentRepaymentType repaymentType;
   final DateTime occurredAt;
   final Money principal;

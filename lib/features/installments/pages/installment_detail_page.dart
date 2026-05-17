@@ -8,9 +8,9 @@ import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/installment_contract.dart';
-import '../../../domain/entities/installment_repayment.dart';
 import '../../../domain/entities/installment_schedule.dart';
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/services/installment_metrics.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});
@@ -21,22 +21,23 @@ class InstallmentDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final contractAsync = ref.watch(installmentContractProvider(contractId));
     final schedulesAsync = ref.watch(installmentSchedulesProvider(contractId));
-    final repaymentsAsync = ref.watch(installmentRepaymentsProvider(contractId));
+    final cashflowsAsync =
+        ref.watch(installmentRepaymentCashflowsProvider(contractId));
 
     return Scaffold(
       appBar: AppBar(title: const Text('分期合同')),
-      body: switch ((contractAsync, schedulesAsync, repaymentsAsync)) {
+      body: switch ((contractAsync, schedulesAsync, cashflowsAsync)) {
         (
           AsyncData(value: final contract),
           AsyncData(value: final schedules),
-          AsyncData(value: final repayments),
+          AsyncData(value: final cashflows),
         ) =>
           contract == null
               ? const Center(child: Text('合同不存在'))
               : _Body(
                   contract: contract,
                   schedules: schedules,
-                  repayments: repayments,
+                  cashflows: cashflows,
                 ),
         (AsyncError(:final error), _, _) ||
         (_, AsyncError(:final error), _) ||
@@ -52,12 +53,12 @@ class _Body extends ConsumerWidget {
   const _Body({
     required this.contract,
     required this.schedules,
-    required this.repayments,
+    required this.cashflows,
   });
 
   final InstallmentContract contract;
   final List<InstallmentSchedule> schedules;
-  final List<InstallmentRepayment> repayments;
+  final List<RepaymentCashflow> cashflows;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -102,7 +103,7 @@ class _Body extends ConsumerWidget {
         const SizedBox(height: AppSpacing.space16),
         Text('实际还款记录', style: context.appTextStyles.dateSectionTitle),
         const SizedBox(height: AppSpacing.space6),
-        if (repayments.isEmpty)
+        if (cashflows.isEmpty)
           AppSurface(
             child: const Padding(
               padding: EdgeInsets.all(AppSpacing.space20),
@@ -113,9 +114,9 @@ class _Body extends ConsumerWidget {
           AppSurface(
             child: Column(
               children: [
-                for (var i = 0; i < repayments.length; i++) ...[
-                  _RepaymentRow(repayment: repayments[i]),
-                  if (i < repayments.length - 1)
+                for (var i = 0; i < cashflows.length; i++) ...[
+                  _RepaymentRow(cashflow: cashflows[i]),
+                  if (i < cashflows.length - 1)
                     const Divider(height: 1, indent: AppSpacing.space12),
                 ],
               ],
@@ -395,15 +396,17 @@ class _ScheduleRow extends StatelessWidget {
 }
 
 class _RepaymentRow extends StatelessWidget {
-  const _RepaymentRow({required this.repayment});
+  const _RepaymentRow({required this.cashflow});
 
-  final InstallmentRepayment repayment;
+  final RepaymentCashflow cashflow;
 
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    final total = cashflow.principal + cashflow.interest + cashflow.fee;
     return InkWell(
-      onTap: () => context.push('/transactions/${repayment.transactionId}'),
+      onTap: () => context.push('/transactions/${cashflow.transactionId}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.space12,
@@ -411,16 +414,35 @@ class _RepaymentRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(
+            SizedBox(
+              width: 64,
               child: Text(
-                _repaymentTypeLabel(repayment.repaymentType),
-                style: styles.formLabel,
+                _repaymentTypeLabel(cashflow.repaymentType),
+                style: styles.formLabel.copyWith(
+                  color: _repaymentTypeColor(cashflow.repaymentType, colors),
+                ),
               ),
             ),
-            Text(
-              _formatDate(repayment.createdAt),
-              style: styles.listSupporting,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _formatDate(cashflow.occurredAt),
+                    style: styles.formLabel,
+                  ),
+                  Text(
+                    '本金 ${cashflow.principal.format()}'
+                    '${cashflow.interest.minorUnits > 0 ? '  利息 ${cashflow.interest.format()}' : ''}'
+                    '${cashflow.fee.minorUnits > 0 ? '  手续费 ${cashflow.fee.format()}' : ''}',
+                    style: styles.listSupporting.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            Text(total.format(), style: styles.formLabel),
           ],
         ),
       ),
@@ -462,6 +484,17 @@ String _repaymentTypeLabel(InstallmentRepaymentType type) {
     InstallmentRepaymentType.regular => '正常还款',
     InstallmentRepaymentType.extraPrincipal => '提前还本',
     InstallmentRepaymentType.earlySettlement => '提前结清',
+  };
+}
+
+Color _repaymentTypeColor(
+  InstallmentRepaymentType type,
+  ColorScheme colors,
+) {
+  return switch (type) {
+    InstallmentRepaymentType.regular => colors.tertiary,
+    InstallmentRepaymentType.extraPrincipal => colors.primary,
+    InstallmentRepaymentType.earlySettlement => colors.secondary,
   };
 }
 

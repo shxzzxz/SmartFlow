@@ -21,6 +21,7 @@ class MoneyPlainFormRow extends StatelessWidget {
     this.validator,
     this.onChanged,
     this.textAlign = TextAlign.left,
+    this.minHeight = 56,
   });
 
   final String label;
@@ -29,11 +30,13 @@ class MoneyPlainFormRow extends StatelessWidget {
   final FormFieldValidator<String>? validator;
   final ValueChanged<String>? onChanged;
   final TextAlign textAlign;
+  final double minHeight;
 
   @override
   Widget build(BuildContext context) {
     return AppPlainFormRow(
       label: label,
+      minHeight: minHeight,
       child: AppPlainTextFormField(
         controller: controller,
         hintText: hintText,
@@ -54,17 +57,20 @@ class NotePlainFormRow extends StatelessWidget {
     this.label = '备注',
     this.hintText = '请输入备注（可选）',
     this.textAlign = TextAlign.left,
+    this.minHeight = 56,
   });
 
   final String label;
   final TextEditingController controller;
   final String? hintText;
   final TextAlign textAlign;
+  final double minHeight;
 
   @override
   Widget build(BuildContext context) {
     return AppPlainFormRow(
       label: label,
+      minHeight: minHeight,
       child: AppPlainTextFormField(
         controller: controller,
         hintText: hintText,
@@ -82,12 +88,14 @@ class DateTimePlainFormRow extends StatelessWidget {
     required this.onTap,
     super.key,
     this.valueAlignment = AppPlainRowValueAlignment.start,
+    this.minHeight = 56,
   });
 
   final String label;
   final String value;
   final VoidCallback? onTap;
   final AppPlainRowValueAlignment valueAlignment;
+  final double minHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +104,117 @@ class DateTimePlainFormRow extends StatelessWidget {
       value: value,
       onTap: onTap,
       valueAlignment: valueAlignment,
+      minHeight: minHeight,
+    );
+  }
+}
+
+class DropdownPlainFormRow<T> extends StatelessWidget {
+  const DropdownPlainFormRow({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    super.key,
+    this.isExpanded = true,
+    this.minHeight = 56,
+  });
+
+  final String label;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T> onChanged;
+  final bool isExpanded;
+  final double minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AppPlainFormRow(
+      label: label,
+      minHeight: minHeight,
+      child: DropdownButton<T>(
+        value: value,
+        isExpanded: isExpanded,
+        isDense: true,
+        style: context.appTextStyles.formPlainValue.copyWith(
+          color: colors.onSurface,
+        ),
+        underline: const SizedBox.shrink(),
+        items: items,
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
+      ),
+    );
+  }
+}
+
+class ValueWithUnitPlainFormRow<T> extends StatelessWidget {
+  const ValueWithUnitPlainFormRow({
+    required this.label,
+    required this.controller,
+    required this.unit,
+    required this.unitItems,
+    required this.onUnitChanged,
+    super.key,
+    this.hintText,
+    this.keyboardType,
+    this.inputFormatters,
+    this.validator,
+    this.minHeight = 56,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final T unit;
+  final List<DropdownMenuItem<T>> unitItems;
+  final ValueChanged<T> onUnitChanged;
+  final String? hintText;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final FormFieldValidator<String>? validator;
+  final double minHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final valueStyle = context.appTextStyles.formPlainValue.copyWith(
+      color: colors.onSurface,
+    );
+    return AppPlainFormRow(
+      label: label,
+      minHeight: minHeight,
+      child: Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              keyboardType: keyboardType,
+              inputFormatters: inputFormatters,
+              style: valueStyle,
+              validator: validator,
+              decoration: InputDecoration(
+                hintText: hintText,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          DropdownButton<T>(
+            value: unit,
+            isDense: true,
+            style: valueStyle,
+            underline: const SizedBox.shrink(),
+            items: unitItems,
+            onChanged: (v) {
+              if (v != null) onUnitChanged(v);
+            },
+          ),
+        ],
+      ),
     );
   }
 }

@@ -19,6 +19,7 @@ import '../../../domain/services/installment_metrics.dart';
 import '../../../domain/services/installment_schedule_generator.dart';
 import '../../../domain/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
+import '../widgets/installment_field_options.dart';
 
 class InstallmentContractEditPage extends ConsumerStatefulWidget {
   const InstallmentContractEditPage({required this.contractId, super.key});
@@ -110,7 +111,10 @@ class _InstallmentContractEditPageState
           AppSpacing.space24,
         ),
         children: [
-          _MetricsSection(metricsAsync: metricsAsync),
+          _MetricsSection(
+            metricsAsync: metricsAsync,
+            principal: contract.principal,
+          ),
           const SizedBox(height: AppSpacing.space12),
           _ConfigSection(
             contract: contract,
@@ -134,9 +138,7 @@ class _InstallmentContractEditPageState
             draft: _draft,
             currency: _currency,
             manualPatched: _manualPatched,
-            onEditPrincipal: _editPrincipal,
-            onEditInterest: _editInterest,
-            onEditFee: _editFee,
+            onApplyAmount: _applyAmount,
             onEditDate: _editScheduleDate,
           ),
           const SizedBox(height: AppSpacing.space20),
@@ -195,9 +197,9 @@ class _InstallmentContractEditPageState
   }
 
   Future<void> _pickFirstDate() async {
-    final picked = await showAppDateTimePicker(
+    final picked = await showAppDatePicker(
       context: context,
-      initialDateTime: _firstRepaymentDate,
+      initialDate: _firstRepaymentDate,
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
@@ -205,9 +207,9 @@ class _InstallmentContractEditPageState
   }
 
   Future<void> _pickLastDate() async {
-    final picked = await showAppDateTimePicker(
+    final picked = await showAppDatePicker(
       context: context,
-      initialDateTime: _lastRepaymentDate,
+      initialDate: _lastRepaymentDate,
       title: '选择末期还款日',
     );
     if (picked == null || !mounted) return;
@@ -305,47 +307,13 @@ class _InstallmentContractEditPageState
     });
   }
 
-  Future<void> _editPrincipal(_DraftRow row) => _editAmountField(
-        row,
-        title: '编辑第 ${row.periodNo} 期 · 本金',
-        current: row.principal,
-        allowZero: false,
-        apply: (m) => row.copyWith(principal: m),
-      );
-
-  Future<void> _editInterest(_DraftRow row) => _editAmountField(
-        row,
-        title: '编辑第 ${row.periodNo} 期 · 利息',
-        current: row.interest,
-        allowZero: true,
-        apply: (m) => row.copyWith(interest: m),
-      );
-
-  Future<void> _editFee(_DraftRow row) => _editAmountField(
-        row,
-        title: '编辑第 ${row.periodNo} 期 · 手续费',
-        current: row.fee,
-        allowZero: true,
-        apply: (m) => row.copyWith(fee: m),
-      );
-
-  Future<void> _editAmountField(
-    _DraftRow row, {
-    required String title,
-    required Money current,
-    required bool allowZero,
-    required _DraftRow Function(Money) apply,
-  }) async {
+  void _applyAmount(_DraftRow row, _AmountField field, Money value) {
     if (row.status != InstallmentScheduleStatus.pending) return;
-    final edited = await _showMoneyEditDialog(
-      context,
-      title: title,
-      initial: current,
-      currency: _currency,
-      allowZero: allowZero,
-    );
-    if (edited == null || !mounted) return;
-    final newRow = apply(edited);
+    final newRow = switch (field) {
+      _AmountField.principal => row.copyWith(principal: value),
+      _AmountField.interest => row.copyWith(interest: value),
+      _AmountField.fee => row.copyWith(fee: value),
+    };
     setState(() {
       _draft = [
         for (final r in _draft) if (r.periodNo == row.periodNo) newRow else r,
@@ -356,9 +324,9 @@ class _InstallmentContractEditPageState
 
   Future<void> _editScheduleDate(_DraftRow row) async {
     if (row.status != InstallmentScheduleStatus.pending) return;
-    final picked = await showAppDateTimePicker(
+    final picked = await showAppDatePicker(
       context: context,
-      initialDateTime: row.date,
+      initialDate: row.date,
       title: '选择第 ${row.periodNo} 期还款日',
     );
     if (picked == null || !mounted) return;
@@ -557,6 +525,8 @@ class _ConfigSection extends StatelessWidget {
   final ValueChanged<InterestRatePeriod> onRatePeriodChanged;
   final VoidCallback onRecalculate;
 
+  static const double _rowMinHeight = 44;
+
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
@@ -586,6 +556,7 @@ class _ConfigSection extends StatelessWidget {
                   children: [
                     AppPlainFormRow(
                       label: '借款日期',
+                      minHeight: _rowMinHeight,
                       child: _readOnly(
                         context,
                         _formatDate(contract.borrowingDate),
@@ -593,6 +564,7 @@ class _ConfigSection extends StatelessWidget {
                     ),
                     AppPlainFormRow(
                       label: '分期类型',
+                      minHeight: _rowMinHeight,
                       child: _readOnly(
                         context,
                         _sourceTypeLabel(contract.sourceType),
@@ -600,12 +572,14 @@ class _ConfigSection extends StatelessWidget {
                     ),
                     AppPlainFormRow(
                       label: '本金',
+                      minHeight: _rowMinHeight,
                       child: _readOnly(context, contract.principal.format()),
                     ),
                     _IntegerPlainFormRow(
                       label: '期数',
                       controller: periodsController,
                       hintText: '总期数',
+                      minHeight: _rowMinHeight,
                       validator: (value) {
                         final n = int.tryParse((value ?? '').trim());
                         if (n == null || n <= 0) return '期数必须为正整数';
@@ -619,27 +593,46 @@ class _ConfigSection extends StatelessWidget {
                       label: '首期还款日',
                       value: _formatDate(firstRepaymentDate),
                       onTap: onPickFirstDate,
+                      minHeight: _rowMinHeight,
                     ),
                     DateTimePlainFormRow(
                       label: '末期还款日',
                       value: _formatDate(lastRepaymentDate),
                       onTap: onPickLastDate,
+                      minHeight: _rowMinHeight,
                     ),
-                    _MethodRow(value: method, onChanged: onMethodChanged),
+                    DropdownPlainFormRow<InstallmentRepaymentMethod>(
+                      label: '分期方式',
+                      value: method,
+                      items: installmentRepaymentMethodItems,
+                      onChanged: onMethodChanged,
+                      minHeight: _rowMinHeight,
+                    ),
                     if (method != InstallmentRepaymentMethod.flatFee &&
                         method != InstallmentRepaymentMethod.custom)
-                      _RateRow(
-                        ratePeriod: ratePeriod,
-                        rateController: rateController,
-                        onPeriodChanged: onRatePeriodChanged,
+                      ValueWithUnitPlainFormRow<InterestRatePeriod>(
+                        label: '利率(%)',
+                        controller: rateController,
+                        hintText: '例：7.2',
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        unit: ratePeriod,
+                        unitItems: interestRatePeriodItems,
+                        onUnitChanged: onRatePeriodChanged,
+                        minHeight: _rowMinHeight,
                       ),
                     if (method == InstallmentRepaymentMethod.flatFee)
                       MoneyPlainFormRow(
                         label: '总手续费',
                         controller: feeController,
                         hintText: '各期合计（可选）',
+                        minHeight: _rowMinHeight,
                       ),
-                    NotePlainFormRow(controller: noteController),
+                    NotePlainFormRow(
+                      controller: noteController,
+                      minHeight: _rowMinHeight,
+                    ),
                   ],
                 ),
                 Divider(
@@ -672,23 +665,27 @@ class _ConfigSection extends StatelessWidget {
   }
 }
 
+enum _AmountField { principal, interest, fee }
+
+typedef _ApplyAmount = void Function(
+  _DraftRow row,
+  _AmountField field,
+  Money value,
+);
+
 class _ScheduleSection extends StatelessWidget {
   const _ScheduleSection({
     required this.draft,
     required this.currency,
     required this.manualPatched,
-    required this.onEditPrincipal,
-    required this.onEditInterest,
-    required this.onEditFee,
+    required this.onApplyAmount,
     required this.onEditDate,
   });
 
   final List<_DraftRow> draft;
   final String currency;
   final Set<int> manualPatched;
-  final ValueChanged<_DraftRow> onEditPrincipal;
-  final ValueChanged<_DraftRow> onEditInterest;
-  final ValueChanged<_DraftRow> onEditFee;
+  final _ApplyAmount onApplyAmount;
   final ValueChanged<_DraftRow> onEditDate;
 
   @override
@@ -723,10 +720,9 @@ class _ScheduleSection extends StatelessWidget {
                 for (var i = 0; i < draft.length; i++) ...[
                   _ScheduleRow(
                     row: draft[i],
+                    currency: currency,
                     edited: manualPatched.contains(draft[i].periodNo),
-                    onEditPrincipal: onEditPrincipal,
-                    onEditInterest: onEditInterest,
-                    onEditFee: onEditFee,
+                    onApplyAmount: onApplyAmount,
                     onEditDate: onEditDate,
                   ),
                   if (i < draft.length - 1)
@@ -796,18 +792,16 @@ const double _statusCellWidth = 36;
 class _ScheduleRow extends StatelessWidget {
   const _ScheduleRow({
     required this.row,
+    required this.currency,
     required this.edited,
-    required this.onEditPrincipal,
-    required this.onEditInterest,
-    required this.onEditFee,
+    required this.onApplyAmount,
     required this.onEditDate,
   });
 
   final _DraftRow row;
+  final String currency;
   final bool edited;
-  final ValueChanged<_DraftRow> onEditPrincipal;
-  final ValueChanged<_DraftRow> onEditInterest;
-  final ValueChanged<_DraftRow> onEditFee;
+  final _ApplyAmount onApplyAmount;
   final ValueChanged<_DraftRow> onEditDate;
 
   @override
@@ -853,27 +847,36 @@ class _ScheduleRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: _Cell(
-              text: row.principal.format(),
+            child: _EditableMoneyCell(
+              key: ValueKey('p-${row.periodNo}'),
+              value: row.principal,
               style: cellStyle,
-              align: TextAlign.right,
-              onTap: pending ? () => onEditPrincipal(row) : null,
+              canEdit: pending,
+              allowZero: false,
+              currency: currency,
+              onCommit: (m) => onApplyAmount(row, _AmountField.principal, m),
             ),
           ),
           Expanded(
-            child: _Cell(
-              text: row.interest.format(),
+            child: _EditableMoneyCell(
+              key: ValueKey('i-${row.periodNo}'),
+              value: row.interest,
               style: cellStyle,
-              align: TextAlign.right,
-              onTap: pending ? () => onEditInterest(row) : null,
+              canEdit: pending,
+              allowZero: true,
+              currency: currency,
+              onCommit: (m) => onApplyAmount(row, _AmountField.interest, m),
             ),
           ),
           Expanded(
-            child: _Cell(
-              text: row.fee.format(),
+            child: _EditableMoneyCell(
+              key: ValueKey('f-${row.periodNo}'),
+              value: row.fee,
               style: cellStyle,
-              align: TextAlign.right,
-              onTap: pending ? () => onEditFee(row) : null,
+              canEdit: pending,
+              allowZero: true,
+              currency: currency,
+              onCommit: (m) => onApplyAmount(row, _AmountField.fee, m),
             ),
           ),
           Expanded(
@@ -897,6 +900,138 @@ class _ScheduleRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _EditableMoneyCell extends StatefulWidget {
+  const _EditableMoneyCell({
+    required this.value,
+    required this.style,
+    required this.canEdit,
+    required this.allowZero,
+    required this.currency,
+    required this.onCommit,
+    super.key,
+  });
+
+  final Money value;
+  final TextStyle style;
+  final bool canEdit;
+  final bool allowZero;
+  final String currency;
+  final ValueChanged<Money> onCommit;
+
+  @override
+  State<_EditableMoneyCell> createState() => _EditableMoneyCellState();
+}
+
+class _EditableMoneyCellState extends State<_EditableMoneyCell> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus && _isEditing) {
+      _commit();
+    }
+  }
+
+  void _startEdit() {
+    if (!widget.canEdit || _isEditing) return;
+    final text =
+        widget.value.minorUnits == 0 ? '' : widget.value.major.toString();
+    _controller.text = text;
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: text.length,
+    );
+    setState(() => _isEditing = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  void _commit() {
+    if (!_isEditing) return;
+    final text = _controller.text.trim();
+    Money? next;
+    if (text.isEmpty) {
+      if (widget.allowZero) next = Money.zero(currency: widget.currency);
+    } else {
+      try {
+        final m = Money.parse(text, currency: widget.currency);
+        if (m.minorUnits >= 0 &&
+            (widget.allowZero || m.minorUnits > 0)) {
+          next = m;
+        }
+      } on FormatException {
+        // ignore — revert below
+      }
+    }
+    setState(() => _isEditing = false);
+    if (next != null && next != widget.value) {
+      widget.onCommit(next);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    if (_isEditing) {
+      return Container(
+        decoration: BoxDecoration(
+          color: colors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2),
+        child: TextField(
+          controller: _controller,
+          focusNode: _focusNode,
+          textAlign: TextAlign.right,
+          style: widget.style,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.space6),
+            border: InputBorder.none,
+            isCollapsed: false,
+          ),
+          onSubmitted: (_) => _commit(),
+        ),
+      );
+    }
+    final cell = Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space2,
+        vertical: AppSpacing.space6,
+      ),
+      child: Text(
+        widget.value.format(),
+        style: widget.style,
+        textAlign: TextAlign.right,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+    if (!widget.canEdit) return cell;
+    return InkWell(onTap: _startEdit, child: cell);
   }
 }
 
@@ -934,10 +1069,14 @@ class _Cell extends StatelessWidget {
 }
 
 class _MetricsSection extends StatelessWidget {
-  const _MetricsSection({required this.metricsAsync});
+  const _MetricsSection({
+    required this.metricsAsync,
+    required this.principal,
+  });
 
   final AsyncValue<({ContractMetrics designed, ContractMetrics actual})>
       metricsAsync;
+  final Money principal;
 
   @override
   Widget build(BuildContext context) {
@@ -952,10 +1091,14 @@ class _MetricsSection extends StatelessWidget {
             AppSpacing.space4,
             AppSpacing.space4,
           ),
-          child: Text('汇总信息', style: styles.dateSectionTitle),
+          child: Text(
+            '汇总信息（合同 / 履约）',
+            style: styles.dateSectionTitle,
+          ),
         ),
         switch (metricsAsync) {
-          AsyncData(value: final pair) => _MetricsPair(pair: pair),
+          AsyncData(value: final pair) =>
+            _MetricsPair(pair: pair, principal: principal),
           AsyncError(:final error) => AppSurface(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.space12),
@@ -973,29 +1116,20 @@ class _MetricsSection extends StatelessWidget {
 }
 
 class _MetricsPair extends StatelessWidget {
-  const _MetricsPair({required this.pair});
+  const _MetricsPair({required this.pair, required this.principal});
 
   final ({ContractMetrics designed, ContractMetrics actual}) pair;
+  final Money principal;
 
   @override
   Widget build(BuildContext context) {
-    final styles = context.appTextStyles;
-    final colors = Theme.of(context).colorScheme;
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '合同 / 履约',
-              style: styles.listSupporting.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            _MetricGrid(designed: pair.designed, actual: pair.actual),
-          ],
+        child: _MetricGrid(
+          designed: pair.designed,
+          actual: pair.actual,
+          principal: principal,
         ),
       ),
     );
@@ -1003,10 +1137,15 @@ class _MetricsPair extends StatelessWidget {
 }
 
 class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.designed, required this.actual});
+  const _MetricGrid({
+    required this.designed,
+    required this.actual,
+    required this.principal,
+  });
 
   final ContractMetrics designed;
   final ContractMetrics actual;
+  final Money principal;
 
   @override
   Widget build(BuildContext context) {
@@ -1041,10 +1180,9 @@ class _MetricGrid extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _MetricCell(
-                label: '总还款额',
-                designed: designed.totalRepayment.format(),
-                actual: actual.totalRepayment.format(),
+              child: _MetricCell.single(
+                label: '本金',
+                value: principal.format(),
               ),
             ),
             Expanded(
@@ -1071,13 +1209,21 @@ class _MetricGrid extends StatelessWidget {
 class _MetricCell extends StatelessWidget {
   const _MetricCell({
     required this.label,
-    required this.designed,
-    required this.actual,
-  });
+    required String this.designed,
+    required String this.actual,
+  }) : single = null;
+
+  const _MetricCell.single({
+    required this.label,
+    required String value,
+  })  : designed = null,
+        actual = null,
+        single = value;
 
   final String label;
-  final String designed;
-  final String actual;
+  final String? designed;
+  final String? actual;
+  final String? single;
 
   @override
   Widget build(BuildContext context) {
@@ -1093,121 +1239,34 @@ class _MetricCell extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: AppSpacing.space2),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: designed, style: styles.formLabel),
-              TextSpan(
-                text: ' / ',
-                style: styles.listSupporting.copyWith(
-                  color: colors.onSurfaceVariant,
+        if (single != null)
+          Text(
+            single!,
+            style: styles.formLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          )
+        else
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: designed!, style: styles.formLabel),
+                TextSpan(
+                  text: ' / ',
+                  style: styles.listSupporting.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              TextSpan(
-                text: actual,
-                style: styles.formLabel.copyWith(color: colors.primary),
-              ),
-            ],
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-}
-
-class _MethodRow extends StatelessWidget {
-  const _MethodRow({required this.value, required this.onChanged});
-
-  final InstallmentRepaymentMethod value;
-  final ValueChanged<InstallmentRepaymentMethod> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: '分期方式',
-      child: DropdownButton<InstallmentRepaymentMethod>(
-        value: value,
-        isExpanded: true,
-        underline: const SizedBox.shrink(),
-        items: const [
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.equalInstallment,
-            child: Text('等额本息'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.equalPrincipal,
-            child: Text('等额本金'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.interestFirst,
-            child: Text('先息后本'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.flatFee,
-            child: Text('一次性手续费'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.custom,
-            child: Text('自定义'),
-          ),
-        ],
-        onChanged: (v) {
-          if (v != null) onChanged(v);
-        },
-      ),
-    );
-  }
-}
-
-class _RateRow extends StatelessWidget {
-  const _RateRow({
-    required this.ratePeriod,
-    required this.rateController,
-    required this.onPeriodChanged,
-  });
-
-  final InterestRatePeriod ratePeriod;
-  final TextEditingController rateController;
-  final ValueChanged<InterestRatePeriod> onPeriodChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: '利率(%)',
-      child: Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: rateController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                hintText: '例：7.2',
-                isDense: true,
-                border: InputBorder.none,
-              ),
+                TextSpan(
+                  text: actual!,
+                  style: styles.formLabel.copyWith(color: colors.primary),
+                ),
+              ],
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(width: AppSpacing.space8),
-          DropdownButton<InterestRatePeriod>(
-            value: ratePeriod,
-            underline: const SizedBox.shrink(),
-            items: const [
-              DropdownMenuItem(
-                  value: InterestRatePeriod.annual, child: Text('年')),
-              DropdownMenuItem(
-                  value: InterestRatePeriod.monthly, child: Text('月')),
-              DropdownMenuItem(
-                  value: InterestRatePeriod.daily, child: Text('日')),
-            ],
-            onChanged: (v) {
-              if (v != null) onPeriodChanged(v);
-            },
-          ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -1218,17 +1277,20 @@ class _IntegerPlainFormRow extends StatelessWidget {
     required this.controller,
     required this.hintText,
     this.validator,
+    this.minHeight = 56,
   });
 
   final String label;
   final TextEditingController controller;
   final String hintText;
   final String? Function(String?)? validator;
+  final double minHeight;
 
   @override
   Widget build(BuildContext context) {
     return AppPlainFormRow(
       label: label,
+      minHeight: minHeight,
       child: TextFormField(
         controller: controller,
         keyboardType: TextInputType.number,
@@ -1272,79 +1334,4 @@ String _sourceTypeLabel(InstallmentSourceType type) {
 String _formatPercent(double v) {
   if (v.isNaN || v.isInfinite) return '—';
   return '${(v * 100).toStringAsFixed(2)}%';
-}
-
-Future<Money?> _showMoneyEditDialog(
-  BuildContext context, {
-  required String title,
-  required Money initial,
-  required String currency,
-  required bool allowZero,
-}) {
-  final controller = TextEditingController(
-    text: initial.minorUnits == 0 ? '' : initial.major.toString(),
-  );
-  controller.selection = TextSelection(
-    baseOffset: 0,
-    extentOffset: controller.text.length,
-  );
-
-  return showDialog<Money>(
-    context: context,
-    builder: (dialogContext) {
-      String? errorText;
-      return StatefulBuilder(
-        builder: (context, setState) {
-          void onSave() {
-            final text = controller.text.trim();
-            if (text.isEmpty) {
-              if (allowZero) {
-                Navigator.of(dialogContext).pop(Money.zero(currency: currency));
-                return;
-              }
-              setState(() => errorText = '请输入金额');
-              return;
-            }
-            try {
-              final m = Money.parse(text, currency: currency);
-              if (m.minorUnits < 0) {
-                setState(() => errorText = '金额必须 ≥ 0');
-                return;
-              }
-              if (!allowZero && m.minorUnits == 0) {
-                setState(() => errorText = '金额必须 > 0');
-                return;
-              }
-              Navigator.of(dialogContext).pop(m);
-            } on FormatException {
-              setState(() => errorText = '请输入有效金额');
-            }
-          }
-
-          return AlertDialog(
-            title: Text(title),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                hintText: '请输入金额',
-                errorText: errorText,
-                prefixText: currency == Money.defaultCurrency ? null : currency,
-              ),
-              onSubmitted: (_) => onSave(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('取消'),
-              ),
-              TextButton(onPressed: onSave, child: const Text('保存')),
-            ],
-          );
-        },
-      );
-    },
-  );
 }

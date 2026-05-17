@@ -157,6 +157,7 @@ void main() {
         // 提前还本 400000，日期在第 2 期还款之后
         RepaymentCashflow(
           id: 1,
+          transactionId: 0,
           repaymentType: InstallmentRepaymentType.extraPrincipal,
           occurredAt: DateTime(2026, 8, 1),
           principal: const Money(minorUnits: 400000, currency: cny),
@@ -200,6 +201,7 @@ void main() {
       final repayments = [
         RepaymentCashflow(
           id: 10,
+          transactionId: 0,
           repaymentType: InstallmentRepaymentType.regular,
           scheduleId: 1,
           occurredAt: DateTime(2026, 6, 10),

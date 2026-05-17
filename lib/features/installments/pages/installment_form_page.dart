@@ -14,6 +14,7 @@ import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
+import '../widgets/installment_field_options.dart';
 
 class InstallmentFormPage extends ConsumerStatefulWidget {
   const InstallmentFormPage({
@@ -155,16 +156,23 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                 value: _formatDate(_firstRepaymentDate),
                 onTap: _pickFirstRepaymentDate,
               ),
-              _MethodRow(
+              DropdownPlainFormRow<InstallmentRepaymentMethod>(
+                label: '分期方式',
                 value: _method,
+                items: installmentRepaymentMethodItems,
                 onChanged: (value) => setState(() => _method = value),
               ),
               if (_method != InstallmentRepaymentMethod.flatFee &&
                   _method != InstallmentRepaymentMethod.custom)
-                _RateRow(
-                  ratePeriod: _ratePeriod,
-                  rateController: _rateController,
-                  onPeriodChanged: (period) =>
+                ValueWithUnitPlainFormRow<InterestRatePeriod>(
+                  label: '利率(%)',
+                  controller: _rateController,
+                  hintText: '例：7.2',
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  unit: _ratePeriod,
+                  unitItems: interestRatePeriodItems,
+                  onUnitChanged: (period) =>
                       setState(() => _ratePeriod = period),
                 ),
               if (_method == InstallmentRepaymentMethod.flatFee)
@@ -195,9 +203,9 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   }
 
   Future<void> _pickBorrowingDate() async {
-    final picked = await showAppDateTimePicker(
+    final picked = await showAppDatePicker(
       context: context,
-      initialDateTime: _borrowingDate,
+      initialDate: _borrowingDate,
       title: '选择借款日期',
     );
     if (picked == null || !mounted) return;
@@ -210,9 +218,9 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   }
 
   Future<void> _pickFirstRepaymentDate() async {
-    final picked = await showAppDateTimePicker(
+    final picked = await showAppDatePicker(
       context: context,
-      initialDateTime: _firstRepaymentDate,
+      initialDate: _firstRepaymentDate,
       title: '选择首期还款日',
     );
     if (picked == null || !mounted) return;
@@ -375,101 +383,6 @@ class _SourceTypeRow extends StatelessWidget {
             selected: value == InstallmentSourceType.billConversion,
             onSelected: (selected) {
               if (selected) onChanged(InstallmentSourceType.billConversion);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MethodRow extends StatelessWidget {
-  const _MethodRow({required this.value, required this.onChanged});
-
-  final InstallmentRepaymentMethod value;
-  final ValueChanged<InstallmentRepaymentMethod> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: '分期方式',
-      child: DropdownButton<InstallmentRepaymentMethod>(
-        value: value,
-        isExpanded: true,
-        underline: const SizedBox.shrink(),
-        items: const [
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.equalInstallment,
-            child: Text('等额本息'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.equalPrincipal,
-            child: Text('等额本金'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.interestFirst,
-            child: Text('先息后本'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.flatFee,
-            child: Text('一次性手续费'),
-          ),
-          DropdownMenuItem(
-            value: InstallmentRepaymentMethod.custom,
-            child: Text('自定义'),
-          ),
-        ],
-        onChanged: (v) {
-          if (v != null) onChanged(v);
-        },
-      ),
-    );
-  }
-}
-
-class _RateRow extends StatelessWidget {
-  const _RateRow({
-    required this.ratePeriod,
-    required this.rateController,
-    required this.onPeriodChanged,
-  });
-
-  final InterestRatePeriod ratePeriod;
-  final TextEditingController rateController;
-  final ValueChanged<InterestRatePeriod> onPeriodChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPlainFormRow(
-      label: '利率(%)',
-      child: Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: rateController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                hintText: '例：7.2',
-                isDense: true,
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          DropdownButton<InterestRatePeriod>(
-            value: ratePeriod,
-            underline: const SizedBox.shrink(),
-            items: const [
-              DropdownMenuItem(
-                  value: InterestRatePeriod.annual, child: Text('年')),
-              DropdownMenuItem(
-                  value: InterestRatePeriod.monthly, child: Text('月')),
-              DropdownMenuItem(
-                  value: InterestRatePeriod.daily, child: Text('日')),
-            ],
-            onChanged: (v) {
-              if (v != null) onPeriodChanged(v);
             },
           ),
         ],
