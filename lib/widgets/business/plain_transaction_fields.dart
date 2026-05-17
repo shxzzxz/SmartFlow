@@ -123,13 +123,16 @@ class DropdownPlainFormRow<T> extends StatelessWidget {
   final String label;
   final T value;
   final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T> onChanged;
+
+  /// 传 null 表示禁用（Dropdown 灰显不可点）。
+  final ValueChanged<T>? onChanged;
   final bool isExpanded;
   final double minHeight;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final cb = onChanged;
     return AppPlainFormRow(
       label: label,
       minHeight: minHeight,
@@ -142,9 +145,11 @@ class DropdownPlainFormRow<T> extends StatelessWidget {
         ),
         underline: const SizedBox.shrink(),
         items: items,
-        onChanged: (v) {
-          if (v != null) onChanged(v);
-        },
+        onChanged: cb == null
+            ? null
+            : (v) {
+                if (v != null) cb(v);
+              },
       ),
     );
   }

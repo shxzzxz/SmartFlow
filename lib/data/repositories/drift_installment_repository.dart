@@ -92,6 +92,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
             repaymentMethod: draft.repaymentMethod,
             interestRatePeriod: Value(draft.interestRatePeriod),
             interestRatePpm: Value(draft.interestRatePpm),
+            interestAccrualMethod: Value(draft.interestAccrualMethod),
             totalFeeMinor: Value(draft.totalFeeMinor),
             currencyCode: draft.principal.currency,
             status: draft.status,
@@ -138,6 +139,9 @@ class DriftInstallmentRepository implements InstallmentRepository {
           : Value(patch.repaymentMethod!),
       interestRatePeriod: ratePeriodValue,
       interestRatePpm: ratePpmValue,
+      interestAccrualMethod: patch.interestAccrualMethod == null
+          ? const Value.absent()
+          : Value(patch.interestAccrualMethod!),
       totalFeeMinor: patch.totalFeeMinor == null
           ? const Value.absent()
           : Value(patch.totalFeeMinor!),
@@ -291,6 +295,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
       repaymentMethod: row.repaymentMethod,
       interestRatePeriod: row.interestRatePeriod,
       interestRatePpm: row.interestRatePpm,
+      interestAccrualMethod: row.interestAccrualMethod,
       totalFeeMinor: row.totalFeeMinor,
       status: row.status,
       note: row.note,

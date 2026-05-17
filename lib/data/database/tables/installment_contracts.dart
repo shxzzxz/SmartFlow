@@ -34,6 +34,12 @@ class InstallmentContracts extends Table {
   IntColumn get interestRatePpm =>
       integer().named('interest_rate_ppm').nullable()();
 
+  /// 计息方式（按日 / 按月）。drift 序列化为 enum.name，存量行默认 'daily' 保留旧行为。
+  TextColumn get interestAccrualMethod =>
+      textEnum<InterestAccrualMethod>()
+          .named('interest_accrual_method')
+          .withDefault(const Constant('daily'))();
+
   /// 合同总手续费，用于编辑时按 method 重新分配。
   IntColumn get totalFeeMinor =>
       integer().named('total_fee_minor').withDefault(const Constant(0))();

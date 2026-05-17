@@ -616,6 +616,12 @@ class _ContractRow extends StatelessWidget {
                     style: styles.listSupporting
                         .copyWith(color: colors.onSurfaceVariant),
                   ),
+                  Text(
+                    '${_formatContractDate(contract.borrowingDate)} · '
+                    '${_accrualLabel(contract.interestAccrualMethod)}',
+                    style: styles.listSupporting
+                        .copyWith(color: colors.onSurfaceVariant),
+                  ),
                 ],
               ),
             ),
@@ -638,6 +644,18 @@ String _methodShort(InstallmentRepaymentMethod method) {
     InstallmentRepaymentMethod.flatFee => '一次性手续费',
     InstallmentRepaymentMethod.custom => '自定义',
   };
+}
+
+String _accrualLabel(InterestAccrualMethod accrual) {
+  return switch (accrual) {
+    InterestAccrualMethod.daily => '按日计息',
+    InterestAccrualMethod.monthly => '按月计息',
+  };
+}
+
+String _formatContractDate(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }
 
 class _AccountTransactionDayGroup {

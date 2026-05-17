@@ -94,6 +94,18 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Divider(height: 1),
                   ),
                   _ProfileActionRow(
+                    icon: RemixIcons.book_open_line,
+                    label: '使用说明',
+                    description: '分期方式 / 计息方式 / 关键指标释义',
+                    onTap: () => context.push('/profile/installment-guide'),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space16,
+                    ),
+                    child: Divider(height: 1),
+                  ),
+                  _ProfileActionRow(
                     icon: RemixIcons.download_cloud_2_line,
                     label: '软件版本',
                     description:

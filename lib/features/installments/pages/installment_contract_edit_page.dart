@@ -39,12 +39,13 @@ class _InstallmentContractEditPageState
   final _periodsController = TextEditingController();
   final _rateController = TextEditingController();
   final _feeController = TextEditingController();
-  final _noteController = TextEditingController();
+  final _overrideInstallmentController = TextEditingController();
 
   late DateTime _firstRepaymentDate;
   late DateTime _lastRepaymentDate;
   late InstallmentRepaymentMethod _method;
   late InterestRatePeriod _ratePeriod;
+  late InterestAccrualMethod _accrualMethod;
 
   // 当前显示的还款计划（预览）。
   List<_DraftRow> _draft = const [];
@@ -62,7 +63,7 @@ class _InstallmentContractEditPageState
     _periodsController.dispose();
     _rateController.dispose();
     _feeController.dispose();
-    _noteController.dispose();
+    _overrideInstallmentController.dispose();
     super.dispose();
   }
 
@@ -123,14 +124,18 @@ class _InstallmentContractEditPageState
             lastRepaymentDate: _lastRepaymentDate,
             method: _method,
             ratePeriod: _ratePeriod,
+            accrualMethod: _accrualMethod,
             periodsController: _periodsController,
             rateController: _rateController,
             feeController: _feeController,
-            noteController: _noteController,
+            overrideInstallmentController: _overrideInstallmentController,
             onPickFirstDate: _paidCount > 0 ? null : _pickFirstDate,
             onPickLastDate: _pickLastDate,
             onMethodChanged: (v) => setState(() => _method = v),
             onRatePeriodChanged: (v) => setState(() => _ratePeriod = v),
+            onAccrualMethodChanged: _paidCount > 0
+                ? null
+                : (v) => setState(() => _accrualMethod = v),
             onRecalculate: _recalculate,
           ),
           const SizedBox(height: AppSpacing.space12),
@@ -166,6 +171,7 @@ class _InstallmentContractEditPageState
     _lastRepaymentDate = contract.lastRepaymentDate;
     _method = contract.repaymentMethod;
     _ratePeriod = contract.interestRatePeriod ?? InterestRatePeriod.monthly;
+    _accrualMethod = contract.interestAccrualMethod;
 
     _periodsController.text = contract.totalPeriods.toString();
     if (contract.interestRatePpm != null && contract.interestRatePpm! > 0) {
@@ -178,9 +184,8 @@ class _InstallmentContractEditPageState
         currency: _currency,
       ).major.toString();
     }
-    if (contract.note != null && contract.note!.isNotEmpty) {
-      _noteController.text = contract.note!;
-    }
+    // 还款固定额是瞬态输入，不从合同读取（也不落库）。
+    _overrideInstallmentController.text = '';
 
     _draft = [
       for (final s in schedules)
@@ -236,6 +241,10 @@ class _InstallmentContractEditPageState
 
     final ratePpm = _parseRatePpm(_rateController.text);
     final feeMinor = _parseOptionalMoney(_feeController.text).minorUnits;
+    final overrideMinor =
+        _method == InstallmentRepaymentMethod.equalInstallment
+            ? _parseOptionalOverride(_overrideInstallmentController.text)
+            : null;
 
     // 复用 service 端的算法：以同样的 generator 在本地生成预览。
     final allDates = _generator.generateDates(
@@ -274,9 +283,11 @@ class _InstallmentContractEditPageState
       anchorDate: anchorDate,
       pendingDates: pendingDates,
       method: _method,
+      accrualMethod: _accrualMethod,
       ratePeriod: ratePpm == null ? null : _ratePeriod,
       ratePpm: ratePpm,
       remainingFeeMinor: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,
+      equalInstallmentOverrideMinor: overrideMinor,
     );
 
     final newDraft = <_DraftRow>[];
@@ -355,7 +366,10 @@ class _InstallmentContractEditPageState
 
     final ratePpm = _parseRatePpm(_rateController.text);
     final feeMinor = _parseOptionalMoney(_feeController.text).minorUnits;
-    final note = _blankToNull(_noteController.text);
+    final overrideMinor =
+        _method == InstallmentRepaymentMethod.equalInstallment
+            ? _parseOptionalOverride(_overrideInstallmentController.text)
+            : null;
 
     // 手工修改过的 pending 行：构造 patch。
     final patches = <SchedulePendingPatch>[
@@ -384,9 +398,10 @@ class _InstallmentContractEditPageState
         repaymentMethod: _method,
         interestRatePeriod: ratePpm == null ? null : _ratePeriod,
         interestRatePpm: ratePpm,
+        interestAccrualMethod: _accrualMethod,
         totalFeeMinor: feeMinor,
-        note: note,
-        clearNote: note == null,
+        equalInstallmentOverrideMinor: overrideMinor,
+        // 备注已从本页移除，不修改 contract.note
         schedulePatches: patches,
       ),
     );
@@ -432,9 +447,16 @@ class _InstallmentContractEditPageState
     }
   }
 
-  String? _blankToNull(String value) {
+  /// 解析"还款固定额"输入；空或非正返回 null（回落公式推导）。
+  int? _parseOptionalOverride(String value) {
     final trimmed = value.trim();
-    return trimmed.isEmpty ? null : trimmed;
+    if (trimmed.isEmpty) return null;
+    try {
+      final money = Money.parse(trimmed, currency: _currency);
+      return money.minorUnits > 0 ? money.minorUnits : null;
+    } on FormatException {
+      return null;
+    }
   }
 
   String _trimTrailingZeros(String text) {
@@ -498,14 +520,16 @@ class _ConfigSection extends StatelessWidget {
     required this.lastRepaymentDate,
     required this.method,
     required this.ratePeriod,
+    required this.accrualMethod,
     required this.periodsController,
     required this.rateController,
     required this.feeController,
-    required this.noteController,
+    required this.overrideInstallmentController,
     required this.onPickFirstDate,
     required this.onPickLastDate,
     required this.onMethodChanged,
     required this.onRatePeriodChanged,
+    required this.onAccrualMethodChanged,
     required this.onRecalculate,
   });
 
@@ -515,14 +539,16 @@ class _ConfigSection extends StatelessWidget {
   final DateTime lastRepaymentDate;
   final InstallmentRepaymentMethod method;
   final InterestRatePeriod ratePeriod;
+  final InterestAccrualMethod accrualMethod;
   final TextEditingController periodsController;
   final TextEditingController rateController;
   final TextEditingController feeController;
-  final TextEditingController noteController;
+  final TextEditingController overrideInstallmentController;
   final VoidCallback? onPickFirstDate;
   final VoidCallback onPickLastDate;
   final ValueChanged<InstallmentRepaymentMethod> onMethodChanged;
   final ValueChanged<InterestRatePeriod> onRatePeriodChanged;
+  final ValueChanged<InterestAccrualMethod>? onAccrualMethodChanged;
   final VoidCallback onRecalculate;
 
   static const double _rowMinHeight = 44;
@@ -610,6 +636,15 @@ class _ConfigSection extends StatelessWidget {
                     ),
                     if (method != InstallmentRepaymentMethod.flatFee &&
                         method != InstallmentRepaymentMethod.custom)
+                      DropdownPlainFormRow<InterestAccrualMethod>(
+                        label: '计息方式',
+                        value: accrualMethod,
+                        items: interestAccrualMethodItems,
+                        onChanged: onAccrualMethodChanged,
+                        minHeight: _rowMinHeight,
+                      ),
+                    if (method != InstallmentRepaymentMethod.flatFee &&
+                        method != InstallmentRepaymentMethod.custom)
                       ValueWithUnitPlainFormRow<InterestRatePeriod>(
                         label: '利率(%)',
                         controller: rateController,
@@ -629,10 +664,13 @@ class _ConfigSection extends StatelessWidget {
                         hintText: '各期合计（可选）',
                         minHeight: _rowMinHeight,
                       ),
-                    NotePlainFormRow(
-                      controller: noteController,
-                      minHeight: _rowMinHeight,
-                    ),
+                    if (method == InstallmentRepaymentMethod.equalInstallment)
+                      MoneyPlainFormRow(
+                        label: '还款固定额',
+                        controller: overrideInstallmentController,
+                        hintText: '前 n-1 期固定额（可选）',
+                        minHeight: _rowMinHeight,
+                      ),
                   ],
                 ),
                 Divider(

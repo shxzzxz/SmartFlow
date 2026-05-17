@@ -12,6 +12,7 @@ class InstallmentContract {
     required this.firstRepaymentDate,
     required this.lastRepaymentDate,
     required this.repaymentMethod,
+    required this.interestAccrualMethod,
     required this.totalFeeMinor,
     required this.status,
     required this.createdAt,
@@ -43,6 +44,9 @@ class InstallmentContract {
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+
+  /// 计息方式（按日 / 按月）。决定还款计划的利息计算口径。
+  final InterestAccrualMethod interestAccrualMethod;
 
   /// 合同的总手续费（minor units），用于编辑时按 method 重新分配。
   final int totalFeeMinor;

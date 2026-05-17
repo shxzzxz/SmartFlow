@@ -31,3 +31,15 @@ const List<DropdownMenuItem<InterestRatePeriod>> interestRatePeriodItems = [
   DropdownMenuItem(value: InterestRatePeriod.monthly, child: Text('月')),
   DropdownMenuItem(value: InterestRatePeriod.daily, child: Text('日')),
 ];
+
+const List<DropdownMenuItem<InterestAccrualMethod>>
+    interestAccrualMethodItems = [
+  DropdownMenuItem(
+    value: InterestAccrualMethod.daily,
+    child: Text('按日计息'),
+  ),
+  DropdownMenuItem(
+    value: InterestAccrualMethod.monthly,
+    child: Text('按月计息'),
+  ),
+];

@@ -33,6 +33,7 @@ void main() {
       repaymentMethod: method,
       interestRatePeriod: ratePeriod,
       interestRatePpm: ratePpm,
+      interestAccrualMethod: InterestAccrualMethod.daily,
       totalFeeMinor: totalFeeMinor,
       status: InstallmentContractStatus.active,
       createdAt: DateTime(2026, 5, 10),

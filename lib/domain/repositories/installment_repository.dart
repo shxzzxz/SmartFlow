@@ -15,6 +15,7 @@ class InstallmentContractDraft {
     required this.firstRepaymentDate,
     required this.lastRepaymentDate,
     required this.repaymentMethod,
+    required this.interestAccrualMethod,
     required this.status,
     this.disbursementAccountId,
     this.disbursementTransactionId,
@@ -36,6 +37,7 @@ class InstallmentContractDraft {
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+  final InterestAccrualMethod interestAccrualMethod;
   final int totalFeeMinor;
   final InstallmentContractStatus status;
   final String? note;
@@ -51,6 +53,7 @@ class InstallmentContractPatch {
     this.repaymentMethod,
     this.interestRatePeriod,
     this.interestRatePpm,
+    this.interestAccrualMethod,
     this.totalFeeMinor,
     this.note,
     this.clearRate = false,
@@ -63,6 +66,7 @@ class InstallmentContractPatch {
   final InstallmentRepaymentMethod? repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+  final InterestAccrualMethod? interestAccrualMethod;
   final int? totalFeeMinor;
   final String? note;
 

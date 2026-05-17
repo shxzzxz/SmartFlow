@@ -37,6 +37,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   final _totalPeriodsController = TextEditingController();
   final _rateController = TextEditingController();
   final _totalFeeController = TextEditingController();
+  final _overrideInstallmentController = TextEditingController();
   final _noteController = TextEditingController();
 
   DateTime _borrowingDate = DateTime.now();
@@ -46,6 +47,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   bool _firstDateTouched = false;
   InstallmentRepaymentMethod _method = InstallmentRepaymentMethod.equalInstallment;
   InterestRatePeriod _ratePeriod = InterestRatePeriod.monthly;
+  InterestAccrualMethod _accrualMethod = InterestAccrualMethod.daily;
   InstallmentSourceType? _sourceType;
   int? _disbursementAccountId;
   bool _submitting = false;
@@ -56,6 +58,7 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
     _totalPeriodsController.dispose();
     _rateController.dispose();
     _totalFeeController.dispose();
+    _overrideInstallmentController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -164,6 +167,15 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
               ),
               if (_method != InstallmentRepaymentMethod.flatFee &&
                   _method != InstallmentRepaymentMethod.custom)
+                DropdownPlainFormRow<InterestAccrualMethod>(
+                  label: '计息方式',
+                  value: _accrualMethod,
+                  items: interestAccrualMethodItems,
+                  onChanged: (value) =>
+                      setState(() => _accrualMethod = value),
+                ),
+              if (_method != InstallmentRepaymentMethod.flatFee &&
+                  _method != InstallmentRepaymentMethod.custom)
                 ValueWithUnitPlainFormRow<InterestRatePeriod>(
                   label: '利率(%)',
                   controller: _rateController,
@@ -174,6 +186,13 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
                   unitItems: interestRatePeriodItems,
                   onUnitChanged: (period) =>
                       setState(() => _ratePeriod = period),
+                ),
+              if (_method == InstallmentRepaymentMethod.equalInstallment)
+                MoneyPlainFormRow(
+                  label: '还款固定额',
+                  controller: _overrideInstallmentController,
+                  hintText: '前 n-1 期固定额（可选）',
+                  validator: _validateOptionalMoney,
                 ),
               if (_method == InstallmentRepaymentMethod.flatFee)
                 MoneyPlainFormRow(
@@ -259,6 +278,10 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
 
     final ratePpm = _parseRatePpm(_rateController.text);
     final totalFeeMinor = _parseOptionalMoney(_totalFeeController.text).minorUnits;
+    final overrideMinor =
+        _method == InstallmentRepaymentMethod.equalInstallment
+            ? _parseOptionalOverride(_overrideInstallmentController.text)
+            : null;
 
     setState(() => _submitting = true);
     final service = ref.read(installmentServiceProvider);
@@ -275,7 +298,9 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
           repaymentMethod: _method,
           interestRatePeriod: ratePpm == null ? null : _ratePeriod,
           interestRatePpm: ratePpm,
+          interestAccrualMethod: _accrualMethod,
           totalFeeMinor: totalFeeMinor,
+          equalInstallmentOverrideMinor: overrideMinor,
           note: note,
         ),
       );
@@ -290,7 +315,9 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
           repaymentMethod: _method,
           interestRatePeriod: ratePpm == null ? null : _ratePeriod,
           interestRatePpm: ratePpm,
+          interestAccrualMethod: _accrualMethod,
           totalFeeMinor: totalFeeMinor,
+          equalInstallmentOverrideMinor: overrideMinor,
           note: note,
         ),
       );
@@ -342,6 +369,18 @@ class _InstallmentFormPageState extends ConsumerState<InstallmentFormPage> {
   Money _parseOptionalMoney(String value) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? Money.zero() : Money.parse(trimmed);
+  }
+
+  /// 解析"还款固定额"输入；空或非正返回 null（回落公式推导）。
+  int? _parseOptionalOverride(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    try {
+      final money = Money.parse(trimmed);
+      return money.minorUnits > 0 ? money.minorUnits : null;
+    } on FormatException {
+      return null;
+    }
   }
 
   /// 将输入字符串（百分比形式，如 "0.025" 表示 0.025%）转换为 ppm

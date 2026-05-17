@@ -1857,7 +1857,7 @@ final class InstallmentRepaymentCashflowsProvider
 }
 
 String _$installmentRepaymentCashflowsHash() =>
-    r'6c7320d77246a1c5ad5c8c3600b5f14dd209a101';
+    r'bb89bda6c61608c0e0e9ac75111310f5d77e15c7';
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
 /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。

@@ -111,6 +111,14 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           "WHERE first_repayment_date = 0",
         );
       }
+      if (from < 5) {
+        // 新增"计息方式"列。存量合同默认 'daily'，保留 balance × monthlyRate × days/30
+        // 的等价行为（仅 equalInstallment 在下次按配置重算时切换为现金流折现公式）。
+        await database.customStatement(
+          "ALTER TABLE installment_contracts ADD COLUMN "
+          "interest_accrual_method TEXT NOT NULL DEFAULT 'daily'",
+        );
+      }
     },
     beforeOpen: (_) async {
       await ensureBuiltinData(database);

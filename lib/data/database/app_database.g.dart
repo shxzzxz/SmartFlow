@@ -4164,6 +4164,18 @@ class $InstallmentContractsTable extends InstallmentContracts
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<InterestAccrualMethod, String>
+  interestAccrualMethod = GeneratedColumn<String>(
+    'interest_accrual_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('daily'),
+  ).withConverter<InterestAccrualMethod>(
+    $InstallmentContractsTable.$converterinterestAccrualMethod,
+  );
   static const VerificationMeta _totalFeeMinorMeta = const VerificationMeta(
     'totalFeeMinor',
   );
@@ -4250,6 +4262,7 @@ class $InstallmentContractsTable extends InstallmentContracts
     repaymentMethod,
     interestRatePeriod,
     interestRatePpm,
+    interestAccrualMethod,
     totalFeeMinor,
     currencyCode,
     status,
@@ -4480,6 +4493,14 @@ class $InstallmentContractsTable extends InstallmentContracts
         DriftSqlType.int,
         data['${effectivePrefix}interest_rate_ppm'],
       ),
+      interestAccrualMethod: $InstallmentContractsTable
+          .$converterinterestAccrualMethod
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}interest_accrual_method'],
+            )!,
+          ),
       totalFeeMinor:
           attachedDatabase.typeMapping.read(
             DriftSqlType.int,
@@ -4535,6 +4556,11 @@ class $InstallmentContractsTable extends InstallmentContracts
   $converterinterestRatePeriodn = JsonTypeConverter2.asNullable(
     $converterinterestRatePeriod,
   );
+  static JsonTypeConverter2<InterestAccrualMethod, String, String>
+  $converterinterestAccrualMethod =
+      const EnumNameConverter<InterestAccrualMethod>(
+        InterestAccrualMethod.values,
+      );
   static JsonTypeConverter2<InstallmentContractStatus, String, String>
   $converterstatus = const EnumNameConverter<InstallmentContractStatus>(
     InstallmentContractStatus.values,
@@ -4563,6 +4589,9 @@ class InstallmentContractRow extends DataClass
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
 
+  /// 计息方式（按日 / 按月）。drift 序列化为 enum.name，存量行默认 'daily' 保留旧行为。
+  final InterestAccrualMethod interestAccrualMethod;
+
   /// 合同总手续费，用于编辑时按 method 重新分配。
   final int totalFeeMinor;
   final String currencyCode;
@@ -4584,6 +4613,7 @@ class InstallmentContractRow extends DataClass
     required this.repaymentMethod,
     this.interestRatePeriod,
     this.interestRatePpm,
+    required this.interestAccrualMethod,
     required this.totalFeeMinor,
     required this.currencyCode,
     required this.status,
@@ -4631,6 +4661,13 @@ class InstallmentContractRow extends DataClass
     if (!nullToAbsent || interestRatePpm != null) {
       map['interest_rate_ppm'] = Variable<int>(interestRatePpm);
     }
+    {
+      map['interest_accrual_method'] = Variable<String>(
+        $InstallmentContractsTable.$converterinterestAccrualMethod.toSql(
+          interestAccrualMethod,
+        ),
+      );
+    }
     map['total_fee_minor'] = Variable<int>(totalFeeMinor);
     map['currency_code'] = Variable<String>(currencyCode);
     {
@@ -4673,6 +4710,7 @@ class InstallmentContractRow extends DataClass
           interestRatePpm == null && nullToAbsent
               ? const Value.absent()
               : Value(interestRatePpm),
+      interestAccrualMethod: Value(interestAccrualMethod),
       totalFeeMinor: Value(totalFeeMinor),
       currencyCode: Value(currencyCode),
       status: Value(status),
@@ -4714,6 +4752,9 @@ class InstallmentContractRow extends DataClass
           .$converterinterestRatePeriodn
           .fromJson(serializer.fromJson<String?>(json['interestRatePeriod'])),
       interestRatePpm: serializer.fromJson<int?>(json['interestRatePpm']),
+      interestAccrualMethod: $InstallmentContractsTable
+          .$converterinterestAccrualMethod
+          .fromJson(serializer.fromJson<String>(json['interestAccrualMethod'])),
       totalFeeMinor: serializer.fromJson<int>(json['totalFeeMinor']),
       currencyCode: serializer.fromJson<String>(json['currencyCode']),
       status: $InstallmentContractsTable.$converterstatus.fromJson(
@@ -4753,6 +4794,11 @@ class InstallmentContractRow extends DataClass
         ),
       ),
       'interestRatePpm': serializer.toJson<int?>(interestRatePpm),
+      'interestAccrualMethod': serializer.toJson<String>(
+        $InstallmentContractsTable.$converterinterestAccrualMethod.toJson(
+          interestAccrualMethod,
+        ),
+      ),
       'totalFeeMinor': serializer.toJson<int>(totalFeeMinor),
       'currencyCode': serializer.toJson<String>(currencyCode),
       'status': serializer.toJson<String>(
@@ -4778,6 +4824,7 @@ class InstallmentContractRow extends DataClass
     InstallmentRepaymentMethod? repaymentMethod,
     Value<InterestRatePeriod?> interestRatePeriod = const Value.absent(),
     Value<int?> interestRatePpm = const Value.absent(),
+    InterestAccrualMethod? interestAccrualMethod,
     int? totalFeeMinor,
     String? currencyCode,
     InstallmentContractStatus? status,
@@ -4808,6 +4855,7 @@ class InstallmentContractRow extends DataClass
             : this.interestRatePeriod,
     interestRatePpm:
         interestRatePpm.present ? interestRatePpm.value : this.interestRatePpm,
+    interestAccrualMethod: interestAccrualMethod ?? this.interestAccrualMethod,
     totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
     currencyCode: currencyCode ?? this.currencyCode,
     status: status ?? this.status,
@@ -4864,6 +4912,10 @@ class InstallmentContractRow extends DataClass
           data.interestRatePpm.present
               ? data.interestRatePpm.value
               : this.interestRatePpm,
+      interestAccrualMethod:
+          data.interestAccrualMethod.present
+              ? data.interestAccrualMethod.value
+              : this.interestAccrualMethod,
       totalFeeMinor:
           data.totalFeeMinor.present
               ? data.totalFeeMinor.value
@@ -4895,6 +4947,7 @@ class InstallmentContractRow extends DataClass
           ..write('repaymentMethod: $repaymentMethod, ')
           ..write('interestRatePeriod: $interestRatePeriod, ')
           ..write('interestRatePpm: $interestRatePpm, ')
+          ..write('interestAccrualMethod: $interestAccrualMethod, ')
           ..write('totalFeeMinor: $totalFeeMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('status: $status, ')
@@ -4920,6 +4973,7 @@ class InstallmentContractRow extends DataClass
     repaymentMethod,
     interestRatePeriod,
     interestRatePpm,
+    interestAccrualMethod,
     totalFeeMinor,
     currencyCode,
     status,
@@ -4944,6 +4998,7 @@ class InstallmentContractRow extends DataClass
           other.repaymentMethod == this.repaymentMethod &&
           other.interestRatePeriod == this.interestRatePeriod &&
           other.interestRatePpm == this.interestRatePpm &&
+          other.interestAccrualMethod == this.interestAccrualMethod &&
           other.totalFeeMinor == this.totalFeeMinor &&
           other.currencyCode == this.currencyCode &&
           other.status == this.status &&
@@ -4967,6 +5022,7 @@ class InstallmentContractsCompanion
   final Value<InstallmentRepaymentMethod> repaymentMethod;
   final Value<InterestRatePeriod?> interestRatePeriod;
   final Value<int?> interestRatePpm;
+  final Value<InterestAccrualMethod> interestAccrualMethod;
   final Value<int> totalFeeMinor;
   final Value<String> currencyCode;
   final Value<InstallmentContractStatus> status;
@@ -4987,6 +5043,7 @@ class InstallmentContractsCompanion
     this.repaymentMethod = const Value.absent(),
     this.interestRatePeriod = const Value.absent(),
     this.interestRatePpm = const Value.absent(),
+    this.interestAccrualMethod = const Value.absent(),
     this.totalFeeMinor = const Value.absent(),
     this.currencyCode = const Value.absent(),
     this.status = const Value.absent(),
@@ -5008,6 +5065,7 @@ class InstallmentContractsCompanion
     required InstallmentRepaymentMethod repaymentMethod,
     this.interestRatePeriod = const Value.absent(),
     this.interestRatePpm = const Value.absent(),
+    this.interestAccrualMethod = const Value.absent(),
     this.totalFeeMinor = const Value.absent(),
     required String currencyCode,
     required InstallmentContractStatus status,
@@ -5038,6 +5096,7 @@ class InstallmentContractsCompanion
     Expression<String>? repaymentMethod,
     Expression<String>? interestRatePeriod,
     Expression<int>? interestRatePpm,
+    Expression<String>? interestAccrualMethod,
     Expression<int>? totalFeeMinor,
     Expression<String>? currencyCode,
     Expression<String>? status,
@@ -5064,6 +5123,8 @@ class InstallmentContractsCompanion
       if (interestRatePeriod != null)
         'interest_rate_period': interestRatePeriod,
       if (interestRatePpm != null) 'interest_rate_ppm': interestRatePpm,
+      if (interestAccrualMethod != null)
+        'interest_accrual_method': interestAccrualMethod,
       if (totalFeeMinor != null) 'total_fee_minor': totalFeeMinor,
       if (currencyCode != null) 'currency_code': currencyCode,
       if (status != null) 'status': status,
@@ -5087,6 +5148,7 @@ class InstallmentContractsCompanion
     Value<InstallmentRepaymentMethod>? repaymentMethod,
     Value<InterestRatePeriod?>? interestRatePeriod,
     Value<int?>? interestRatePpm,
+    Value<InterestAccrualMethod>? interestAccrualMethod,
     Value<int>? totalFeeMinor,
     Value<String>? currencyCode,
     Value<InstallmentContractStatus>? status,
@@ -5110,6 +5172,8 @@ class InstallmentContractsCompanion
       repaymentMethod: repaymentMethod ?? this.repaymentMethod,
       interestRatePeriod: interestRatePeriod ?? this.interestRatePeriod,
       interestRatePpm: interestRatePpm ?? this.interestRatePpm,
+      interestAccrualMethod:
+          interestAccrualMethod ?? this.interestAccrualMethod,
       totalFeeMinor: totalFeeMinor ?? this.totalFeeMinor,
       currencyCode: currencyCode ?? this.currencyCode,
       status: status ?? this.status,
@@ -5177,6 +5241,13 @@ class InstallmentContractsCompanion
     if (interestRatePpm.present) {
       map['interest_rate_ppm'] = Variable<int>(interestRatePpm.value);
     }
+    if (interestAccrualMethod.present) {
+      map['interest_accrual_method'] = Variable<String>(
+        $InstallmentContractsTable.$converterinterestAccrualMethod.toSql(
+          interestAccrualMethod.value,
+        ),
+      );
+    }
     if (totalFeeMinor.present) {
       map['total_fee_minor'] = Variable<int>(totalFeeMinor.value);
     }
@@ -5216,6 +5287,7 @@ class InstallmentContractsCompanion
           ..write('repaymentMethod: $repaymentMethod, ')
           ..write('interestRatePeriod: $interestRatePeriod, ')
           ..write('interestRatePpm: $interestRatePpm, ')
+          ..write('interestAccrualMethod: $interestAccrualMethod, ')
           ..write('totalFeeMinor: $totalFeeMinor, ')
           ..write('currencyCode: $currencyCode, ')
           ..write('status: $status, ')
@@ -8375,6 +8447,7 @@ typedef $$InstallmentContractsTableCreateCompanionBuilder =
       required InstallmentRepaymentMethod repaymentMethod,
       Value<InterestRatePeriod?> interestRatePeriod,
       Value<int?> interestRatePpm,
+      Value<InterestAccrualMethod> interestAccrualMethod,
       Value<int> totalFeeMinor,
       required String currencyCode,
       required InstallmentContractStatus status,
@@ -8397,6 +8470,7 @@ typedef $$InstallmentContractsTableUpdateCompanionBuilder =
       Value<InstallmentRepaymentMethod> repaymentMethod,
       Value<InterestRatePeriod?> interestRatePeriod,
       Value<int?> interestRatePpm,
+      Value<InterestAccrualMethod> interestAccrualMethod,
       Value<int> totalFeeMinor,
       Value<String> currencyCode,
       Value<InstallmentContractStatus> status,
@@ -8492,6 +8566,16 @@ class $$InstallmentContractsTableFilterComposer
   ColumnFilters<int> get interestRatePpm => $composableBuilder(
     column: $table.interestRatePpm,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    InterestAccrualMethod,
+    InterestAccrualMethod,
+    String
+  >
+  get interestAccrualMethod => $composableBuilder(
+    column: $table.interestAccrualMethod,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<int> get totalFeeMinor => $composableBuilder(
@@ -8604,6 +8688,11 @@ class $$InstallmentContractsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get interestAccrualMethod => $composableBuilder(
+    column: $table.interestAccrualMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get totalFeeMinor => $composableBuilder(
     column: $table.totalFeeMinor,
     builder: (column) => ColumnOrderings(column),
@@ -8710,6 +8799,12 @@ class $$InstallmentContractsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<InterestAccrualMethod, String>
+  get interestAccrualMethod => $composableBuilder(
+    column: $table.interestAccrualMethod,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get totalFeeMinor => $composableBuilder(
     column: $table.totalFeeMinor,
     builder: (column) => column,
@@ -8795,6 +8890,8 @@ class $$InstallmentContractsTableTableManager
                 Value<InterestRatePeriod?> interestRatePeriod =
                     const Value.absent(),
                 Value<int?> interestRatePpm = const Value.absent(),
+                Value<InterestAccrualMethod> interestAccrualMethod =
+                    const Value.absent(),
                 Value<int> totalFeeMinor = const Value.absent(),
                 Value<String> currencyCode = const Value.absent(),
                 Value<InstallmentContractStatus> status = const Value.absent(),
@@ -8815,6 +8912,7 @@ class $$InstallmentContractsTableTableManager
                 repaymentMethod: repaymentMethod,
                 interestRatePeriod: interestRatePeriod,
                 interestRatePpm: interestRatePpm,
+                interestAccrualMethod: interestAccrualMethod,
                 totalFeeMinor: totalFeeMinor,
                 currencyCode: currencyCode,
                 status: status,
@@ -8838,6 +8936,8 @@ class $$InstallmentContractsTableTableManager
                 Value<InterestRatePeriod?> interestRatePeriod =
                     const Value.absent(),
                 Value<int?> interestRatePpm = const Value.absent(),
+                Value<InterestAccrualMethod> interestAccrualMethod =
+                    const Value.absent(),
                 Value<int> totalFeeMinor = const Value.absent(),
                 required String currencyCode,
                 required InstallmentContractStatus status,
@@ -8858,6 +8958,7 @@ class $$InstallmentContractsTableTableManager
                 repaymentMethod: repaymentMethod,
                 interestRatePeriod: interestRatePeriod,
                 interestRatePpm: interestRatePpm,
+                interestAccrualMethod: interestAccrualMethod,
                 totalFeeMinor: totalFeeMinor,
                 currencyCode: currencyCode,
                 status: status,

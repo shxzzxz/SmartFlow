@@ -23,7 +23,9 @@ class CreateDisbursementContractCommand {
     this.lastRepaymentDate,
     this.interestRatePeriod,
     this.interestRatePpm,
+    this.interestAccrualMethod = InterestAccrualMethod.daily,
     this.totalFeeMinor = 0,
+    this.equalInstallmentOverrideMinor,
     this.note,
     this.counterpartyName,
   });
@@ -43,7 +45,13 @@ class CreateDisbursementContractCommand {
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+  final InterestAccrualMethod interestAccrualMethod;
   final int totalFeeMinor;
+
+  /// 等额本息下用户给定的每期还款额 A（前 N-1 期；末期吸误差）。
+  /// 仅生成计划期间使用，**不落库**。null 时回落到公式推导。
+  final int? equalInstallmentOverrideMinor;
+
   final String? note;
   final String? counterpartyName;
 }
@@ -59,7 +67,9 @@ class CreateBillConversionContractCommand {
     this.lastRepaymentDate,
     this.interestRatePeriod,
     this.interestRatePpm,
+    this.interestAccrualMethod = InterestAccrualMethod.daily,
     this.totalFeeMinor = 0,
+    this.equalInstallmentOverrideMinor,
     this.note,
   });
 
@@ -72,7 +82,12 @@ class CreateBillConversionContractCommand {
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+  final InterestAccrualMethod interestAccrualMethod;
   final int totalFeeMinor;
+
+  /// 等额本息下用户给定的每期还款额 A，仅生成期间使用，**不落库**。
+  final int? equalInstallmentOverrideMinor;
+
   final String? note;
 }
 
@@ -204,7 +219,9 @@ class UpdateContractCommand {
     required this.repaymentMethod,
     this.interestRatePeriod,
     this.interestRatePpm,
+    this.interestAccrualMethod = InterestAccrualMethod.daily,
     this.totalFeeMinor = 0,
+    this.equalInstallmentOverrideMinor,
     this.note,
     this.clearNote = false,
     this.schedulePatches = const [],
@@ -217,7 +234,12 @@ class UpdateContractCommand {
   final InstallmentRepaymentMethod repaymentMethod;
   final InterestRatePeriod? interestRatePeriod;
   final int? interestRatePpm;
+  final InterestAccrualMethod interestAccrualMethod;
   final int totalFeeMinor;
+
+  /// 等额本息下用户给定的每期还款额 A，仅重算 pending 期次时使用，**不落库**。
+  final int? equalInstallmentOverrideMinor;
+
   final String? note;
   final bool clearNote;
   final List<SchedulePendingPatch> schedulePatches;
@@ -321,9 +343,11 @@ class InstallmentServiceImpl implements InstallmentService {
           lastRepaymentDate: lastDate,
           totalPeriods: command.totalPeriods,
           method: command.repaymentMethod,
+          accrualMethod: command.interestAccrualMethod,
           ratePeriod: command.interestRatePeriod,
           ratePpm: command.interestRatePpm,
           totalFeeMinor: command.totalFeeMinor,
+          equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
         );
         final contractId = await _repository.insertContract(
           InstallmentContractDraft(
@@ -339,6 +363,7 @@ class InstallmentServiceImpl implements InstallmentService {
             repaymentMethod: command.repaymentMethod,
             interestRatePeriod: command.interestRatePeriod,
             interestRatePpm: command.interestRatePpm,
+            interestAccrualMethod: command.interestAccrualMethod,
             totalFeeMinor: command.totalFeeMinor,
             status: InstallmentContractStatus.active,
             note: command.note,
@@ -377,9 +402,11 @@ class InstallmentServiceImpl implements InstallmentService {
       lastRepaymentDate: lastDate,
       totalPeriods: command.totalPeriods,
       method: command.repaymentMethod,
+      accrualMethod: command.interestAccrualMethod,
       ratePeriod: command.interestRatePeriod,
       ratePpm: command.interestRatePpm,
       totalFeeMinor: command.totalFeeMinor,
+      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
     );
     final contractId = await _repository.insertContract(
       InstallmentContractDraft(
@@ -393,6 +420,7 @@ class InstallmentServiceImpl implements InstallmentService {
         repaymentMethod: command.repaymentMethod,
         interestRatePeriod: command.interestRatePeriod,
         interestRatePpm: command.interestRatePpm,
+        interestAccrualMethod: command.interestAccrualMethod,
         totalFeeMinor: command.totalFeeMinor,
         status: InstallmentContractStatus.active,
         note: command.note,
@@ -513,9 +541,11 @@ class InstallmentServiceImpl implements InstallmentService {
       anchorDate: anchorDate,
       pendingDates: pendingDates,
       method: command.repaymentMethod,
+      accrualMethod: command.interestAccrualMethod,
       ratePeriod: command.interestRatePeriod,
       ratePpm: command.interestRatePpm,
       remainingFeeMinor: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,
+      equalInstallmentOverrideMinor: command.equalInstallmentOverrideMinor,
     );
 
     // 取得 pending schedules 列表（与 dates 顺序一致），逐个 update。
@@ -605,6 +635,7 @@ class InstallmentServiceImpl implements InstallmentService {
         repaymentMethod: command.repaymentMethod,
         interestRatePeriod: command.interestRatePeriod,
         interestRatePpm: command.interestRatePpm,
+        interestAccrualMethod: command.interestAccrualMethod,
         totalFeeMinor: command.totalFeeMinor,
         note: command.note,
         clearNote: command.clearNote,
@@ -965,6 +996,7 @@ class InstallmentServiceImpl implements InstallmentService {
       anchorDate: anchorDate,
       pendingDates: [for (final p in pending) p.expectedRepaymentDate],
       method: contract.repaymentMethod,
+      accrualMethod: contract.interestAccrualMethod,
       ratePeriod: contract.interestRatePeriod,
       ratePpm: contract.interestRatePpm,
       remainingFeeMinor: remainingFeeMinor < 0 ? 0 : remainingFeeMinor,

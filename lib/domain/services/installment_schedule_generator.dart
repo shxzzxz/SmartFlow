@@ -35,7 +35,8 @@ class InstallmentAmountAllocation {
 ///
 /// 拆成两个相对独立的能力：
 /// - [generateDates] 根据 (首期, 末期, 期数) 推导每期日期；
-/// - [allocate] 根据 (锚点日, dates 列表, 待还本金, method, rate, fee) 计算每期金额。
+/// - [allocate] 根据 (锚点日, dates 列表, 待还本金, method, rate, accrual, fee)
+///   计算每期金额。
 ///
 /// 拆开的原因：提前还本后的重算只重新分配 pending 期次的金额，
 /// 日期保持不变，此时只需要调用 [allocate]，不应该重新生成日期。
@@ -76,18 +77,24 @@ class InstallmentScheduleGenerator {
   /// - [pendingDates] 必须按时间升序，且第一个 date 要晚于 anchorDate。
   /// - [remainingPrincipal] 这些 dates 需要分摊的总本金。
   /// - [remainingFeeMinor] 这些 dates 需要分摊的总手续费（flatFee 用）。
-  ///
-  /// 利息按天数比例：interest = current_balance × dayRate × periodDays，
-  /// 其中 dayRate = 月利率 / 30。等额本息采用"中间期标准月供 +
-  /// 首末按实际天数调利息"的简化算法（中间期天数都是 30 ± 1 时近似相等）。
+  /// - [accrualMethod] 计息方式：
+  ///   - daily：利息 = 余额 × 日利率 × 实际天数；
+  ///     等额本息下用现金流折现求每期还款额 A。
+  ///   - monthly：利息 = 余额 × 月利率（与天数无关）；
+  ///     等额本息下用标准月供公式求 A。
+  /// - [equalInstallmentOverrideMinor]：等额本息下用户直接给定的每期还款额 A
+  ///   （前 N-1 期；末期吸误差）。仅 [InstallmentRepaymentMethod.equalInstallment]
+  ///   消费此参数，其它 method 忽略。**该参数仅作为生成期间的瞬态输入，不落库**。
   List<InstallmentAmountAllocation> allocate({
     required Money remainingPrincipal,
     required DateTime anchorDate,
     required List<DateTime> pendingDates,
     required InstallmentRepaymentMethod method,
+    required InterestAccrualMethod accrualMethod,
     InterestRatePeriod? ratePeriod,
     int? ratePpm,
     int remainingFeeMinor = 0,
+    int? equalInstallmentOverrideMinor,
   }) {
     if (pendingDates.isEmpty) {
       throw ArgumentError.value(pendingDates, 'pendingDates', 'Must not be empty');
@@ -107,6 +114,8 @@ class InstallmentScheduleGenerator {
           dayCounts: dayCounts,
           ratePeriod: ratePeriod,
           ratePpm: ratePpm,
+          accrual: accrualMethod,
+          overrideInstallmentMinor: equalInstallmentOverrideMinor,
         );
       case InstallmentRepaymentMethod.equalPrincipal:
         return _equalPrincipal(
@@ -114,6 +123,7 @@ class InstallmentScheduleGenerator {
           dayCounts: dayCounts,
           ratePeriod: ratePeriod,
           ratePpm: ratePpm,
+          accrual: accrualMethod,
         );
       case InstallmentRepaymentMethod.interestFirst:
         return _interestFirst(
@@ -121,6 +131,7 @@ class InstallmentScheduleGenerator {
           dayCounts: dayCounts,
           ratePeriod: ratePeriod,
           ratePpm: ratePpm,
+          accrual: accrualMethod,
         );
       case InstallmentRepaymentMethod.flatFee:
         return _flatFee(
@@ -144,9 +155,11 @@ class InstallmentScheduleGenerator {
     required DateTime lastRepaymentDate,
     required int totalPeriods,
     required InstallmentRepaymentMethod method,
+    required InterestAccrualMethod accrualMethod,
     InterestRatePeriod? ratePeriod,
     int? ratePpm,
     int totalFeeMinor = 0,
+    int? equalInstallmentOverrideMinor,
   }) {
     if (principal.minorUnits <= 0) {
       throw ArgumentError.value(
@@ -165,9 +178,11 @@ class InstallmentScheduleGenerator {
       anchorDate: borrowingDate,
       pendingDates: dates,
       method: method,
+      accrualMethod: accrualMethod,
       ratePeriod: ratePeriod,
       ratePpm: ratePpm,
       remainingFeeMinor: totalFeeMinor,
+      equalInstallmentOverrideMinor: equalInstallmentOverrideMinor,
     );
     return [
       for (var i = 0; i < dates.length; i++)
@@ -186,51 +201,59 @@ class InstallmentScheduleGenerator {
   List<InstallmentAmountAllocation> _equalInstallment({
     required Money principal,
     required List<int> dayCounts,
+    required InterestAccrualMethod accrual,
     InterestRatePeriod? ratePeriod,
     int? ratePpm,
+    int? overrideInstallmentMinor,
   }) {
     final monthlyRate = _toMonthlyRate(ratePeriod, ratePpm);
     final n = dayCounts.length;
-    if (monthlyRate == 0) {
+    // 求每期还款额 A：
+    // - 若用户提供 override，直接采纳（前 N-1 期按此还款，末期吸误差）；
+    // - 否则按 accrual 公式推导：
+    //   monthly = 标准月供 P · r · (1+r)^n / ((1+r)^n − 1)
+    //   daily   = 现金流折现 P · ∏fᵢ / Σⱼ ∏ᵢ>ⱼ fᵢ
+    final int installmentMinor;
+    if (overrideInstallmentMinor != null && overrideInstallmentMinor > 0) {
+      installmentMinor = overrideInstallmentMinor;
+    } else if (monthlyRate == 0) {
       return _equalPrincipal(
         principal: principal,
         dayCounts: dayCounts,
         ratePeriod: ratePeriod,
         ratePpm: ratePpm,
+        accrual: accrual,
       );
+    } else {
+      switch (accrual) {
+        case InterestAccrualMethod.monthly:
+          final p = principal.minorUnits.toDouble();
+          final r = monthlyRate;
+          final pow = _pow(1 + r, n);
+          installmentMinor = (p * r * pow / (pow - 1)).round();
+        case InterestAccrualMethod.daily:
+          installmentMinor = _solveDailyInstallment(
+            principalMinor: principal.minorUnits,
+            monthlyRate: monthlyRate,
+            dayCounts: dayCounts,
+          );
+      }
     }
-    if (n == 1) {
-      final days = dayCounts[0];
-      final interestMinor =
-          (principal.minorUnits * monthlyRate * days / 30).round();
-      return [
-        InstallmentAmountAllocation(
-          principal: principal,
-          interest: Money(
-            minorUnits: interestMinor,
-            currency: principal.currency,
-          ),
-          fee: Money.zero(currency: principal.currency),
-        ),
-      ];
-    }
-    // 标准月供：假定每期都是 1 个月，按 p × r × (1+r)^n / ((1+r)^n - 1)。
-    final p = principal.minorUnits.toDouble();
-    final r = monthlyRate;
-    final pow = _pow(1 + r, n);
-    final installment = (p * r * pow / (pow - 1)).round();
 
     final allocations = <InstallmentAmountAllocation>[];
     var remaining = principal.minorUnits;
     var principalAccum = 0;
     for (var i = 0; i < n; i++) {
       final isLast = i == n - 1;
-      // 利息按当期天数比例：standard_interest × (days / 30)。
-      final scaledInterestMinor =
-          (remaining * monthlyRate * dayCounts[i] / 30).round();
-      var principalMinor = installment - scaledInterestMinor;
+      final interestMinor = _interestForPeriod(
+        balanceMinor: remaining,
+        monthlyRate: monthlyRate,
+        days: dayCounts[i],
+        accrual: accrual,
+      );
+      var principalMinor = installmentMinor - interestMinor;
       if (isLast) {
-        // 末期吸收取整误差，本金 = 剩余全部，利息按天数调整。
+        // 末期吸收取整误差：本金 = 剩余全部。
         principalMinor = principal.minorUnits - principalAccum;
       }
       allocations.add(
@@ -240,7 +263,7 @@ class InstallmentScheduleGenerator {
             currency: principal.currency,
           ),
           interest: Money(
-            minorUnits: scaledInterestMinor,
+            minorUnits: interestMinor,
             currency: principal.currency,
           ),
           fee: Money.zero(currency: principal.currency),
@@ -255,6 +278,7 @@ class InstallmentScheduleGenerator {
   List<InstallmentAmountAllocation> _equalPrincipal({
     required Money principal,
     required List<int> dayCounts,
+    required InterestAccrualMethod accrual,
     InterestRatePeriod? ratePeriod,
     int? ratePpm,
   }) {
@@ -269,8 +293,12 @@ class InstallmentScheduleGenerator {
       if (i == n - 1) {
         principalMinor = principal.minorUnits - principalAccum;
       }
-      final interestMinor =
-          (remaining * monthlyRate * dayCounts[i] / 30).round();
+      final interestMinor = _interestForPeriod(
+        balanceMinor: remaining,
+        monthlyRate: monthlyRate,
+        days: dayCounts[i],
+        accrual: accrual,
+      );
       allocations.add(
         InstallmentAmountAllocation(
           principal: Money(
@@ -293,6 +321,7 @@ class InstallmentScheduleGenerator {
   List<InstallmentAmountAllocation> _interestFirst({
     required Money principal,
     required List<int> dayCounts,
+    required InterestAccrualMethod accrual,
     InterestRatePeriod? ratePeriod,
     int? ratePpm,
   }) {
@@ -301,8 +330,12 @@ class InstallmentScheduleGenerator {
     final allocations = <InstallmentAmountAllocation>[];
     for (var i = 0; i < n; i++) {
       final isLast = i == n - 1;
-      final interestMinor =
-          (principal.minorUnits * monthlyRate * dayCounts[i] / 30).round();
+      final interestMinor = _interestForPeriod(
+        balanceMinor: principal.minorUnits,
+        monthlyRate: monthlyRate,
+        days: dayCounts[i],
+        accrual: accrual,
+      );
       allocations.add(
         InstallmentAmountAllocation(
           principal: Money(
@@ -368,6 +401,47 @@ class InstallmentScheduleGenerator {
   }
 
   // ---------- 工具 ----------
+
+  /// 单期利息：
+  /// - daily 走简单日息：B · d · days，d = monthlyRate / 30；
+  /// - monthly 走月利率：B · r（与天数无关）。
+  int _interestForPeriod({
+    required int balanceMinor,
+    required double monthlyRate,
+    required int days,
+    required InterestAccrualMethod accrual,
+  }) {
+    switch (accrual) {
+      case InterestAccrualMethod.daily:
+        // monthlyRate / 30 × days ≡ d × days；用单一乘除避免引入新的浮点路径。
+        return (balanceMinor * monthlyRate * days / 30).round();
+      case InterestAccrualMethod.monthly:
+        return (balanceMinor * monthlyRate).round();
+    }
+  }
+
+  /// 按日计息下等额本息的每期还款额 A：
+  /// A = P · ∏(1+d·days_i) / Σ_j ∏_{i>j}(1+d·days_i)
+  /// 退化：days_i = 30 时 f_i = 1 + r，公式回到标准月供。
+  /// 一次倒序遍历同时计算 prodAll 与 sumOfProducts，O(n)。
+  int _solveDailyInstallment({
+    required int principalMinor,
+    required double monthlyRate,
+    required List<int> dayCounts,
+  }) {
+    final d = monthlyRate / 30;
+    var prodAll = 1.0;
+    for (final days in dayCounts) {
+      prodAll *= (1 + d * days);
+    }
+    var sumOfProducts = 0.0;
+    var suffix = 1.0;
+    for (var i = dayCounts.length - 1; i >= 0; i--) {
+      sumOfProducts += suffix;
+      suffix *= (1 + d * dayCounts[i]);
+    }
+    return (principalMinor * prodAll / sumOfProducts).round();
+  }
 
   /// 计算每期的"占用天数"：第 i 期天数 = dates[i] - prevDate (若 i==0 则 anchorDate)。
   /// 至少为 1 天，避免零利息退化。
