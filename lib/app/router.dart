@@ -9,6 +9,9 @@ import '../features/categories/pages/categories_page.dart';
 import '../features/categories/pages/category_form_page.dart';
 import '../features/calendar/pages/calendar_page.dart';
 import '../features/home/pages/home_page.dart';
+import '../features/installments/pages/installment_detail_page.dart';
+import '../features/installments/pages/installment_form_page.dart';
+import '../features/installments/pages/installment_repayment_form_page.dart';
 import '../features/placeholder/pages/placeholder_page.dart';
 import '../features/profile/pages/profile_page.dart';
 import '../features/profile/pages/software_version_page.dart';
@@ -115,6 +118,36 @@ final appRouter = GoRouter(
           (context, state) => RepaymentFormPage(
             liabilityAccountId: int.parse(state.pathParameters['id']!),
           ),
+    ),
+    GoRoute(
+      path: '/accounts/:id/installments/new',
+      builder: (context, state) => InstallmentFormPage(
+        liabilityAccountId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
+      path: '/installments/:contractId',
+      builder: (context, state) => InstallmentDetailPage(
+        contractId: int.parse(state.pathParameters['contractId']!),
+      ),
+    ),
+    GoRoute(
+      path: '/installments/:contractId/repay',
+      builder: (context, state) {
+        final contractId = int.parse(state.pathParameters['contractId']!);
+        final mode = switch (state.uri.queryParameters['mode']) {
+          'extra' => InstallmentRepaymentMode.extraPrincipal,
+          'settle' => InstallmentRepaymentMode.earlySettlement,
+          _ => InstallmentRepaymentMode.regular,
+        };
+        final scheduleId =
+            int.tryParse(state.uri.queryParameters['scheduleId'] ?? '');
+        return InstallmentRepaymentFormPage(
+          contractId: contractId,
+          mode: mode,
+          scheduleId: scheduleId,
+        );
+      },
     ),
     GoRoute(
       path: '/categories',

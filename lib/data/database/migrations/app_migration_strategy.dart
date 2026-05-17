@@ -39,6 +39,23 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         'CREATE INDEX entries_account_transaction_idx '
         'ON entries (account_id, transaction_id)',
       );
+      await database.customStatement(
+        'CREATE INDEX installment_contracts_liability_status_idx '
+        'ON installment_contracts (liability_account_id, status)',
+      );
+      await database.customStatement(
+        'CREATE INDEX installment_schedules_contract_period_idx '
+        'ON installment_schedules (contract_id, period_no)',
+      );
+      await database.customStatement(
+        'CREATE UNIQUE INDEX installment_repayments_contract_schedule_unique '
+        'ON installment_repayments (contract_id, schedule_id) '
+        'WHERE schedule_id IS NOT NULL',
+      );
+      await database.customStatement(
+        'CREATE INDEX installment_repayments_transaction_idx '
+        'ON installment_repayments (transaction_id)',
+      );
       await ensureBuiltinData(database);
     },
     onUpgrade: (migrator, from, to) async {
@@ -46,6 +63,28 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await migrator.createTable(database.appMetadata);
         await migrator.addColumn(database.accounts, database.accounts.source);
         await ensureBuiltinData(database);
+      }
+      if (from < 3) {
+        await migrator.createTable(database.installmentContracts);
+        await migrator.createTable(database.installmentSchedules);
+        await migrator.createTable(database.installmentRepayments);
+        await database.customStatement(
+          'CREATE INDEX installment_contracts_liability_status_idx '
+          'ON installment_contracts (liability_account_id, status)',
+        );
+        await database.customStatement(
+          'CREATE INDEX installment_schedules_contract_period_idx '
+          'ON installment_schedules (contract_id, period_no)',
+        );
+        await database.customStatement(
+          'CREATE UNIQUE INDEX installment_repayments_contract_schedule_unique '
+          'ON installment_repayments (contract_id, schedule_id) '
+          'WHERE schedule_id IS NOT NULL',
+        );
+        await database.customStatement(
+          'CREATE INDEX installment_repayments_transaction_idx '
+          'ON installment_repayments (transaction_id)',
+        );
       }
     },
     beforeOpen: (_) async {

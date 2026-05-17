@@ -4010,6 +4010,2224 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   }
 }
 
+class $InstallmentContractsTable extends InstallmentContracts
+    with TableInfo<$InstallmentContractsTable, InstallmentContractRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentContractsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _liabilityAccountIdMeta =
+      const VerificationMeta('liabilityAccountId');
+  @override
+  late final GeneratedColumn<int> liabilityAccountId = GeneratedColumn<int>(
+    'liability_account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<InstallmentSourceType, String>
+  sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<InstallmentSourceType>(
+    $InstallmentContractsTable.$convertersourceType,
+  );
+  static const VerificationMeta _disbursementAccountIdMeta =
+      const VerificationMeta('disbursementAccountId');
+  @override
+  late final GeneratedColumn<int> disbursementAccountId = GeneratedColumn<int>(
+    'disbursement_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _disbursementTransactionIdMeta =
+      const VerificationMeta('disbursementTransactionId');
+  @override
+  late final GeneratedColumn<int> disbursementTransactionId =
+      GeneratedColumn<int>(
+        'disbursement_transaction_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _principalMinorMeta = const VerificationMeta(
+    'principalMinor',
+  );
+  @override
+  late final GeneratedColumn<int> principalMinor = GeneratedColumn<int>(
+    'principal_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalPeriodsMeta = const VerificationMeta(
+    'totalPeriods',
+  );
+  @override
+  late final GeneratedColumn<int> totalPeriods = GeneratedColumn<int>(
+    'total_periods',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<
+    InstallmentRepaymentMethod,
+    String
+  >
+  repaymentMethod = GeneratedColumn<String>(
+    'repayment_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<InstallmentRepaymentMethod>(
+    $InstallmentContractsTable.$converterrepaymentMethod,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<InterestRatePeriod?, String>
+  interestRatePeriod = GeneratedColumn<String>(
+    'interest_rate_period',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<InterestRatePeriod?>(
+    $InstallmentContractsTable.$converterinterestRatePeriodn,
+  );
+  static const VerificationMeta _interestRatePpmMeta = const VerificationMeta(
+    'interestRatePpm',
+  );
+  @override
+  late final GeneratedColumn<int> interestRatePpm = GeneratedColumn<int>(
+    'interest_rate_ppm',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 3,
+      maxTextLength: 3,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<InstallmentContractStatus, String>
+  status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<InstallmentContractStatus>(
+    $InstallmentContractsTable.$converterstatus,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    liabilityAccountId,
+    sourceType,
+    disbursementAccountId,
+    disbursementTransactionId,
+    principalMinor,
+    totalPeriods,
+    startDate,
+    repaymentMethod,
+    interestRatePeriod,
+    interestRatePpm,
+    currencyCode,
+    status,
+    note,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_contracts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentContractRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('liability_account_id')) {
+      context.handle(
+        _liabilityAccountIdMeta,
+        liabilityAccountId.isAcceptableOrUnknown(
+          data['liability_account_id']!,
+          _liabilityAccountIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_liabilityAccountIdMeta);
+    }
+    if (data.containsKey('disbursement_account_id')) {
+      context.handle(
+        _disbursementAccountIdMeta,
+        disbursementAccountId.isAcceptableOrUnknown(
+          data['disbursement_account_id']!,
+          _disbursementAccountIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('disbursement_transaction_id')) {
+      context.handle(
+        _disbursementTransactionIdMeta,
+        disbursementTransactionId.isAcceptableOrUnknown(
+          data['disbursement_transaction_id']!,
+          _disbursementTransactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('principal_minor')) {
+      context.handle(
+        _principalMinorMeta,
+        principalMinor.isAcceptableOrUnknown(
+          data['principal_minor']!,
+          _principalMinorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_principalMinorMeta);
+    }
+    if (data.containsKey('total_periods')) {
+      context.handle(
+        _totalPeriodsMeta,
+        totalPeriods.isAcceptableOrUnknown(
+          data['total_periods']!,
+          _totalPeriodsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalPeriodsMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startDateMeta);
+    }
+    if (data.containsKey('interest_rate_ppm')) {
+      context.handle(
+        _interestRatePpmMeta,
+        interestRatePpm.isAcceptableOrUnknown(
+          data['interest_rate_ppm']!,
+          _interestRatePpmMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyCodeMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentContractRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentContractRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      liabilityAccountId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}liability_account_id'],
+          )!,
+      sourceType: $InstallmentContractsTable.$convertersourceType.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}source_type'],
+        )!,
+      ),
+      disbursementAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}disbursement_account_id'],
+      ),
+      disbursementTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}disbursement_transaction_id'],
+      ),
+      principalMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}principal_minor'],
+          )!,
+      totalPeriods:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}total_periods'],
+          )!,
+      startDate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}start_date'],
+          )!,
+      repaymentMethod: $InstallmentContractsTable.$converterrepaymentMethod
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}repayment_method'],
+            )!,
+          ),
+      interestRatePeriod: $InstallmentContractsTable
+          .$converterinterestRatePeriodn
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}interest_rate_period'],
+            ),
+          ),
+      interestRatePpm: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interest_rate_ppm'],
+      ),
+      currencyCode:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}currency_code'],
+          )!,
+      status: $InstallmentContractsTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status'],
+        )!,
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $InstallmentContractsTable createAlias(String alias) {
+    return $InstallmentContractsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<InstallmentSourceType, String, String>
+  $convertersourceType = const EnumNameConverter<InstallmentSourceType>(
+    InstallmentSourceType.values,
+  );
+  static JsonTypeConverter2<InstallmentRepaymentMethod, String, String>
+  $converterrepaymentMethod =
+      const EnumNameConverter<InstallmentRepaymentMethod>(
+        InstallmentRepaymentMethod.values,
+      );
+  static JsonTypeConverter2<InterestRatePeriod, String, String>
+  $converterinterestRatePeriod = const EnumNameConverter<InterestRatePeriod>(
+    InterestRatePeriod.values,
+  );
+  static JsonTypeConverter2<InterestRatePeriod?, String?, String?>
+  $converterinterestRatePeriodn = JsonTypeConverter2.asNullable(
+    $converterinterestRatePeriod,
+  );
+  static JsonTypeConverter2<InstallmentContractStatus, String, String>
+  $converterstatus = const EnumNameConverter<InstallmentContractStatus>(
+    InstallmentContractStatus.values,
+  );
+}
+
+class InstallmentContractRow extends DataClass
+    implements Insertable<InstallmentContractRow> {
+  final int id;
+  final int liabilityAccountId;
+  final InstallmentSourceType sourceType;
+  final int? disbursementAccountId;
+  final int? disbursementTransactionId;
+  final int principalMinor;
+  final int totalPeriods;
+  final DateTime startDate;
+  final InstallmentRepaymentMethod repaymentMethod;
+  final InterestRatePeriod? interestRatePeriod;
+  final int? interestRatePpm;
+  final String currencyCode;
+  final InstallmentContractStatus status;
+  final String? note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentContractRow({
+    required this.id,
+    required this.liabilityAccountId,
+    required this.sourceType,
+    this.disbursementAccountId,
+    this.disbursementTransactionId,
+    required this.principalMinor,
+    required this.totalPeriods,
+    required this.startDate,
+    required this.repaymentMethod,
+    this.interestRatePeriod,
+    this.interestRatePpm,
+    required this.currencyCode,
+    required this.status,
+    this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['liability_account_id'] = Variable<int>(liabilityAccountId);
+    {
+      map['source_type'] = Variable<String>(
+        $InstallmentContractsTable.$convertersourceType.toSql(sourceType),
+      );
+    }
+    if (!nullToAbsent || disbursementAccountId != null) {
+      map['disbursement_account_id'] = Variable<int>(disbursementAccountId);
+    }
+    if (!nullToAbsent || disbursementTransactionId != null) {
+      map['disbursement_transaction_id'] = Variable<int>(
+        disbursementTransactionId,
+      );
+    }
+    map['principal_minor'] = Variable<int>(principalMinor);
+    map['total_periods'] = Variable<int>(totalPeriods);
+    map['start_date'] = Variable<DateTime>(startDate);
+    {
+      map['repayment_method'] = Variable<String>(
+        $InstallmentContractsTable.$converterrepaymentMethod.toSql(
+          repaymentMethod,
+        ),
+      );
+    }
+    if (!nullToAbsent || interestRatePeriod != null) {
+      map['interest_rate_period'] = Variable<String>(
+        $InstallmentContractsTable.$converterinterestRatePeriodn.toSql(
+          interestRatePeriod,
+        ),
+      );
+    }
+    if (!nullToAbsent || interestRatePpm != null) {
+      map['interest_rate_ppm'] = Variable<int>(interestRatePpm);
+    }
+    map['currency_code'] = Variable<String>(currencyCode);
+    {
+      map['status'] = Variable<String>(
+        $InstallmentContractsTable.$converterstatus.toSql(status),
+      );
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentContractsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentContractsCompanion(
+      id: Value(id),
+      liabilityAccountId: Value(liabilityAccountId),
+      sourceType: Value(sourceType),
+      disbursementAccountId:
+          disbursementAccountId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(disbursementAccountId),
+      disbursementTransactionId:
+          disbursementTransactionId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(disbursementTransactionId),
+      principalMinor: Value(principalMinor),
+      totalPeriods: Value(totalPeriods),
+      startDate: Value(startDate),
+      repaymentMethod: Value(repaymentMethod),
+      interestRatePeriod:
+          interestRatePeriod == null && nullToAbsent
+              ? const Value.absent()
+              : Value(interestRatePeriod),
+      interestRatePpm:
+          interestRatePpm == null && nullToAbsent
+              ? const Value.absent()
+              : Value(interestRatePpm),
+      currencyCode: Value(currencyCode),
+      status: Value(status),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentContractRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentContractRow(
+      id: serializer.fromJson<int>(json['id']),
+      liabilityAccountId: serializer.fromJson<int>(json['liabilityAccountId']),
+      sourceType: $InstallmentContractsTable.$convertersourceType.fromJson(
+        serializer.fromJson<String>(json['sourceType']),
+      ),
+      disbursementAccountId: serializer.fromJson<int?>(
+        json['disbursementAccountId'],
+      ),
+      disbursementTransactionId: serializer.fromJson<int?>(
+        json['disbursementTransactionId'],
+      ),
+      principalMinor: serializer.fromJson<int>(json['principalMinor']),
+      totalPeriods: serializer.fromJson<int>(json['totalPeriods']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      repaymentMethod: $InstallmentContractsTable.$converterrepaymentMethod
+          .fromJson(serializer.fromJson<String>(json['repaymentMethod'])),
+      interestRatePeriod: $InstallmentContractsTable
+          .$converterinterestRatePeriodn
+          .fromJson(serializer.fromJson<String?>(json['interestRatePeriod'])),
+      interestRatePpm: serializer.fromJson<int?>(json['interestRatePpm']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      status: $InstallmentContractsTable.$converterstatus.fromJson(
+        serializer.fromJson<String>(json['status']),
+      ),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'liabilityAccountId': serializer.toJson<int>(liabilityAccountId),
+      'sourceType': serializer.toJson<String>(
+        $InstallmentContractsTable.$convertersourceType.toJson(sourceType),
+      ),
+      'disbursementAccountId': serializer.toJson<int?>(disbursementAccountId),
+      'disbursementTransactionId': serializer.toJson<int?>(
+        disbursementTransactionId,
+      ),
+      'principalMinor': serializer.toJson<int>(principalMinor),
+      'totalPeriods': serializer.toJson<int>(totalPeriods),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'repaymentMethod': serializer.toJson<String>(
+        $InstallmentContractsTable.$converterrepaymentMethod.toJson(
+          repaymentMethod,
+        ),
+      ),
+      'interestRatePeriod': serializer.toJson<String?>(
+        $InstallmentContractsTable.$converterinterestRatePeriodn.toJson(
+          interestRatePeriod,
+        ),
+      ),
+      'interestRatePpm': serializer.toJson<int?>(interestRatePpm),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'status': serializer.toJson<String>(
+        $InstallmentContractsTable.$converterstatus.toJson(status),
+      ),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentContractRow copyWith({
+    int? id,
+    int? liabilityAccountId,
+    InstallmentSourceType? sourceType,
+    Value<int?> disbursementAccountId = const Value.absent(),
+    Value<int?> disbursementTransactionId = const Value.absent(),
+    int? principalMinor,
+    int? totalPeriods,
+    DateTime? startDate,
+    InstallmentRepaymentMethod? repaymentMethod,
+    Value<InterestRatePeriod?> interestRatePeriod = const Value.absent(),
+    Value<int?> interestRatePpm = const Value.absent(),
+    String? currencyCode,
+    InstallmentContractStatus? status,
+    Value<String?> note = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentContractRow(
+    id: id ?? this.id,
+    liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
+    sourceType: sourceType ?? this.sourceType,
+    disbursementAccountId:
+        disbursementAccountId.present
+            ? disbursementAccountId.value
+            : this.disbursementAccountId,
+    disbursementTransactionId:
+        disbursementTransactionId.present
+            ? disbursementTransactionId.value
+            : this.disbursementTransactionId,
+    principalMinor: principalMinor ?? this.principalMinor,
+    totalPeriods: totalPeriods ?? this.totalPeriods,
+    startDate: startDate ?? this.startDate,
+    repaymentMethod: repaymentMethod ?? this.repaymentMethod,
+    interestRatePeriod:
+        interestRatePeriod.present
+            ? interestRatePeriod.value
+            : this.interestRatePeriod,
+    interestRatePpm:
+        interestRatePpm.present ? interestRatePpm.value : this.interestRatePpm,
+    currencyCode: currencyCode ?? this.currencyCode,
+    status: status ?? this.status,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentContractRow copyWithCompanion(InstallmentContractsCompanion data) {
+    return InstallmentContractRow(
+      id: data.id.present ? data.id.value : this.id,
+      liabilityAccountId:
+          data.liabilityAccountId.present
+              ? data.liabilityAccountId.value
+              : this.liabilityAccountId,
+      sourceType:
+          data.sourceType.present ? data.sourceType.value : this.sourceType,
+      disbursementAccountId:
+          data.disbursementAccountId.present
+              ? data.disbursementAccountId.value
+              : this.disbursementAccountId,
+      disbursementTransactionId:
+          data.disbursementTransactionId.present
+              ? data.disbursementTransactionId.value
+              : this.disbursementTransactionId,
+      principalMinor:
+          data.principalMinor.present
+              ? data.principalMinor.value
+              : this.principalMinor,
+      totalPeriods:
+          data.totalPeriods.present
+              ? data.totalPeriods.value
+              : this.totalPeriods,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      repaymentMethod:
+          data.repaymentMethod.present
+              ? data.repaymentMethod.value
+              : this.repaymentMethod,
+      interestRatePeriod:
+          data.interestRatePeriod.present
+              ? data.interestRatePeriod.value
+              : this.interestRatePeriod,
+      interestRatePpm:
+          data.interestRatePpm.present
+              ? data.interestRatePpm.value
+              : this.interestRatePpm,
+      currencyCode:
+          data.currencyCode.present
+              ? data.currencyCode.value
+              : this.currencyCode,
+      status: data.status.present ? data.status.value : this.status,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentContractRow(')
+          ..write('id: $id, ')
+          ..write('liabilityAccountId: $liabilityAccountId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('disbursementAccountId: $disbursementAccountId, ')
+          ..write('disbursementTransactionId: $disbursementTransactionId, ')
+          ..write('principalMinor: $principalMinor, ')
+          ..write('totalPeriods: $totalPeriods, ')
+          ..write('startDate: $startDate, ')
+          ..write('repaymentMethod: $repaymentMethod, ')
+          ..write('interestRatePeriod: $interestRatePeriod, ')
+          ..write('interestRatePpm: $interestRatePpm, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('status: $status, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    liabilityAccountId,
+    sourceType,
+    disbursementAccountId,
+    disbursementTransactionId,
+    principalMinor,
+    totalPeriods,
+    startDate,
+    repaymentMethod,
+    interestRatePeriod,
+    interestRatePpm,
+    currencyCode,
+    status,
+    note,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentContractRow &&
+          other.id == this.id &&
+          other.liabilityAccountId == this.liabilityAccountId &&
+          other.sourceType == this.sourceType &&
+          other.disbursementAccountId == this.disbursementAccountId &&
+          other.disbursementTransactionId == this.disbursementTransactionId &&
+          other.principalMinor == this.principalMinor &&
+          other.totalPeriods == this.totalPeriods &&
+          other.startDate == this.startDate &&
+          other.repaymentMethod == this.repaymentMethod &&
+          other.interestRatePeriod == this.interestRatePeriod &&
+          other.interestRatePpm == this.interestRatePpm &&
+          other.currencyCode == this.currencyCode &&
+          other.status == this.status &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentContractsCompanion
+    extends UpdateCompanion<InstallmentContractRow> {
+  final Value<int> id;
+  final Value<int> liabilityAccountId;
+  final Value<InstallmentSourceType> sourceType;
+  final Value<int?> disbursementAccountId;
+  final Value<int?> disbursementTransactionId;
+  final Value<int> principalMinor;
+  final Value<int> totalPeriods;
+  final Value<DateTime> startDate;
+  final Value<InstallmentRepaymentMethod> repaymentMethod;
+  final Value<InterestRatePeriod?> interestRatePeriod;
+  final Value<int?> interestRatePpm;
+  final Value<String> currencyCode;
+  final Value<InstallmentContractStatus> status;
+  final Value<String?> note;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const InstallmentContractsCompanion({
+    this.id = const Value.absent(),
+    this.liabilityAccountId = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.disbursementAccountId = const Value.absent(),
+    this.disbursementTransactionId = const Value.absent(),
+    this.principalMinor = const Value.absent(),
+    this.totalPeriods = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.repaymentMethod = const Value.absent(),
+    this.interestRatePeriod = const Value.absent(),
+    this.interestRatePpm = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.status = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  InstallmentContractsCompanion.insert({
+    this.id = const Value.absent(),
+    required int liabilityAccountId,
+    required InstallmentSourceType sourceType,
+    this.disbursementAccountId = const Value.absent(),
+    this.disbursementTransactionId = const Value.absent(),
+    required int principalMinor,
+    required int totalPeriods,
+    required DateTime startDate,
+    required InstallmentRepaymentMethod repaymentMethod,
+    this.interestRatePeriod = const Value.absent(),
+    this.interestRatePpm = const Value.absent(),
+    required String currencyCode,
+    required InstallmentContractStatus status,
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : liabilityAccountId = Value(liabilityAccountId),
+       sourceType = Value(sourceType),
+       principalMinor = Value(principalMinor),
+       totalPeriods = Value(totalPeriods),
+       startDate = Value(startDate),
+       repaymentMethod = Value(repaymentMethod),
+       currencyCode = Value(currencyCode),
+       status = Value(status);
+  static Insertable<InstallmentContractRow> custom({
+    Expression<int>? id,
+    Expression<int>? liabilityAccountId,
+    Expression<String>? sourceType,
+    Expression<int>? disbursementAccountId,
+    Expression<int>? disbursementTransactionId,
+    Expression<int>? principalMinor,
+    Expression<int>? totalPeriods,
+    Expression<DateTime>? startDate,
+    Expression<String>? repaymentMethod,
+    Expression<String>? interestRatePeriod,
+    Expression<int>? interestRatePpm,
+    Expression<String>? currencyCode,
+    Expression<String>? status,
+    Expression<String>? note,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (liabilityAccountId != null)
+        'liability_account_id': liabilityAccountId,
+      if (sourceType != null) 'source_type': sourceType,
+      if (disbursementAccountId != null)
+        'disbursement_account_id': disbursementAccountId,
+      if (disbursementTransactionId != null)
+        'disbursement_transaction_id': disbursementTransactionId,
+      if (principalMinor != null) 'principal_minor': principalMinor,
+      if (totalPeriods != null) 'total_periods': totalPeriods,
+      if (startDate != null) 'start_date': startDate,
+      if (repaymentMethod != null) 'repayment_method': repaymentMethod,
+      if (interestRatePeriod != null)
+        'interest_rate_period': interestRatePeriod,
+      if (interestRatePpm != null) 'interest_rate_ppm': interestRatePpm,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (status != null) 'status': status,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  InstallmentContractsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? liabilityAccountId,
+    Value<InstallmentSourceType>? sourceType,
+    Value<int?>? disbursementAccountId,
+    Value<int?>? disbursementTransactionId,
+    Value<int>? principalMinor,
+    Value<int>? totalPeriods,
+    Value<DateTime>? startDate,
+    Value<InstallmentRepaymentMethod>? repaymentMethod,
+    Value<InterestRatePeriod?>? interestRatePeriod,
+    Value<int?>? interestRatePpm,
+    Value<String>? currencyCode,
+    Value<InstallmentContractStatus>? status,
+    Value<String?>? note,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return InstallmentContractsCompanion(
+      id: id ?? this.id,
+      liabilityAccountId: liabilityAccountId ?? this.liabilityAccountId,
+      sourceType: sourceType ?? this.sourceType,
+      disbursementAccountId:
+          disbursementAccountId ?? this.disbursementAccountId,
+      disbursementTransactionId:
+          disbursementTransactionId ?? this.disbursementTransactionId,
+      principalMinor: principalMinor ?? this.principalMinor,
+      totalPeriods: totalPeriods ?? this.totalPeriods,
+      startDate: startDate ?? this.startDate,
+      repaymentMethod: repaymentMethod ?? this.repaymentMethod,
+      interestRatePeriod: interestRatePeriod ?? this.interestRatePeriod,
+      interestRatePpm: interestRatePpm ?? this.interestRatePpm,
+      currencyCode: currencyCode ?? this.currencyCode,
+      status: status ?? this.status,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (liabilityAccountId.present) {
+      map['liability_account_id'] = Variable<int>(liabilityAccountId.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(
+        $InstallmentContractsTable.$convertersourceType.toSql(sourceType.value),
+      );
+    }
+    if (disbursementAccountId.present) {
+      map['disbursement_account_id'] = Variable<int>(
+        disbursementAccountId.value,
+      );
+    }
+    if (disbursementTransactionId.present) {
+      map['disbursement_transaction_id'] = Variable<int>(
+        disbursementTransactionId.value,
+      );
+    }
+    if (principalMinor.present) {
+      map['principal_minor'] = Variable<int>(principalMinor.value);
+    }
+    if (totalPeriods.present) {
+      map['total_periods'] = Variable<int>(totalPeriods.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (repaymentMethod.present) {
+      map['repayment_method'] = Variable<String>(
+        $InstallmentContractsTable.$converterrepaymentMethod.toSql(
+          repaymentMethod.value,
+        ),
+      );
+    }
+    if (interestRatePeriod.present) {
+      map['interest_rate_period'] = Variable<String>(
+        $InstallmentContractsTable.$converterinterestRatePeriodn.toSql(
+          interestRatePeriod.value,
+        ),
+      );
+    }
+    if (interestRatePpm.present) {
+      map['interest_rate_ppm'] = Variable<int>(interestRatePpm.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+        $InstallmentContractsTable.$converterstatus.toSql(status.value),
+      );
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentContractsCompanion(')
+          ..write('id: $id, ')
+          ..write('liabilityAccountId: $liabilityAccountId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('disbursementAccountId: $disbursementAccountId, ')
+          ..write('disbursementTransactionId: $disbursementTransactionId, ')
+          ..write('principalMinor: $principalMinor, ')
+          ..write('totalPeriods: $totalPeriods, ')
+          ..write('startDate: $startDate, ')
+          ..write('repaymentMethod: $repaymentMethod, ')
+          ..write('interestRatePeriod: $interestRatePeriod, ')
+          ..write('interestRatePpm: $interestRatePpm, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('status: $status, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentSchedulesTable extends InstallmentSchedules
+    with TableInfo<$InstallmentSchedulesTable, InstallmentScheduleRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentSchedulesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
+  );
+  @override
+  late final GeneratedColumn<int> contractId = GeneratedColumn<int>(
+    'contract_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _periodNoMeta = const VerificationMeta(
+    'periodNo',
+  );
+  @override
+  late final GeneratedColumn<int> periodNo = GeneratedColumn<int>(
+    'period_no',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _expectedRepaymentDateMeta =
+      const VerificationMeta('expectedRepaymentDate');
+  @override
+  late final GeneratedColumn<DateTime> expectedRepaymentDate =
+      GeneratedColumn<DateTime>(
+        'expected_repayment_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _expectedPrincipalMinorMeta =
+      const VerificationMeta('expectedPrincipalMinor');
+  @override
+  late final GeneratedColumn<int> expectedPrincipalMinor = GeneratedColumn<int>(
+    'expected_principal_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _expectedInterestMinorMeta =
+      const VerificationMeta('expectedInterestMinor');
+  @override
+  late final GeneratedColumn<int> expectedInterestMinor = GeneratedColumn<int>(
+    'expected_interest_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _expectedFeeMinorMeta = const VerificationMeta(
+    'expectedFeeMinor',
+  );
+  @override
+  late final GeneratedColumn<int> expectedFeeMinor = GeneratedColumn<int>(
+    'expected_fee_minor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<InstallmentScheduleStatus, String>
+  status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<InstallmentScheduleStatus>(
+    $InstallmentSchedulesTable.$converterstatus,
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    contractId,
+    periodNo,
+    expectedRepaymentDate,
+    expectedPrincipalMinor,
+    expectedInterestMinor,
+    expectedFeeMinor,
+    status,
+    note,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_schedules';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentScheduleRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('contract_id')) {
+      context.handle(
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contractIdMeta);
+    }
+    if (data.containsKey('period_no')) {
+      context.handle(
+        _periodNoMeta,
+        periodNo.isAcceptableOrUnknown(data['period_no']!, _periodNoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_periodNoMeta);
+    }
+    if (data.containsKey('expected_repayment_date')) {
+      context.handle(
+        _expectedRepaymentDateMeta,
+        expectedRepaymentDate.isAcceptableOrUnknown(
+          data['expected_repayment_date']!,
+          _expectedRepaymentDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expectedRepaymentDateMeta);
+    }
+    if (data.containsKey('expected_principal_minor')) {
+      context.handle(
+        _expectedPrincipalMinorMeta,
+        expectedPrincipalMinor.isAcceptableOrUnknown(
+          data['expected_principal_minor']!,
+          _expectedPrincipalMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expected_interest_minor')) {
+      context.handle(
+        _expectedInterestMinorMeta,
+        expectedInterestMinor.isAcceptableOrUnknown(
+          data['expected_interest_minor']!,
+          _expectedInterestMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expected_fee_minor')) {
+      context.handle(
+        _expectedFeeMinorMeta,
+        expectedFeeMinor.isAcceptableOrUnknown(
+          data['expected_fee_minor']!,
+          _expectedFeeMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentScheduleRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentScheduleRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      contractId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}contract_id'],
+          )!,
+      periodNo:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}period_no'],
+          )!,
+      expectedRepaymentDate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}expected_repayment_date'],
+          )!,
+      expectedPrincipalMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}expected_principal_minor'],
+          )!,
+      expectedInterestMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}expected_interest_minor'],
+          )!,
+      expectedFeeMinor:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}expected_fee_minor'],
+          )!,
+      status: $InstallmentSchedulesTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status'],
+        )!,
+      ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $InstallmentSchedulesTable createAlias(String alias) {
+    return $InstallmentSchedulesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<InstallmentScheduleStatus, String, String>
+  $converterstatus = const EnumNameConverter<InstallmentScheduleStatus>(
+    InstallmentScheduleStatus.values,
+  );
+}
+
+class InstallmentScheduleRow extends DataClass
+    implements Insertable<InstallmentScheduleRow> {
+  final int id;
+  final int contractId;
+  final int periodNo;
+  final DateTime expectedRepaymentDate;
+  final int expectedPrincipalMinor;
+  final int expectedInterestMinor;
+  final int expectedFeeMinor;
+  final InstallmentScheduleStatus status;
+  final String? note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentScheduleRow({
+    required this.id,
+    required this.contractId,
+    required this.periodNo,
+    required this.expectedRepaymentDate,
+    required this.expectedPrincipalMinor,
+    required this.expectedInterestMinor,
+    required this.expectedFeeMinor,
+    required this.status,
+    this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['contract_id'] = Variable<int>(contractId);
+    map['period_no'] = Variable<int>(periodNo);
+    map['expected_repayment_date'] = Variable<DateTime>(expectedRepaymentDate);
+    map['expected_principal_minor'] = Variable<int>(expectedPrincipalMinor);
+    map['expected_interest_minor'] = Variable<int>(expectedInterestMinor);
+    map['expected_fee_minor'] = Variable<int>(expectedFeeMinor);
+    {
+      map['status'] = Variable<String>(
+        $InstallmentSchedulesTable.$converterstatus.toSql(status),
+      );
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentSchedulesCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentSchedulesCompanion(
+      id: Value(id),
+      contractId: Value(contractId),
+      periodNo: Value(periodNo),
+      expectedRepaymentDate: Value(expectedRepaymentDate),
+      expectedPrincipalMinor: Value(expectedPrincipalMinor),
+      expectedInterestMinor: Value(expectedInterestMinor),
+      expectedFeeMinor: Value(expectedFeeMinor),
+      status: Value(status),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentScheduleRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentScheduleRow(
+      id: serializer.fromJson<int>(json['id']),
+      contractId: serializer.fromJson<int>(json['contractId']),
+      periodNo: serializer.fromJson<int>(json['periodNo']),
+      expectedRepaymentDate: serializer.fromJson<DateTime>(
+        json['expectedRepaymentDate'],
+      ),
+      expectedPrincipalMinor: serializer.fromJson<int>(
+        json['expectedPrincipalMinor'],
+      ),
+      expectedInterestMinor: serializer.fromJson<int>(
+        json['expectedInterestMinor'],
+      ),
+      expectedFeeMinor: serializer.fromJson<int>(json['expectedFeeMinor']),
+      status: $InstallmentSchedulesTable.$converterstatus.fromJson(
+        serializer.fromJson<String>(json['status']),
+      ),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'contractId': serializer.toJson<int>(contractId),
+      'periodNo': serializer.toJson<int>(periodNo),
+      'expectedRepaymentDate': serializer.toJson<DateTime>(
+        expectedRepaymentDate,
+      ),
+      'expectedPrincipalMinor': serializer.toJson<int>(expectedPrincipalMinor),
+      'expectedInterestMinor': serializer.toJson<int>(expectedInterestMinor),
+      'expectedFeeMinor': serializer.toJson<int>(expectedFeeMinor),
+      'status': serializer.toJson<String>(
+        $InstallmentSchedulesTable.$converterstatus.toJson(status),
+      ),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentScheduleRow copyWith({
+    int? id,
+    int? contractId,
+    int? periodNo,
+    DateTime? expectedRepaymentDate,
+    int? expectedPrincipalMinor,
+    int? expectedInterestMinor,
+    int? expectedFeeMinor,
+    InstallmentScheduleStatus? status,
+    Value<String?> note = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentScheduleRow(
+    id: id ?? this.id,
+    contractId: contractId ?? this.contractId,
+    periodNo: periodNo ?? this.periodNo,
+    expectedRepaymentDate: expectedRepaymentDate ?? this.expectedRepaymentDate,
+    expectedPrincipalMinor:
+        expectedPrincipalMinor ?? this.expectedPrincipalMinor,
+    expectedInterestMinor: expectedInterestMinor ?? this.expectedInterestMinor,
+    expectedFeeMinor: expectedFeeMinor ?? this.expectedFeeMinor,
+    status: status ?? this.status,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentScheduleRow copyWithCompanion(InstallmentSchedulesCompanion data) {
+    return InstallmentScheduleRow(
+      id: data.id.present ? data.id.value : this.id,
+      contractId:
+          data.contractId.present ? data.contractId.value : this.contractId,
+      periodNo: data.periodNo.present ? data.periodNo.value : this.periodNo,
+      expectedRepaymentDate:
+          data.expectedRepaymentDate.present
+              ? data.expectedRepaymentDate.value
+              : this.expectedRepaymentDate,
+      expectedPrincipalMinor:
+          data.expectedPrincipalMinor.present
+              ? data.expectedPrincipalMinor.value
+              : this.expectedPrincipalMinor,
+      expectedInterestMinor:
+          data.expectedInterestMinor.present
+              ? data.expectedInterestMinor.value
+              : this.expectedInterestMinor,
+      expectedFeeMinor:
+          data.expectedFeeMinor.present
+              ? data.expectedFeeMinor.value
+              : this.expectedFeeMinor,
+      status: data.status.present ? data.status.value : this.status,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentScheduleRow(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('periodNo: $periodNo, ')
+          ..write('expectedRepaymentDate: $expectedRepaymentDate, ')
+          ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
+          ..write('expectedInterestMinor: $expectedInterestMinor, ')
+          ..write('expectedFeeMinor: $expectedFeeMinor, ')
+          ..write('status: $status, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    contractId,
+    periodNo,
+    expectedRepaymentDate,
+    expectedPrincipalMinor,
+    expectedInterestMinor,
+    expectedFeeMinor,
+    status,
+    note,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentScheduleRow &&
+          other.id == this.id &&
+          other.contractId == this.contractId &&
+          other.periodNo == this.periodNo &&
+          other.expectedRepaymentDate == this.expectedRepaymentDate &&
+          other.expectedPrincipalMinor == this.expectedPrincipalMinor &&
+          other.expectedInterestMinor == this.expectedInterestMinor &&
+          other.expectedFeeMinor == this.expectedFeeMinor &&
+          other.status == this.status &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentSchedulesCompanion
+    extends UpdateCompanion<InstallmentScheduleRow> {
+  final Value<int> id;
+  final Value<int> contractId;
+  final Value<int> periodNo;
+  final Value<DateTime> expectedRepaymentDate;
+  final Value<int> expectedPrincipalMinor;
+  final Value<int> expectedInterestMinor;
+  final Value<int> expectedFeeMinor;
+  final Value<InstallmentScheduleStatus> status;
+  final Value<String?> note;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const InstallmentSchedulesCompanion({
+    this.id = const Value.absent(),
+    this.contractId = const Value.absent(),
+    this.periodNo = const Value.absent(),
+    this.expectedRepaymentDate = const Value.absent(),
+    this.expectedPrincipalMinor = const Value.absent(),
+    this.expectedInterestMinor = const Value.absent(),
+    this.expectedFeeMinor = const Value.absent(),
+    this.status = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  InstallmentSchedulesCompanion.insert({
+    this.id = const Value.absent(),
+    required int contractId,
+    required int periodNo,
+    required DateTime expectedRepaymentDate,
+    this.expectedPrincipalMinor = const Value.absent(),
+    this.expectedInterestMinor = const Value.absent(),
+    this.expectedFeeMinor = const Value.absent(),
+    required InstallmentScheduleStatus status,
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : contractId = Value(contractId),
+       periodNo = Value(periodNo),
+       expectedRepaymentDate = Value(expectedRepaymentDate),
+       status = Value(status);
+  static Insertable<InstallmentScheduleRow> custom({
+    Expression<int>? id,
+    Expression<int>? contractId,
+    Expression<int>? periodNo,
+    Expression<DateTime>? expectedRepaymentDate,
+    Expression<int>? expectedPrincipalMinor,
+    Expression<int>? expectedInterestMinor,
+    Expression<int>? expectedFeeMinor,
+    Expression<String>? status,
+    Expression<String>? note,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (contractId != null) 'contract_id': contractId,
+      if (periodNo != null) 'period_no': periodNo,
+      if (expectedRepaymentDate != null)
+        'expected_repayment_date': expectedRepaymentDate,
+      if (expectedPrincipalMinor != null)
+        'expected_principal_minor': expectedPrincipalMinor,
+      if (expectedInterestMinor != null)
+        'expected_interest_minor': expectedInterestMinor,
+      if (expectedFeeMinor != null) 'expected_fee_minor': expectedFeeMinor,
+      if (status != null) 'status': status,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  InstallmentSchedulesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? contractId,
+    Value<int>? periodNo,
+    Value<DateTime>? expectedRepaymentDate,
+    Value<int>? expectedPrincipalMinor,
+    Value<int>? expectedInterestMinor,
+    Value<int>? expectedFeeMinor,
+    Value<InstallmentScheduleStatus>? status,
+    Value<String?>? note,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return InstallmentSchedulesCompanion(
+      id: id ?? this.id,
+      contractId: contractId ?? this.contractId,
+      periodNo: periodNo ?? this.periodNo,
+      expectedRepaymentDate:
+          expectedRepaymentDate ?? this.expectedRepaymentDate,
+      expectedPrincipalMinor:
+          expectedPrincipalMinor ?? this.expectedPrincipalMinor,
+      expectedInterestMinor:
+          expectedInterestMinor ?? this.expectedInterestMinor,
+      expectedFeeMinor: expectedFeeMinor ?? this.expectedFeeMinor,
+      status: status ?? this.status,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (contractId.present) {
+      map['contract_id'] = Variable<int>(contractId.value);
+    }
+    if (periodNo.present) {
+      map['period_no'] = Variable<int>(periodNo.value);
+    }
+    if (expectedRepaymentDate.present) {
+      map['expected_repayment_date'] = Variable<DateTime>(
+        expectedRepaymentDate.value,
+      );
+    }
+    if (expectedPrincipalMinor.present) {
+      map['expected_principal_minor'] = Variable<int>(
+        expectedPrincipalMinor.value,
+      );
+    }
+    if (expectedInterestMinor.present) {
+      map['expected_interest_minor'] = Variable<int>(
+        expectedInterestMinor.value,
+      );
+    }
+    if (expectedFeeMinor.present) {
+      map['expected_fee_minor'] = Variable<int>(expectedFeeMinor.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+        $InstallmentSchedulesTable.$converterstatus.toSql(status.value),
+      );
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentSchedulesCompanion(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('periodNo: $periodNo, ')
+          ..write('expectedRepaymentDate: $expectedRepaymentDate, ')
+          ..write('expectedPrincipalMinor: $expectedPrincipalMinor, ')
+          ..write('expectedInterestMinor: $expectedInterestMinor, ')
+          ..write('expectedFeeMinor: $expectedFeeMinor, ')
+          ..write('status: $status, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstallmentRepaymentsTable extends InstallmentRepayments
+    with TableInfo<$InstallmentRepaymentsTable, InstallmentRepaymentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstallmentRepaymentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _contractIdMeta = const VerificationMeta(
+    'contractId',
+  );
+  @override
+  late final GeneratedColumn<int> contractId = GeneratedColumn<int>(
+    'contract_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<InstallmentRepaymentType, String>
+  repaymentType = GeneratedColumn<String>(
+    'repayment_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<InstallmentRepaymentType>(
+    $InstallmentRepaymentsTable.$converterrepaymentType,
+  );
+  static const VerificationMeta _scheduleIdMeta = const VerificationMeta(
+    'scheduleId',
+  );
+  @override
+  late final GeneratedColumn<int> scheduleId = GeneratedColumn<int>(
+    'schedule_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+    'transaction_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    contractId,
+    repaymentType,
+    scheduleId,
+    transactionId,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'installment_repayments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstallmentRepaymentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('contract_id')) {
+      context.handle(
+        _contractIdMeta,
+        contractId.isAcceptableOrUnknown(data['contract_id']!, _contractIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contractIdMeta);
+    }
+    if (data.containsKey('schedule_id')) {
+      context.handle(
+        _scheduleIdMeta,
+        scheduleId.isAcceptableOrUnknown(data['schedule_id']!, _scheduleIdMeta),
+      );
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_transactionIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstallmentRepaymentRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstallmentRepaymentRow(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      contractId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}contract_id'],
+          )!,
+      repaymentType: $InstallmentRepaymentsTable.$converterrepaymentType
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}repayment_type'],
+            )!,
+          ),
+      scheduleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}schedule_id'],
+      ),
+      transactionId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}transaction_id'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $InstallmentRepaymentsTable createAlias(String alias) {
+    return $InstallmentRepaymentsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<InstallmentRepaymentType, String, String>
+  $converterrepaymentType = const EnumNameConverter<InstallmentRepaymentType>(
+    InstallmentRepaymentType.values,
+  );
+}
+
+class InstallmentRepaymentRow extends DataClass
+    implements Insertable<InstallmentRepaymentRow> {
+  final int id;
+  final int contractId;
+  final InstallmentRepaymentType repaymentType;
+  final int? scheduleId;
+  final int transactionId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const InstallmentRepaymentRow({
+    required this.id,
+    required this.contractId,
+    required this.repaymentType,
+    this.scheduleId,
+    required this.transactionId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['contract_id'] = Variable<int>(contractId);
+    {
+      map['repayment_type'] = Variable<String>(
+        $InstallmentRepaymentsTable.$converterrepaymentType.toSql(
+          repaymentType,
+        ),
+      );
+    }
+    if (!nullToAbsent || scheduleId != null) {
+      map['schedule_id'] = Variable<int>(scheduleId);
+    }
+    map['transaction_id'] = Variable<int>(transactionId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  InstallmentRepaymentsCompanion toCompanion(bool nullToAbsent) {
+    return InstallmentRepaymentsCompanion(
+      id: Value(id),
+      contractId: Value(contractId),
+      repaymentType: Value(repaymentType),
+      scheduleId:
+          scheduleId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(scheduleId),
+      transactionId: Value(transactionId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory InstallmentRepaymentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstallmentRepaymentRow(
+      id: serializer.fromJson<int>(json['id']),
+      contractId: serializer.fromJson<int>(json['contractId']),
+      repaymentType: $InstallmentRepaymentsTable.$converterrepaymentType
+          .fromJson(serializer.fromJson<String>(json['repaymentType'])),
+      scheduleId: serializer.fromJson<int?>(json['scheduleId']),
+      transactionId: serializer.fromJson<int>(json['transactionId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'contractId': serializer.toJson<int>(contractId),
+      'repaymentType': serializer.toJson<String>(
+        $InstallmentRepaymentsTable.$converterrepaymentType.toJson(
+          repaymentType,
+        ),
+      ),
+      'scheduleId': serializer.toJson<int?>(scheduleId),
+      'transactionId': serializer.toJson<int>(transactionId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  InstallmentRepaymentRow copyWith({
+    int? id,
+    int? contractId,
+    InstallmentRepaymentType? repaymentType,
+    Value<int?> scheduleId = const Value.absent(),
+    int? transactionId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => InstallmentRepaymentRow(
+    id: id ?? this.id,
+    contractId: contractId ?? this.contractId,
+    repaymentType: repaymentType ?? this.repaymentType,
+    scheduleId: scheduleId.present ? scheduleId.value : this.scheduleId,
+    transactionId: transactionId ?? this.transactionId,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  InstallmentRepaymentRow copyWithCompanion(
+    InstallmentRepaymentsCompanion data,
+  ) {
+    return InstallmentRepaymentRow(
+      id: data.id.present ? data.id.value : this.id,
+      contractId:
+          data.contractId.present ? data.contractId.value : this.contractId,
+      repaymentType:
+          data.repaymentType.present
+              ? data.repaymentType.value
+              : this.repaymentType,
+      scheduleId:
+          data.scheduleId.present ? data.scheduleId.value : this.scheduleId,
+      transactionId:
+          data.transactionId.present
+              ? data.transactionId.value
+              : this.transactionId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRepaymentRow(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('repaymentType: $repaymentType, ')
+          ..write('scheduleId: $scheduleId, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    contractId,
+    repaymentType,
+    scheduleId,
+    transactionId,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstallmentRepaymentRow &&
+          other.id == this.id &&
+          other.contractId == this.contractId &&
+          other.repaymentType == this.repaymentType &&
+          other.scheduleId == this.scheduleId &&
+          other.transactionId == this.transactionId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class InstallmentRepaymentsCompanion
+    extends UpdateCompanion<InstallmentRepaymentRow> {
+  final Value<int> id;
+  final Value<int> contractId;
+  final Value<InstallmentRepaymentType> repaymentType;
+  final Value<int?> scheduleId;
+  final Value<int> transactionId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const InstallmentRepaymentsCompanion({
+    this.id = const Value.absent(),
+    this.contractId = const Value.absent(),
+    this.repaymentType = const Value.absent(),
+    this.scheduleId = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  InstallmentRepaymentsCompanion.insert({
+    this.id = const Value.absent(),
+    required int contractId,
+    required InstallmentRepaymentType repaymentType,
+    this.scheduleId = const Value.absent(),
+    required int transactionId,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : contractId = Value(contractId),
+       repaymentType = Value(repaymentType),
+       transactionId = Value(transactionId);
+  static Insertable<InstallmentRepaymentRow> custom({
+    Expression<int>? id,
+    Expression<int>? contractId,
+    Expression<String>? repaymentType,
+    Expression<int>? scheduleId,
+    Expression<int>? transactionId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (contractId != null) 'contract_id': contractId,
+      if (repaymentType != null) 'repayment_type': repaymentType,
+      if (scheduleId != null) 'schedule_id': scheduleId,
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  InstallmentRepaymentsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? contractId,
+    Value<InstallmentRepaymentType>? repaymentType,
+    Value<int?>? scheduleId,
+    Value<int>? transactionId,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return InstallmentRepaymentsCompanion(
+      id: id ?? this.id,
+      contractId: contractId ?? this.contractId,
+      repaymentType: repaymentType ?? this.repaymentType,
+      scheduleId: scheduleId ?? this.scheduleId,
+      transactionId: transactionId ?? this.transactionId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (contractId.present) {
+      map['contract_id'] = Variable<int>(contractId.value);
+    }
+    if (repaymentType.present) {
+      map['repayment_type'] = Variable<String>(
+        $InstallmentRepaymentsTable.$converterrepaymentType.toSql(
+          repaymentType.value,
+        ),
+      );
+    }
+    if (scheduleId.present) {
+      map['schedule_id'] = Variable<int>(scheduleId.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<int>(transactionId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstallmentRepaymentsCompanion(')
+          ..write('id: $id, ')
+          ..write('contractId: $contractId, ')
+          ..write('repaymentType: $repaymentType, ')
+          ..write('scheduleId: $scheduleId, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4020,6 +6238,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $TransactionDetailsTable(this);
   late final $EntriesTable entries = $EntriesTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
+  late final $InstallmentContractsTable installmentContracts =
+      $InstallmentContractsTable(this);
+  late final $InstallmentSchedulesTable installmentSchedules =
+      $InstallmentSchedulesTable(this);
+  late final $InstallmentRepaymentsTable installmentRepayments =
+      $InstallmentRepaymentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4031,6 +6255,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactionDetails,
     entries,
     budgets,
+    installmentContracts,
+    installmentSchedules,
+    installmentRepayments,
   ];
 }
 
@@ -5947,6 +8174,1105 @@ typedef $$BudgetsTableProcessedTableManager =
       BudgetRow,
       PrefetchHooks Function()
     >;
+typedef $$InstallmentContractsTableCreateCompanionBuilder =
+    InstallmentContractsCompanion Function({
+      Value<int> id,
+      required int liabilityAccountId,
+      required InstallmentSourceType sourceType,
+      Value<int?> disbursementAccountId,
+      Value<int?> disbursementTransactionId,
+      required int principalMinor,
+      required int totalPeriods,
+      required DateTime startDate,
+      required InstallmentRepaymentMethod repaymentMethod,
+      Value<InterestRatePeriod?> interestRatePeriod,
+      Value<int?> interestRatePpm,
+      required String currencyCode,
+      required InstallmentContractStatus status,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$InstallmentContractsTableUpdateCompanionBuilder =
+    InstallmentContractsCompanion Function({
+      Value<int> id,
+      Value<int> liabilityAccountId,
+      Value<InstallmentSourceType> sourceType,
+      Value<int?> disbursementAccountId,
+      Value<int?> disbursementTransactionId,
+      Value<int> principalMinor,
+      Value<int> totalPeriods,
+      Value<DateTime> startDate,
+      Value<InstallmentRepaymentMethod> repaymentMethod,
+      Value<InterestRatePeriod?> interestRatePeriod,
+      Value<int?> interestRatePpm,
+      Value<String> currencyCode,
+      Value<InstallmentContractStatus> status,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$InstallmentContractsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentContractsTable> {
+  $$InstallmentContractsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get liabilityAccountId => $composableBuilder(
+    column: $table.liabilityAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    InstallmentSourceType,
+    InstallmentSourceType,
+    String
+  >
+  get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get disbursementAccountId => $composableBuilder(
+    column: $table.disbursementAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get disbursementTransactionId => $composableBuilder(
+    column: $table.disbursementTransactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get principalMinor => $composableBuilder(
+    column: $table.principalMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalPeriods => $composableBuilder(
+    column: $table.totalPeriods,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    InstallmentRepaymentMethod,
+    InstallmentRepaymentMethod,
+    String
+  >
+  get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    InterestRatePeriod?,
+    InterestRatePeriod,
+    String
+  >
+  get interestRatePeriod => $composableBuilder(
+    column: $table.interestRatePeriod,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get interestRatePpm => $composableBuilder(
+    column: $table.interestRatePpm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    InstallmentContractStatus,
+    InstallmentContractStatus,
+    String
+  >
+  get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentContractsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentContractsTable> {
+  $$InstallmentContractsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get liabilityAccountId => $composableBuilder(
+    column: $table.liabilityAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get disbursementAccountId => $composableBuilder(
+    column: $table.disbursementAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get disbursementTransactionId => $composableBuilder(
+    column: $table.disbursementTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get principalMinor => $composableBuilder(
+    column: $table.principalMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalPeriods => $composableBuilder(
+    column: $table.totalPeriods,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get interestRatePeriod => $composableBuilder(
+    column: $table.interestRatePeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get interestRatePpm => $composableBuilder(
+    column: $table.interestRatePpm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentContractsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentContractsTable> {
+  $$InstallmentContractsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get liabilityAccountId => $composableBuilder(
+    column: $table.liabilityAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<InstallmentSourceType, String>
+  get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get disbursementAccountId => $composableBuilder(
+    column: $table.disbursementAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get disbursementTransactionId => $composableBuilder(
+    column: $table.disbursementTransactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get principalMinor => $composableBuilder(
+    column: $table.principalMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalPeriods => $composableBuilder(
+    column: $table.totalPeriods,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<InstallmentRepaymentMethod, String>
+  get repaymentMethod => $composableBuilder(
+    column: $table.repaymentMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<InterestRatePeriod?, String>
+  get interestRatePeriod => $composableBuilder(
+    column: $table.interestRatePeriod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get interestRatePpm => $composableBuilder(
+    column: $table.interestRatePpm,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<InstallmentContractStatus, String>
+  get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentContractsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentContractsTable,
+          InstallmentContractRow,
+          $$InstallmentContractsTableFilterComposer,
+          $$InstallmentContractsTableOrderingComposer,
+          $$InstallmentContractsTableAnnotationComposer,
+          $$InstallmentContractsTableCreateCompanionBuilder,
+          $$InstallmentContractsTableUpdateCompanionBuilder,
+          (
+            InstallmentContractRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentContractsTable,
+              InstallmentContractRow
+            >,
+          ),
+          InstallmentContractRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentContractsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentContractsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$InstallmentContractsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$InstallmentContractsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$InstallmentContractsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> liabilityAccountId = const Value.absent(),
+                Value<InstallmentSourceType> sourceType = const Value.absent(),
+                Value<int?> disbursementAccountId = const Value.absent(),
+                Value<int?> disbursementTransactionId = const Value.absent(),
+                Value<int> principalMinor = const Value.absent(),
+                Value<int> totalPeriods = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<InstallmentRepaymentMethod> repaymentMethod =
+                    const Value.absent(),
+                Value<InterestRatePeriod?> interestRatePeriod =
+                    const Value.absent(),
+                Value<int?> interestRatePpm = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<InstallmentContractStatus> status = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InstallmentContractsCompanion(
+                id: id,
+                liabilityAccountId: liabilityAccountId,
+                sourceType: sourceType,
+                disbursementAccountId: disbursementAccountId,
+                disbursementTransactionId: disbursementTransactionId,
+                principalMinor: principalMinor,
+                totalPeriods: totalPeriods,
+                startDate: startDate,
+                repaymentMethod: repaymentMethod,
+                interestRatePeriod: interestRatePeriod,
+                interestRatePpm: interestRatePpm,
+                currencyCode: currencyCode,
+                status: status,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int liabilityAccountId,
+                required InstallmentSourceType sourceType,
+                Value<int?> disbursementAccountId = const Value.absent(),
+                Value<int?> disbursementTransactionId = const Value.absent(),
+                required int principalMinor,
+                required int totalPeriods,
+                required DateTime startDate,
+                required InstallmentRepaymentMethod repaymentMethod,
+                Value<InterestRatePeriod?> interestRatePeriod =
+                    const Value.absent(),
+                Value<int?> interestRatePpm = const Value.absent(),
+                required String currencyCode,
+                required InstallmentContractStatus status,
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InstallmentContractsCompanion.insert(
+                id: id,
+                liabilityAccountId: liabilityAccountId,
+                sourceType: sourceType,
+                disbursementAccountId: disbursementAccountId,
+                disbursementTransactionId: disbursementTransactionId,
+                principalMinor: principalMinor,
+                totalPeriods: totalPeriods,
+                startDate: startDate,
+                repaymentMethod: repaymentMethod,
+                interestRatePeriod: interestRatePeriod,
+                interestRatePpm: interestRatePpm,
+                currencyCode: currencyCode,
+                status: status,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentContractsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentContractsTable,
+      InstallmentContractRow,
+      $$InstallmentContractsTableFilterComposer,
+      $$InstallmentContractsTableOrderingComposer,
+      $$InstallmentContractsTableAnnotationComposer,
+      $$InstallmentContractsTableCreateCompanionBuilder,
+      $$InstallmentContractsTableUpdateCompanionBuilder,
+      (
+        InstallmentContractRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentContractsTable,
+          InstallmentContractRow
+        >,
+      ),
+      InstallmentContractRow,
+      PrefetchHooks Function()
+    >;
+typedef $$InstallmentSchedulesTableCreateCompanionBuilder =
+    InstallmentSchedulesCompanion Function({
+      Value<int> id,
+      required int contractId,
+      required int periodNo,
+      required DateTime expectedRepaymentDate,
+      Value<int> expectedPrincipalMinor,
+      Value<int> expectedInterestMinor,
+      Value<int> expectedFeeMinor,
+      required InstallmentScheduleStatus status,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$InstallmentSchedulesTableUpdateCompanionBuilder =
+    InstallmentSchedulesCompanion Function({
+      Value<int> id,
+      Value<int> contractId,
+      Value<int> periodNo,
+      Value<DateTime> expectedRepaymentDate,
+      Value<int> expectedPrincipalMinor,
+      Value<int> expectedInterestMinor,
+      Value<int> expectedFeeMinor,
+      Value<InstallmentScheduleStatus> status,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$InstallmentSchedulesTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentSchedulesTable> {
+  $$InstallmentSchedulesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get periodNo => $composableBuilder(
+    column: $table.periodNo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get expectedRepaymentDate => $composableBuilder(
+    column: $table.expectedRepaymentDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedPrincipalMinor => $composableBuilder(
+    column: $table.expectedPrincipalMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedInterestMinor => $composableBuilder(
+    column: $table.expectedInterestMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedFeeMinor => $composableBuilder(
+    column: $table.expectedFeeMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    InstallmentScheduleStatus,
+    InstallmentScheduleStatus,
+    String
+  >
+  get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentSchedulesTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentSchedulesTable> {
+  $$InstallmentSchedulesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get periodNo => $composableBuilder(
+    column: $table.periodNo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get expectedRepaymentDate => $composableBuilder(
+    column: $table.expectedRepaymentDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedPrincipalMinor => $composableBuilder(
+    column: $table.expectedPrincipalMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedInterestMinor => $composableBuilder(
+    column: $table.expectedInterestMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedFeeMinor => $composableBuilder(
+    column: $table.expectedFeeMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentSchedulesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentSchedulesTable> {
+  $$InstallmentSchedulesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get periodNo =>
+      $composableBuilder(column: $table.periodNo, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get expectedRepaymentDate => $composableBuilder(
+    column: $table.expectedRepaymentDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedPrincipalMinor => $composableBuilder(
+    column: $table.expectedPrincipalMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedInterestMinor => $composableBuilder(
+    column: $table.expectedInterestMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedFeeMinor => $composableBuilder(
+    column: $table.expectedFeeMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<InstallmentScheduleStatus, String>
+  get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentSchedulesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentSchedulesTable,
+          InstallmentScheduleRow,
+          $$InstallmentSchedulesTableFilterComposer,
+          $$InstallmentSchedulesTableOrderingComposer,
+          $$InstallmentSchedulesTableAnnotationComposer,
+          $$InstallmentSchedulesTableCreateCompanionBuilder,
+          $$InstallmentSchedulesTableUpdateCompanionBuilder,
+          (
+            InstallmentScheduleRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentSchedulesTable,
+              InstallmentScheduleRow
+            >,
+          ),
+          InstallmentScheduleRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentSchedulesTableTableManager(
+    _$AppDatabase db,
+    $InstallmentSchedulesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$InstallmentSchedulesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$InstallmentSchedulesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$InstallmentSchedulesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> contractId = const Value.absent(),
+                Value<int> periodNo = const Value.absent(),
+                Value<DateTime> expectedRepaymentDate = const Value.absent(),
+                Value<int> expectedPrincipalMinor = const Value.absent(),
+                Value<int> expectedInterestMinor = const Value.absent(),
+                Value<int> expectedFeeMinor = const Value.absent(),
+                Value<InstallmentScheduleStatus> status = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InstallmentSchedulesCompanion(
+                id: id,
+                contractId: contractId,
+                periodNo: periodNo,
+                expectedRepaymentDate: expectedRepaymentDate,
+                expectedPrincipalMinor: expectedPrincipalMinor,
+                expectedInterestMinor: expectedInterestMinor,
+                expectedFeeMinor: expectedFeeMinor,
+                status: status,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int contractId,
+                required int periodNo,
+                required DateTime expectedRepaymentDate,
+                Value<int> expectedPrincipalMinor = const Value.absent(),
+                Value<int> expectedInterestMinor = const Value.absent(),
+                Value<int> expectedFeeMinor = const Value.absent(),
+                required InstallmentScheduleStatus status,
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InstallmentSchedulesCompanion.insert(
+                id: id,
+                contractId: contractId,
+                periodNo: periodNo,
+                expectedRepaymentDate: expectedRepaymentDate,
+                expectedPrincipalMinor: expectedPrincipalMinor,
+                expectedInterestMinor: expectedInterestMinor,
+                expectedFeeMinor: expectedFeeMinor,
+                status: status,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentSchedulesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentSchedulesTable,
+      InstallmentScheduleRow,
+      $$InstallmentSchedulesTableFilterComposer,
+      $$InstallmentSchedulesTableOrderingComposer,
+      $$InstallmentSchedulesTableAnnotationComposer,
+      $$InstallmentSchedulesTableCreateCompanionBuilder,
+      $$InstallmentSchedulesTableUpdateCompanionBuilder,
+      (
+        InstallmentScheduleRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentSchedulesTable,
+          InstallmentScheduleRow
+        >,
+      ),
+      InstallmentScheduleRow,
+      PrefetchHooks Function()
+    >;
+typedef $$InstallmentRepaymentsTableCreateCompanionBuilder =
+    InstallmentRepaymentsCompanion Function({
+      Value<int> id,
+      required int contractId,
+      required InstallmentRepaymentType repaymentType,
+      Value<int?> scheduleId,
+      required int transactionId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$InstallmentRepaymentsTableUpdateCompanionBuilder =
+    InstallmentRepaymentsCompanion Function({
+      Value<int> id,
+      Value<int> contractId,
+      Value<InstallmentRepaymentType> repaymentType,
+      Value<int?> scheduleId,
+      Value<int> transactionId,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$InstallmentRepaymentsTableFilterComposer
+    extends Composer<_$AppDatabase, $InstallmentRepaymentsTable> {
+  $$InstallmentRepaymentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    InstallmentRepaymentType,
+    InstallmentRepaymentType,
+    String
+  >
+  get repaymentType => $composableBuilder(
+    column: $table.repaymentType,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get scheduleId => $composableBuilder(
+    column: $table.scheduleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstallmentRepaymentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstallmentRepaymentsTable> {
+  $$InstallmentRepaymentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repaymentType => $composableBuilder(
+    column: $table.repaymentType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get scheduleId => $composableBuilder(
+    column: $table.scheduleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstallmentRepaymentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstallmentRepaymentsTable> {
+  $$InstallmentRepaymentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get contractId => $composableBuilder(
+    column: $table.contractId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<InstallmentRepaymentType, String>
+  get repaymentType => $composableBuilder(
+    column: $table.repaymentType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get scheduleId => $composableBuilder(
+    column: $table.scheduleId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$InstallmentRepaymentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstallmentRepaymentsTable,
+          InstallmentRepaymentRow,
+          $$InstallmentRepaymentsTableFilterComposer,
+          $$InstallmentRepaymentsTableOrderingComposer,
+          $$InstallmentRepaymentsTableAnnotationComposer,
+          $$InstallmentRepaymentsTableCreateCompanionBuilder,
+          $$InstallmentRepaymentsTableUpdateCompanionBuilder,
+          (
+            InstallmentRepaymentRow,
+            BaseReferences<
+              _$AppDatabase,
+              $InstallmentRepaymentsTable,
+              InstallmentRepaymentRow
+            >,
+          ),
+          InstallmentRepaymentRow,
+          PrefetchHooks Function()
+        > {
+  $$InstallmentRepaymentsTableTableManager(
+    _$AppDatabase db,
+    $InstallmentRepaymentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$InstallmentRepaymentsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$InstallmentRepaymentsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$InstallmentRepaymentsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> contractId = const Value.absent(),
+                Value<InstallmentRepaymentType> repaymentType =
+                    const Value.absent(),
+                Value<int?> scheduleId = const Value.absent(),
+                Value<int> transactionId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InstallmentRepaymentsCompanion(
+                id: id,
+                contractId: contractId,
+                repaymentType: repaymentType,
+                scheduleId: scheduleId,
+                transactionId: transactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int contractId,
+                required InstallmentRepaymentType repaymentType,
+                Value<int?> scheduleId = const Value.absent(),
+                required int transactionId,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => InstallmentRepaymentsCompanion.insert(
+                id: id,
+                contractId: contractId,
+                repaymentType: repaymentType,
+                scheduleId: scheduleId,
+                transactionId: transactionId,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstallmentRepaymentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstallmentRepaymentsTable,
+      InstallmentRepaymentRow,
+      $$InstallmentRepaymentsTableFilterComposer,
+      $$InstallmentRepaymentsTableOrderingComposer,
+      $$InstallmentRepaymentsTableAnnotationComposer,
+      $$InstallmentRepaymentsTableCreateCompanionBuilder,
+      $$InstallmentRepaymentsTableUpdateCompanionBuilder,
+      (
+        InstallmentRepaymentRow,
+        BaseReferences<
+          _$AppDatabase,
+          $InstallmentRepaymentsTable,
+          InstallmentRepaymentRow
+        >,
+      ),
+      InstallmentRepaymentRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5963,4 +9289,10 @@ class $AppDatabaseManager {
       $$EntriesTableTableManager(_db, _db.entries);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
+  $$InstallmentContractsTableTableManager get installmentContracts =>
+      $$InstallmentContractsTableTableManager(_db, _db.installmentContracts);
+  $$InstallmentSchedulesTableTableManager get installmentSchedules =>
+      $$InstallmentSchedulesTableTableManager(_db, _db.installmentSchedules);
+  $$InstallmentRepaymentsTableTableManager get installmentRepayments =>
+      $$InstallmentRepaymentsTableTableManager(_db, _db.installmentRepayments);
 }

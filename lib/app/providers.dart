@@ -3,20 +3,26 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/database/database_provider.dart';
 import '../data/repositories/drift_account_repository.dart';
 import '../data/repositories/drift_financial_metrics_repository.dart';
+import '../data/repositories/drift_installment_repository.dart';
 import '../data/repositories/drift_posting_repository.dart';
 import '../data/repositories/drift_system_account_resolver.dart';
 import '../data/repositories/drift_transaction_query_repository.dart';
 import '../domain/accounts/account_usage.dart';
 import '../domain/entities/account.dart';
+import '../domain/entities/installment_contract.dart';
+import '../domain/entities/installment_repayment.dart';
+import '../domain/entities/installment_schedule.dart';
 import '../domain/enums/accounting_enums.dart';
 import '../domain/repositories/account_repository.dart';
 import '../domain/repositories/financial_metrics_repository.dart';
+import '../domain/repositories/installment_repository.dart';
 import '../domain/repositories/posting_repository.dart';
 import '../domain/repositories/system_account_resolver.dart';
 import '../domain/repositories/transaction_query_repository.dart';
 import '../domain/services/account_service.dart';
 import '../domain/services/category_service.dart';
 import '../domain/services/financial_metrics_service.dart';
+import '../domain/services/installment_service.dart';
 import '../domain/services/posting_service.dart';
 import '../domain/services/transaction_query_service.dart';
 import '../domain/services/transaction_service.dart';
@@ -225,4 +231,49 @@ Stream<TransactionDetailView?> transactionDetail(Ref ref, int transactionId) {
   return ref
       .watch(transactionQueryServiceProvider)
       .watchTransactionDetail(transactionId);
+}
+
+@Riverpod(keepAlive: true)
+InstallmentRepository installmentRepository(Ref ref) {
+  return DriftInstallmentRepository(ref.watch(appDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+InstallmentService installmentService(Ref ref) {
+  return InstallmentServiceImpl(
+    repository: ref.watch(installmentRepositoryProvider),
+    transactionService: ref.watch(transactionServiceProvider),
+    queryRepository: ref.watch(transactionQueryRepositoryProvider),
+  );
+}
+
+@riverpod
+Future<List<InstallmentContract>> installmentContractsByAccount(
+  Ref ref,
+  int accountId,
+) {
+  return ref
+      .watch(installmentServiceProvider)
+      .listContractsByLiabilityAccount(accountId);
+}
+
+@riverpod
+Future<InstallmentContract?> installmentContract(Ref ref, int contractId) {
+  return ref.watch(installmentServiceProvider).findContract(contractId);
+}
+
+@riverpod
+Future<List<InstallmentSchedule>> installmentSchedules(
+  Ref ref,
+  int contractId,
+) {
+  return ref.watch(installmentServiceProvider).listSchedules(contractId);
+}
+
+@riverpod
+Future<List<InstallmentRepayment>> installmentRepayments(
+  Ref ref,
+  int contractId,
+) {
+  return ref.watch(installmentServiceProvider).listRepayments(contractId);
 }

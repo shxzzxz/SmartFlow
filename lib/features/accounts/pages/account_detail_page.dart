@@ -9,6 +9,7 @@ import '../../../design_system/tokens/radius.dart';
 import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
+import '../../../domain/entities/installment_contract.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../features/home/view_models/transaction_row_presentation.dart';
@@ -33,6 +34,7 @@ class AccountDetailPage extends ConsumerWidget {
           _AccountDetailContent(
             account: _findAccount(accounts, accountId),
             transactions: items,
+            accountId: accountId,
           ),
         (AsyncError(:final error), _) ||
         (_, AsyncError(:final error)) => Center(child: Text('加载失败：$error')),
@@ -42,23 +44,29 @@ class AccountDetailPage extends ConsumerWidget {
   }
 }
 
-class _AccountDetailContent extends StatelessWidget {
+class _AccountDetailContent extends ConsumerWidget {
   const _AccountDetailContent({
     required this.account,
     required this.transactions,
+    required this.accountId,
   });
 
   final Account? account;
   final List<TransactionListItem> transactions;
+  final int accountId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final account = this.account;
     if (account == null) {
       return const Center(child: Text('账户不存在'));
     }
 
     final groups = _groupTransactionsByDay(transactions);
+    final showInstallments = account.type == AccountType.liability;
+    final contractsAsync = showInstallments
+        ? ref.watch(installmentContractsByAccountProvider(accountId))
+        : null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space10,
@@ -71,6 +79,13 @@ class _AccountDetailContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.space8),
         _AccountActionBar(account: account),
         const SizedBox(height: AppSpacing.space8),
+        if (showInstallments && contractsAsync != null) ...[
+          _InstallmentSection(
+            accountId: accountId,
+            contractsAsync: contractsAsync,
+          ),
+          const SizedBox(height: AppSpacing.space8),
+        ],
         if (groups.isEmpty)
           const _EmptyAccountTransactions()
         else
@@ -458,6 +473,170 @@ class _EmptyAccountTransactions extends StatelessWidget {
       ),
     );
   }
+}
+
+class _InstallmentSection extends StatelessWidget {
+  const _InstallmentSection({
+    required this.accountId,
+    required this.contractsAsync,
+  });
+
+  final int accountId;
+  final AsyncValue<List<InstallmentContract>> contractsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space4,
+            0,
+            AppSpacing.space4,
+            AppSpacing.space4,
+          ),
+          child: Row(
+            children: [
+              Text('分期合同', style: styles.dateSectionTitle),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () =>
+                    context.push('/accounts/$accountId/installments/new'),
+                icon: const Icon(RemixIcons.add_line, size: 18),
+                label: const Text('新建'),
+              ),
+            ],
+          ),
+        ),
+        switch (contractsAsync) {
+          AsyncData(value: final contracts) => contracts.isEmpty
+              ? AppSurface(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.space20),
+                    child: Text(
+                      '暂无分期合同',
+                      style: styles.formLabel.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                )
+              : AppSurface(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < contracts.length; i++) ...[
+                        _ContractRow(contract: contracts[i]),
+                        if (i < contracts.length - 1)
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.space16,
+                            ),
+                            height: 1,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant
+                                .withValues(alpha: 0.5),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+          AsyncError(:final error) => AppSurface(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.space12),
+                child: Text('合同加载失败：$error'),
+              ),
+            ),
+          _ => const Padding(
+              padding: EdgeInsets.all(AppSpacing.space12),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        },
+      ],
+    );
+  }
+}
+
+class _ContractRow extends StatelessWidget {
+  const _ContractRow({required this.contract});
+
+  final InstallmentContract contract;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
+    final (statusLabel, statusColor) = switch (contract.status) {
+      InstallmentContractStatus.active => ('进行中', colors.primary),
+      InstallmentContractStatus.settled => ('已结清', colors.tertiary),
+      InstallmentContractStatus.closed => ('已关闭', colors.outline),
+    };
+    return InkWell(
+      onTap: () => context.push('/installments/${contract.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space12,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        contract.principal.format(),
+                        style: styles.formLabel,
+                      ),
+                      const SizedBox(width: AppSpacing.space8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space6,
+                          vertical: AppSpacing.space2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: styles.listSupporting
+                              .copyWith(color: statusColor),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${contract.totalPeriods} 期 · ${_methodShort(contract.repaymentMethod)}',
+                    style: styles.listSupporting
+                        .copyWith(color: colors.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              RemixIcons.arrow_right_s_line,
+              color: colors.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _methodShort(InstallmentRepaymentMethod method) {
+  return switch (method) {
+    InstallmentRepaymentMethod.equalInstallment => '等额本息',
+    InstallmentRepaymentMethod.equalPrincipal => '等额本金',
+    InstallmentRepaymentMethod.interestFirst => '先息后本',
+    InstallmentRepaymentMethod.flatFee => '一次性手续费',
+    InstallmentRepaymentMethod.custom => '自定义',
+  };
 }
 
 class _AccountTransactionDayGroup {

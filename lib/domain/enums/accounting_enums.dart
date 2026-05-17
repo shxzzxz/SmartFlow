@@ -67,3 +67,21 @@ enum SystemKey {
 }
 
 enum AccountSource { builtin, user, import }
+
+enum InstallmentSourceType { disbursement, billConversion }
+
+enum InstallmentRepaymentMethod {
+  equalInstallment,
+  equalPrincipal,
+  interestFirst,
+  flatFee,
+  custom,
+}
+
+enum InterestRatePeriod { annual, monthly, daily }
+
+enum InstallmentContractStatus { active, settled, closed }
+
+enum InstallmentScheduleStatus { pending, paid, skipped }
+
+enum InstallmentRepaymentType { regular, extraPrincipal, earlySettlement }
