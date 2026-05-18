@@ -57,6 +57,15 @@ class AccountServiceImpl implements AccountService {
         ),
       );
     }
+    if (command.targetBalance != null &&
+        command.targetBalance!.minorUnits < 0) {
+      return const Result.failure(
+        Failure(
+          code: 'account_target_balance_negative',
+          message: 'Target balance cannot be negative.',
+        ),
+      );
+    }
 
     try {
       final account = await _repository.findAccountById(command.id);
@@ -81,6 +90,33 @@ class AccountServiceImpl implements AccountService {
           Failure(
             code: 'account_type_not_editable',
             message: 'Only asset and liability accounts can be edited here.',
+          ),
+        );
+      }
+      if (command.targetBalance != null &&
+          command.targetBalance!.currency != account.currencyCode) {
+        return const Result.failure(
+          Failure(
+            code: 'account_target_balance_currency_mismatch',
+            message: 'Target balance currency must match account currency.',
+          ),
+        );
+      }
+      if (command.creditLimit != null &&
+          command.creditLimit!.currency != account.currencyCode) {
+        return const Result.failure(
+          Failure(
+            code: 'credit_limit_currency_mismatch',
+            message: 'Credit limit currency must match account currency.',
+          ),
+        );
+      }
+      if (command.targetBalance != null &&
+          !_supportsManualBalance(account.type, account.subtype)) {
+        return const Result.failure(
+          Failure(
+            code: 'account_target_balance_not_supported',
+            message: 'This account type does not support balance adjustment.',
           ),
         );
       }
@@ -124,12 +160,29 @@ class AccountServiceImpl implements AccountService {
         message: 'Credit limit currency must match account currency.',
       );
     }
+    if (command.openingBalance.minorUnits != 0 &&
+        !_supportsManualBalance(command.type, command.subtype)) {
+      return const Failure(
+        code: 'opening_balance_not_supported',
+        message: 'This account type does not support opening balance.',
+      );
+    }
 
     return null;
   }
 
   bool _isUserAccountType(AccountType type) {
     return type == AccountType.asset || type == AccountType.liability;
+  }
+
+  bool _supportsManualBalance(AccountType type, AccountSubtype? subtype) {
+    if (type == AccountType.asset) {
+      return subtype != AccountSubtype.reimbursement;
+    }
+    if (type == AccountType.liability) {
+      return subtype != AccountSubtype.loan;
+    }
+    return false;
   }
 }
 
@@ -175,6 +228,8 @@ class EditAccountCommand {
     this.creditLimit,
     this.billingDay,
     this.repaymentDay,
+    this.targetBalance,
+    this.balanceAdjustmentOccurredAt,
     this.sortOrder = 0,
     this.isHidden = false,
   });
@@ -187,6 +242,8 @@ class EditAccountCommand {
   final Money? creditLimit;
   final int? billingDay;
   final int? repaymentDay;
+  final Money? targetBalance;
+  final DateTime? balanceAdjustmentOccurredAt;
   final int sortOrder;
   final bool isHidden;
 }

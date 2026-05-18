@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
@@ -62,6 +63,143 @@ void main() {
         expect(entries, hasLength(2));
         expect(systemAccounts.single.accountType, AccountType.equity);
         expect(systemAccounts.single.balanceMinor, 5000000);
+      },
+    );
+
+    test('edits fund account balance through balance adjustment', () async {
+      final service = AccountServiceImpl(repository);
+      final createResult = await service.createAccount(
+        CreateAccountCommand(
+          name: '招行',
+          type: AccountType.asset,
+          openingBalance: const Money(minorUnits: 500000),
+          openingOccurredAt: DateTime(2026, 5),
+        ),
+      );
+      final account = (createResult as Success).value;
+
+      final editResult = await service.editAccount(
+        EditAccountCommand(
+          id: account.id,
+          name: '招商银行',
+          targetBalance: const Money(minorUnits: 700000),
+          balanceAdjustmentOccurredAt: DateTime(2026, 5, 2),
+        ),
+      );
+
+      expect(editResult, isA<Success>());
+      final updated = await repository.findAccountById(account.id);
+      expect(updated!.name, '招商银行');
+      expect(updated.balance, const Money(minorUnits: 700000));
+
+      final transactions =
+          await (database.select(database.transactions)..where(
+            (row) => row.businessPurpose.equalsValue(
+              BusinessPurpose.balanceAdjustment,
+            ),
+          )).get();
+      final details =
+          await (database.select(database.transactionDetails)..where(
+            (row) => row.detailType.equalsValue(
+              TransactionDetailType.balanceAdjustmentMain,
+            ),
+          )).get();
+
+      expect(transactions, hasLength(1));
+      expect(transactions.single.primaryAmountMinor, 200000);
+      expect(details.single.amountMinor, 200000);
+    });
+
+    test('edits credit account debt through balance adjustment', () async {
+      final service = AccountServiceImpl(repository);
+      final createResult = await service.createAccount(
+        CreateAccountCommand(
+          name: '花呗',
+          type: AccountType.liability,
+          subtype: AccountSubtype.consumerCredit,
+          openingBalance: const Money(minorUnits: 1000000),
+          openingOccurredAt: DateTime(2026, 5),
+        ),
+      );
+      final account = (createResult as Success).value;
+
+      final editResult = await service.editAccount(
+        EditAccountCommand(
+          id: account.id,
+          name: '花呗',
+          targetBalance: const Money(minorUnits: 800000),
+          balanceAdjustmentOccurredAt: DateTime(2026, 5, 2),
+        ),
+      );
+
+      expect(editResult, isA<Success>());
+      final updated = await repository.findAccountById(account.id);
+      expect(updated!.balance, const Money(minorUnits: 800000));
+
+      final adjustmentEntries =
+          await (database.select(database.entries).join([
+            innerJoin(
+              database.transactions,
+              database.transactions.id.equalsExp(
+                database.entries.transactionId,
+              ),
+            ),
+          ])..where(
+            database.transactions.businessPurpose.equalsValue(
+              BusinessPurpose.balanceAdjustment,
+            ),
+          )).get();
+      final liabilityEntry = adjustmentEntries
+          .map((row) => row.readTable(database.entries))
+          .singleWhere((entry) => entry.accountId == account.id);
+
+      expect(liabilityEntry.direction, EntryDirection.debit);
+      expect(liabilityEntry.amountMinor, 200000);
+    });
+
+    test(
+      'rejects loan account opening balance and balance adjustment',
+      () async {
+        final service = AccountServiceImpl(repository);
+
+        final invalidCreate = await service.createAccount(
+          const CreateAccountCommand(
+            name: '房贷',
+            type: AccountType.liability,
+            subtype: AccountSubtype.loan,
+            openingBalance: Money(minorUnits: 1000000),
+          ),
+        );
+
+        expect(invalidCreate, isA<FailureResult>());
+        expect(
+          (invalidCreate as FailureResult).failure.code,
+          'opening_balance_not_supported',
+        );
+
+        final createResult = await service.createAccount(
+          const CreateAccountCommand(
+            name: '房贷',
+            type: AccountType.liability,
+            subtype: AccountSubtype.loan,
+          ),
+        );
+        final account = (createResult as Success).value;
+
+        final invalidEdit = await service.editAccount(
+          EditAccountCommand(
+            id: account.id,
+            name: account.name,
+            subtype: account.subtype,
+            targetBalance: const Money(minorUnits: 1000000),
+          ),
+        );
+
+        expect(invalidEdit, isA<FailureResult>());
+        expect(
+          (invalidEdit as FailureResult).failure.code,
+          'account_target_balance_not_supported',
+        );
       },
     );
 

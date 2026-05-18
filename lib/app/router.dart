@@ -115,6 +115,13 @@ final appRouter = GoRouter(
           ),
     ),
     GoRoute(
+      path: '/accounts/:id/edit',
+      builder:
+          (context, state) => AccountFormPage(
+            accountId: int.parse(state.pathParameters['id']!),
+          ),
+    ),
+    GoRoute(
       path: '/accounts/:id/repayment',
       builder:
           (context, state) => RepaymentFormPage(
@@ -137,15 +144,17 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/installments/:contractId',
-      builder: (context, state) => InstallmentDetailPage(
-        contractId: int.parse(state.pathParameters['contractId']!),
-      ),
+      builder:
+          (context, state) => InstallmentDetailPage(
+            contractId: int.parse(state.pathParameters['contractId']!),
+          ),
     ),
     GoRoute(
       path: '/installments/:contractId/edit',
-      builder: (context, state) => InstallmentContractEditPage(
-        contractId: int.parse(state.pathParameters['contractId']!),
-      ),
+      builder:
+          (context, state) => InstallmentContractEditPage(
+            contractId: int.parse(state.pathParameters['contractId']!),
+          ),
     ),
     GoRoute(
       path: '/installments/:contractId/repay',
@@ -156,8 +165,9 @@ final appRouter = GoRouter(
           'settle' => InstallmentRepaymentMode.earlySettlement,
           _ => InstallmentRepaymentMode.regular,
         };
-        final scheduleId =
-            int.tryParse(state.uri.queryParameters['scheduleId'] ?? '');
+        final scheduleId = int.tryParse(
+          state.uri.queryParameters['scheduleId'] ?? '',
+        );
         return InstallmentRepaymentFormPage(
           contractId: contractId,
           mode: mode,
