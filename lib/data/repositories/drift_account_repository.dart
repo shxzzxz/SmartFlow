@@ -102,23 +102,41 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
   }
 
   @override
-  Future<void> updateAccount(EditAccountCommand command) async {
-    final now = DateTime.now();
-    await (_database.update(_database.accounts)
-      ..where((account) => account.id.equals(command.id))).write(
-      AccountsCompanion(
-        name: Value(command.name.trim()),
-        accountSubtype: Value(command.subtype),
-        iconKey: Value(_blankToNull(command.iconKey)),
-        note: Value(_blankToNull(command.note)),
-        creditLimitMinor: Value(command.creditLimit?.minorUnits),
-        billingDay: Value(command.billingDay),
-        repaymentDay: Value(command.repaymentDay),
-        sortOrder: Value(command.sortOrder),
-        isHidden: Value(command.isHidden),
-        updatedAt: Value(now),
-      ),
-    );
+  Future<void> updateAccount(EditAccountCommand command) {
+    return _database.transaction(() async {
+      final now = DateTime.now();
+      final row =
+          await (_database.select(_database.accounts)
+            ..where((account) => account.id.equals(command.id))).getSingle();
+
+      await (_database.update(_database.accounts)
+        ..where((account) => account.id.equals(command.id))).write(
+        AccountsCompanion(
+          name: Value(command.name.trim()),
+          accountSubtype: Value(command.subtype),
+          iconKey: Value(_blankToNull(command.iconKey)),
+          note: Value(_blankToNull(command.note)),
+          creditLimitMinor: Value(command.creditLimit?.minorUnits),
+          billingDay: Value(command.billingDay),
+          repaymentDay: Value(command.repaymentDay),
+          sortOrder: Value(command.sortOrder),
+          isHidden: Value(command.isHidden),
+          updatedAt: Value(now),
+        ),
+      );
+
+      final targetBalance = command.targetBalance;
+      if (targetBalance != null) {
+        await _postBalanceAdjustment(
+          accountId: command.id,
+          accountType: row.accountType,
+          currentBalanceMinor: row.balanceMinor,
+          targetBalance: targetBalance,
+          occurredAt: command.balanceAdjustmentOccurredAt ?? now,
+          now: now,
+        );
+      }
+    });
   }
 
   @override
@@ -254,6 +272,99 @@ class DriftAccountRepository implements AccountRepository, CategoryRepository {
     });
 
     await _addBalanceDelta(accountId, amount.minorUnits, now);
+    await _addBalanceDelta(
+      openingAccountId,
+      balanceDeltaMinor(
+        accountType: AccountType.equity,
+        direction: openingDirection,
+        amountMinor: amountMinor,
+      ),
+      now,
+    );
+  }
+
+  Future<void> _postBalanceAdjustment({
+    required int accountId,
+    required AccountType accountType,
+    required int currentBalanceMinor,
+    required Money targetBalance,
+    required DateTime occurredAt,
+    required DateTime now,
+  }) async {
+    final deltaMinor = targetBalance.minorUnits - currentBalanceMinor;
+    if (deltaMinor == 0) {
+      return;
+    }
+
+    final openingAccountId = await _systemAccounts.resolveOpeningBalance(
+      currencyCode: targetBalance.currency,
+    );
+    final amountMinor = deltaMinor.abs();
+    final targetDirection = _directionForBalanceDelta(
+      accountType: accountType,
+      deltaMinor: deltaMinor,
+    );
+    final openingDirection =
+        targetDirection == EntryDirection.debit
+            ? EntryDirection.credit
+            : EntryDirection.debit;
+
+    final transactionId = await _database
+        .into(_database.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            businessPurpose: BusinessPurpose.balanceAdjustment,
+            occurredAt: occurredAt,
+            currencyCode: targetBalance.currency,
+            primaryAmountMinor: amountMinor,
+            mutationKind: MutationKind.original,
+            businessState: BusinessState.current,
+            sourceKind: SourceKind.manual,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+    await (_database.update(_database.transactions)
+      ..where((transaction) => transaction.id.equals(transactionId))).write(
+      TransactionsCompanion(
+        rootTransactionId: Value(transactionId),
+        updatedAt: Value(now),
+      ),
+    );
+
+    await _database.batch((batch) {
+      batch.insert(
+        _database.transactionDetails,
+        TransactionDetailsCompanion.insert(
+          transactionId: transactionId,
+          lineNo: 1,
+          detailType: TransactionDetailType.balanceAdjustmentMain,
+          amountMinor: amountMinor,
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+      );
+      batch.insertAll(_database.entries, [
+        EntriesCompanion.insert(
+          transactionId: transactionId,
+          accountId: accountId,
+          direction: targetDirection,
+          amountMinor: amountMinor,
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+        EntriesCompanion.insert(
+          transactionId: transactionId,
+          accountId: openingAccountId,
+          direction: openingDirection,
+          amountMinor: amountMinor,
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+      ]);
+    });
+
+    await _addBalanceDelta(accountId, deltaMinor, now);
     await _addBalanceDelta(
       openingAccountId,
       balanceDeltaMinor(

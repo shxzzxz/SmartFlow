@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/errors/failure.dart';
 import '../../../core/money/money.dart';
 import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
@@ -12,6 +13,7 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_form_field.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
+import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/account_service.dart';
 import '../../../widgets/business/business_icon.dart';
@@ -20,7 +22,9 @@ import '../../../widgets/business/icon_choice_grid.dart';
 enum _AccountKind { fund, credit, loan, reimbursement }
 
 class AccountFormPage extends ConsumerStatefulWidget {
-  const AccountFormPage({super.key});
+  const AccountFormPage({this.accountId, super.key});
+
+  final int? accountId;
 
   @override
   ConsumerState<AccountFormPage> createState() => _AccountFormPageState();
@@ -38,6 +42,10 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   int? _billingDay;
   int? _repaymentDay;
   bool _submitting = false;
+  int? _loadedAccountId;
+  Account? _loadedAccount;
+
+  bool get _isEditMode => widget.accountId != null;
 
   @override
   void dispose() {
@@ -50,6 +58,35 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final accountId = widget.accountId;
+    if (accountId != null) {
+      final accountsAsync = ref.watch(accountListProvider);
+      return switch (accountsAsync) {
+        AsyncData(value: final accounts) => _buildForEdit(context, accounts),
+        AsyncError(:final error) => Scaffold(
+          appBar: AppBar(title: const Text('编辑账户')),
+          body: Center(child: Text('账户加载失败：$error')),
+        ),
+        _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      };
+    }
+
+    return _buildFormScaffold(context);
+  }
+
+  Widget _buildForEdit(BuildContext context, List<Account> accounts) {
+    final account = _findAccount(accounts, widget.accountId!);
+    if (account == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('编辑账户')),
+        body: const Center(child: Text('账户不存在')),
+      );
+    }
+    _populateForEdit(account);
+    return _buildFormScaffold(context);
+  }
+
+  Widget _buildFormScaffold(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -59,9 +96,15 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
           key: _formKey,
           child: Column(
             children: [
-              _AccountFormHeader(submitting: _submitting, onSave: _submit),
-              _AccountKindTabs(kind: _kind, onChanged: _switchKind),
-              const Divider(height: 1),
+              _AccountFormHeader(
+                title: _isEditMode ? '编辑账户' : '新建账户',
+                submitting: _submitting,
+                onSave: _submit,
+              ),
+              if (!_isEditMode) ...[
+                _AccountKindTabs(kind: _kind, onChanged: _switchKind),
+                const Divider(height: 1),
+              ],
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(
@@ -92,18 +135,21 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                       ),
                     ),
                     const Divider(height: 1),
-                    if (_kind != _AccountKind.reimbursement) ...[
+                    if (_showsManualBalanceField(_kind)) ...[
                       AppPlainFormRow(
-                        label: _isLiabilityKind(_kind) ? '初始欠款' : '初始额度',
+                        label: _manualBalanceLabel(
+                          kind: _kind,
+                          isEdit: _isEditMode,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
                               child: AppPlainTextFormField(
                                 controller: _openingBalanceController,
-                                hintText:
-                                    _isLiabilityKind(_kind)
-                                        ? '请输入初始欠款'
-                                        : '请输入初始额度',
+                                hintText: _manualBalanceHint(
+                                  kind: _kind,
+                                  isEdit: _isEditMode,
+                                ),
                                 keyboardType:
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
@@ -112,7 +158,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                               ),
                             ),
                             InkWell(
-                              onTap: _showCurrencySheet,
+                              onTap: _isEditMode ? null : _showCurrencySheet,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: AppSpacing.space8,
@@ -129,7 +175,7 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                       ),
                       const Divider(height: 1),
                     ],
-                    if (_isLiabilityKind(_kind)) ...[
+                    if (_kind == _AccountKind.credit) ...[
                       AppPlainFormRow(
                         label: '信用额度',
                         child: AppPlainTextFormField(
@@ -142,46 +188,45 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
                         ),
                       ),
                       const Divider(height: 1),
-                      if (_kind == _AccountKind.credit)
-                        AppPlainFormRow(
-                          label: '出账还款日',
-                          child: _BillingRepaymentFields(
-                            billingDay: _billingDay,
-                            repaymentDay: _repaymentDay,
-                            onSelectBillingDay:
-                                () => _pickMonthlyDay(
-                                  title: '选择出账日',
-                                  selectedDay: _billingDay,
-                                  onChanged:
-                                      (day) =>
-                                          setState(() => _billingDay = day),
-                                ),
-                            onSelectRepaymentDay:
-                                () => _pickMonthlyDay(
-                                  title: '选择还款日',
-                                  selectedDay: _repaymentDay,
-                                  onChanged:
-                                      (day) =>
-                                          setState(() => _repaymentDay = day),
-                                ),
-                          ),
-                        )
-                      else
-                        AppPlainFormRow(
-                          label: '还款日',
-                          child: _MonthlyDayField(
-                            day: _repaymentDay,
-                            placeholder: '还款日',
-                            onTap:
-                                () => _pickMonthlyDay(
-                                  title: '选择还款日',
-                                  selectedDay: _repaymentDay,
-                                  onChanged:
-                                      (day) =>
-                                          setState(() => _repaymentDay = day),
-                                ),
-                          ),
+                      AppPlainFormRow(
+                        label: '出账还款日',
+                        child: _BillingRepaymentFields(
+                          billingDay: _billingDay,
+                          repaymentDay: _repaymentDay,
+                          onSelectBillingDay:
+                              () => _pickMonthlyDay(
+                                title: '选择出账日',
+                                selectedDay: _billingDay,
+                                onChanged:
+                                    (day) => setState(() => _billingDay = day),
+                              ),
+                          onSelectRepaymentDay:
+                              () => _pickMonthlyDay(
+                                title: '选择还款日',
+                                selectedDay: _repaymentDay,
+                                onChanged:
+                                    (day) =>
+                                        setState(() => _repaymentDay = day),
+                              ),
                         ),
+                      ),
+                      const Divider(height: 1),
+                    ] else if (_kind == _AccountKind.loan) ...[
+                      AppPlainFormRow(
+                        label: '还款日',
+                        child: _MonthlyDayField(
+                          day: _repaymentDay,
+                          placeholder: '还款日',
+                          onTap:
+                              () => _pickMonthlyDay(
+                                title: '选择还款日',
+                                selectedDay: _repaymentDay,
+                                onChanged:
+                                    (day) =>
+                                        setState(() => _repaymentDay = day),
+                              ),
+                        ),
+                      ),
                       const Divider(height: 1),
                     ],
                     AppPlainFormRow(
@@ -200,6 +245,23 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
         ),
       ),
     );
+  }
+
+  void _populateForEdit(Account account) {
+    if (_loadedAccountId == account.id) return;
+
+    final kind = _accountKindForAccount(account);
+    _loadedAccountId = account.id;
+    _loadedAccount = account;
+    _kind = kind;
+    _nameController.text = account.name;
+    _openingBalanceController.text = account.balance.format();
+    _creditLimitController.text = account.creditLimit?.format() ?? '';
+    _noteController.text = account.note ?? '';
+    _currencyCode = account.currencyCode;
+    _iconKey = account.iconKey ?? _defaultAccountIconKey(kind);
+    _billingDay = account.billingDay;
+    _repaymentDay = account.repaymentDay;
   }
 
   void _switchKind(_AccountKind kind) {
@@ -229,14 +291,14 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
   }
 
   Money _openingBalanceForKind() {
-    if (_kind == _AccountKind.reimbursement) {
+    if (!_showsManualBalanceField(_kind)) {
       return const Money(minorUnits: 0);
     }
     return Money.parse(_openingBalanceController.text, currency: _currencyCode);
   }
 
   Money? _creditLimitForKind() {
-    if (!_isLiabilityKind(_kind)) {
+    if (_kind != _AccountKind.credit) {
       return null;
     }
     final text = _creditLimitController.text.trim();
@@ -291,6 +353,44 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
     }
 
     setState(() => _submitting = true);
+    if (_isEditMode) {
+      final account = _loadedAccount;
+      if (account == null) {
+        _completeSubmit<void>(
+          const Result.failure(
+            Failure(
+              code: 'account_not_loaded',
+              message: 'Account has not been loaded.',
+            ),
+          ),
+        );
+        return;
+      }
+      final result = await ref
+          .read(accountServiceProvider)
+          .editAccount(
+            EditAccountCommand(
+              id: account.id,
+              name: _nameController.text,
+              subtype: account.subtype,
+              iconKey: _iconKey,
+              note: _noteController.text,
+              creditLimit: _creditLimitForKind(),
+              billingDay: _kind == _AccountKind.credit ? _billingDay : null,
+              repaymentDay: _isLiabilityKind(_kind) ? _repaymentDay : null,
+              sortOrder: account.sortOrder,
+              isHidden: account.isHidden,
+              targetBalance:
+                  _showsManualBalanceField(_kind)
+                      ? _openingBalanceForKind()
+                      : null,
+              balanceAdjustmentOccurredAt: DateTime.now(),
+            ),
+          );
+      _completeSubmit(result);
+      return;
+    }
+
     final type = _accountTypeForKind(_kind);
     final result = await ref
         .read(accountServiceProvider)
@@ -309,6 +409,10 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
             repaymentDay: _isLiabilityKind(_kind) ? _repaymentDay : null,
           ),
         );
+    _completeSubmit(result);
+  }
+
+  void _completeSubmit<T>(Result<T> result) {
     if (!mounted) {
       return;
     }
@@ -326,8 +430,13 @@ class _AccountFormPageState extends ConsumerState<AccountFormPage> {
 }
 
 class _AccountFormHeader extends StatelessWidget {
-  const _AccountFormHeader({required this.submitting, required this.onSave});
+  const _AccountFormHeader({
+    required this.title,
+    required this.submitting,
+    required this.onSave,
+  });
 
+  final String title;
   final bool submitting;
   final VoidCallback onSave;
 
@@ -365,7 +474,7 @@ class _AccountFormHeader extends StatelessWidget {
                       : const Text('保存'),
             ),
           ),
-          Text('新建账户', style: context.appTextStyles.dateNavigationTitle),
+          Text(title, style: context.appTextStyles.dateNavigationTitle),
         ],
       ),
     );
@@ -540,6 +649,44 @@ String _defaultAccountIconKey(_AccountKind kind) {
 
 bool _isLiabilityKind(_AccountKind kind) {
   return kind == _AccountKind.credit || kind == _AccountKind.loan;
+}
+
+bool _showsManualBalanceField(_AccountKind kind) {
+  return kind == _AccountKind.fund || kind == _AccountKind.credit;
+}
+
+String _manualBalanceLabel({required _AccountKind kind, required bool isEdit}) {
+  if (kind == _AccountKind.credit) {
+    return isEdit ? '当前欠款' : '初始欠款';
+  }
+  return isEdit ? '当前余额' : '初始余额';
+}
+
+String _manualBalanceHint({required _AccountKind kind, required bool isEdit}) {
+  if (kind == _AccountKind.credit) {
+    return isEdit ? '请输入当前欠款' : '请输入初始欠款';
+  }
+  return isEdit ? '请输入当前余额' : '请输入初始余额';
+}
+
+_AccountKind _accountKindForAccount(Account account) {
+  if (account.type == AccountType.liability) {
+    return account.subtype == AccountSubtype.loan
+        ? _AccountKind.loan
+        : _AccountKind.credit;
+  }
+  return account.subtype == AccountSubtype.reimbursement
+      ? _AccountKind.reimbursement
+      : _AccountKind.fund;
+}
+
+Account? _findAccount(List<Account> accounts, int id) {
+  for (final account in accounts) {
+    if (account.id == id) {
+      return account;
+    }
+  }
+  return null;
 }
 
 final List<IconChoiceGridItem> _accountIconGridItems = [

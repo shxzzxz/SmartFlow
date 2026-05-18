@@ -28,7 +28,16 @@ class AccountDetailPage extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('账户详情')),
+      appBar: AppBar(
+        title: const Text('账户详情'),
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/accounts/$accountId/edit'),
+            icon: const Icon(RemixIcons.edit_line),
+            tooltip: '编辑账户',
+          ),
+        ],
+      ),
       body: switch ((accountsAsync, transactionsAsync)) {
         (AsyncData(value: final accounts), AsyncData(value: final items)) =>
           _AccountDetailContent(
@@ -64,9 +73,10 @@ class _AccountDetailContent extends ConsumerWidget {
 
     final groups = _groupTransactionsByDay(transactions);
     final showInstallments = account.type == AccountType.liability;
-    final contractsAsync = showInstallments
-        ? ref.watch(installmentContractsByAccountProvider(accountId))
-        : null;
+    final contractsAsync =
+        showInstallments
+            ? ref.watch(installmentContractsByAccountProvider(accountId))
+            : null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space10,
@@ -342,10 +352,11 @@ class _AccountActionBar extends StatelessWidget {
                 child: _ActionButton(
                   icon: RemixIcons.calendar_schedule_line,
                   label: '分期',
-                  onTap: () => context.push(
-                    '/accounts/${account.id}/installments/new'
-                    '?source=$installmentSource',
-                  ),
+                  onTap:
+                      () => context.push(
+                        '/accounts/${account.id}/installments/new'
+                        '?source=$installmentSource',
+                      ),
                 ),
               ),
             ],
@@ -512,8 +523,9 @@ class _InstallmentSection extends StatelessWidget {
           child: Text('分期合同', style: styles.dateSectionTitle),
         ),
         switch (contractsAsync) {
-          AsyncData(value: final contracts) => contracts.isEmpty
-              ? AppSurface(
+          AsyncData(value: final contracts) =>
+            contracts.isEmpty
+                ? AppSurface(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.space20),
                     child: Text(
@@ -524,7 +536,7 @@ class _InstallmentSection extends StatelessWidget {
                     ),
                   ),
                 )
-              : AppSurface(
+                : AppSurface(
                   child: Column(
                     children: [
                       for (var i = 0; i < contracts.length; i++) ...[
@@ -535,25 +547,24 @@ class _InstallmentSection extends StatelessWidget {
                               horizontal: AppSpacing.space16,
                             ),
                             height: 1,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outlineVariant
-                                .withValues(alpha: 0.5),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                           ),
                       ],
                     ],
                   ),
                 ),
           AsyncError(:final error) => AppSurface(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.space12),
-                child: Text('合同加载失败：$error'),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space12),
+              child: Text('合同加载失败：$error'),
             ),
+          ),
           _ => const Padding(
-              padding: EdgeInsets.all(AppSpacing.space12),
-              child: Center(child: CircularProgressIndicator()),
-            ),
+            padding: EdgeInsets.all(AppSpacing.space12),
+            child: Center(child: CircularProgressIndicator()),
+          ),
         },
       ],
     );
@@ -605,30 +616,30 @@ class _ContractRow extends StatelessWidget {
                         ),
                         child: Text(
                           statusLabel,
-                          style: styles.listSupporting
-                              .copyWith(color: statusColor),
+                          style: styles.listSupporting.copyWith(
+                            color: statusColor,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   Text(
                     '${contract.totalPeriods} 期 · ${_methodShort(contract.repaymentMethod)}',
-                    style: styles.listSupporting
-                        .copyWith(color: colors.onSurfaceVariant),
+                    style: styles.listSupporting.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                   Text(
                     '${_formatContractDate(contract.borrowingDate)} · '
                     '${_accrualLabel(contract.interestAccrualMethod)}',
-                    style: styles.listSupporting
-                        .copyWith(color: colors.onSurfaceVariant),
+                    style: styles.listSupporting.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
             ),
-            Icon(
-              RemixIcons.arrow_right_s_line,
-              color: colors.onSurfaceVariant,
-            ),
+            Icon(RemixIcons.arrow_right_s_line, color: colors.onSurfaceVariant),
           ],
         ),
       ),
