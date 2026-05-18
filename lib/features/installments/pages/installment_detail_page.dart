@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:remixicon/remixicon.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
@@ -11,6 +12,7 @@ import '../../../domain/entities/installment_contract.dart';
 import '../../../domain/entities/installment_schedule.dart';
 import '../../../domain/enums/accounting_enums.dart';
 import '../../../domain/services/installment_metrics.dart';
+import '../../../domain/services/installment_service.dart';
 
 class InstallmentDetailPage extends ConsumerWidget {
   const InstallmentDetailPage({required this.contractId, super.key});
@@ -24,8 +26,23 @@ class InstallmentDetailPage extends ConsumerWidget {
     final cashflowsAsync =
         ref.watch(installmentRepaymentCashflowsProvider(contractId));
 
+    final loadedContract = switch (contractAsync) {
+      AsyncData(value: final c) => c,
+      _ => null,
+    };
+
     return Scaffold(
-      appBar: AppBar(title: const Text('分期合同')),
+      appBar: AppBar(
+        title: const Text('分期合同'),
+        actions: [
+          if (loadedContract != null)
+            IconButton(
+              onPressed: () => _confirmDelete(context, ref, loadedContract),
+              icon: const Icon(RemixIcons.delete_bin_line),
+              tooltip: '删除合同',
+            ),
+        ],
+      ),
       body: switch ((contractAsync, schedulesAsync, cashflowsAsync)) {
         (
           AsyncData(value: final contract),
@@ -45,6 +62,46 @@ class InstallmentDetailPage extends ConsumerWidget {
           Center(child: Text('加载失败：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
+    );
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    InstallmentContract contract,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除分期合同'),
+        content: const Text('将撤回所有还款交易与放款交易，并清除合同与还款计划。此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final result = await ref.read(installmentServiceProvider).deleteContract(
+          DeleteContractCommand(contractId: contract.id),
+        );
+    if (!context.mounted) return;
+    result.when(
+      success: (_) {
+        ref.invalidate(
+          installmentContractsByAccountProvider(contract.liabilityAccountId),
+        );
+        context.pop();
+      },
+      failure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除失败：${failure.message}')),
+      ),
     );
   }
 }
@@ -68,6 +125,13 @@ class _Body extends ConsumerWidget {
         .where((s) => s.status == InstallmentScheduleStatus.pending)
         .fold<int>(0, (acc, s) => acc + s.expectedPrincipal.minorUnits);
 
+    var paidInterestMinor = 0;
+    var paidFeeMinor = 0;
+    for (final c in cashflows) {
+      paidInterestMinor += c.interest.minorUnits;
+      paidFeeMinor += c.fee.minorUnits;
+    }
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.space10,
@@ -80,6 +144,8 @@ class _Body extends ConsumerWidget {
           contract: contract,
           remainingPrincipalMinor:
               remainingPrincipal < 0 ? 0 : remainingPrincipal,
+          paidInterestMinor: paidInterestMinor,
+          paidFeeMinor: paidFeeMinor,
         ),
         const SizedBox(height: AppSpacing.space8),
         _ActionBar(contract: contract),
@@ -115,7 +181,10 @@ class _Body extends ConsumerWidget {
             child: Column(
               children: [
                 for (var i = 0; i < cashflows.length; i++) ...[
-                  _RepaymentRow(cashflow: cashflows[i]),
+                  _RepaymentRow(
+                    cashflow: cashflows[i],
+                    contract: contract,
+                  ),
                   if (i < cashflows.length - 1)
                     const Divider(height: 1, indent: AppSpacing.space12),
                 ],
@@ -131,15 +200,20 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.contract,
     required this.remainingPrincipalMinor,
+    required this.paidInterestMinor,
+    required this.paidFeeMinor,
   });
 
   final InstallmentContract contract;
   final int remainingPrincipalMinor;
+  final int paidInterestMinor;
+  final int paidFeeMinor;
 
   @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
+    final currency = contract.principal.currency;
     return AppSurface(
       border: true,
       child: Padding(
@@ -173,7 +247,7 @@ class _Header extends StatelessWidget {
                     label: '剩余本金',
                     value: Money(
                       minorUnits: remainingPrincipalMinor,
-                      currency: contract.principal.currency,
+                      currency: currency,
                     ).format(),
                   ),
                 ),
@@ -190,7 +264,7 @@ class _Header extends StatelessWidget {
               children: [
                 Expanded(
                   child: _LabelValue(
-                    label: '起始日',
+                    label: '借款日期',
                     value: _formatDate(contract.borrowingDate),
                   ),
                 ),
@@ -201,6 +275,29 @@ class _Header extends StatelessWidget {
                       contract.interestRatePeriod,
                       contract.interestRatePpm,
                     ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space6),
+            Row(
+              children: [
+                Expanded(
+                  child: _LabelValue(
+                    label: '已还利息',
+                    value: Money(
+                      minorUnits: paidInterestMinor,
+                      currency: currency,
+                    ).format(),
+                  ),
+                ),
+                Expanded(
+                  child: _LabelValue(
+                    label: '已还手续费',
+                    value: Money(
+                      minorUnits: paidFeeMinor,
+                      currency: currency,
+                    ).format(),
                   ),
                 ),
               ],
@@ -395,13 +492,14 @@ class _ScheduleRow extends StatelessWidget {
   }
 }
 
-class _RepaymentRow extends StatelessWidget {
-  const _RepaymentRow({required this.cashflow});
+class _RepaymentRow extends ConsumerWidget {
+  const _RepaymentRow({required this.cashflow, required this.contract});
 
   final RepaymentCashflow cashflow;
+  final InstallmentContract contract;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final styles = context.appTextStyles;
     final colors = Theme.of(context).colorScheme;
     final total = cashflow.principal + cashflow.interest + cashflow.fee;
@@ -442,9 +540,59 @@ class _RepaymentRow extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(width: AppSpacing.space8),
             Text(total.format(), style: styles.formLabel),
+            IconButton(
+              tooltip: '撤销',
+              icon: Icon(
+                RemixIcons.arrow_go_back_line,
+                color: colors.onSurfaceVariant,
+                size: AppSpacing.space20,
+              ),
+              onPressed: () => _confirmRevert(context, ref),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _confirmRevert(BuildContext context, WidgetRef ref) async {
+    final typeLabel = _repaymentTypeLabel(cashflow.repaymentType);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('撤销$typeLabel'),
+        content: const Text('将删除该笔还款交易，并把对应期次状态还原为待还。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('撤销'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final result = await ref.read(installmentServiceProvider).revertRepayment(
+          RevertRepaymentCommand(transactionId: cashflow.transactionId),
+        );
+    if (!context.mounted) return;
+    result.when(
+      success: (_) {
+        ref.invalidate(installmentContractProvider(contract.id));
+        ref.invalidate(installmentSchedulesProvider(contract.id));
+        ref.invalidate(installmentRepaymentsProvider(contract.id));
+        ref.invalidate(installmentRepaymentCashflowsProvider(contract.id));
+        ref.invalidate(
+          installmentContractsByAccountProvider(contract.liabilityAccountId),
+        );
+      },
+      failure: (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('撤销失败：${failure.message}')),
       ),
     );
   }

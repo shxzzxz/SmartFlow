@@ -56,6 +56,11 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         'CREATE INDEX installment_repayments_transaction_idx '
         'ON installment_repayments (transaction_id)',
       );
+      await database.customStatement(
+        'CREATE INDEX installment_contracts_disbursement_tx_idx '
+        'ON installment_contracts (disbursement_transaction_id) '
+        'WHERE disbursement_transaction_id IS NOT NULL',
+      );
       await ensureBuiltinData(database);
     },
     onUpgrade: (migrator, from, to) async {
@@ -117,6 +122,14 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         await database.customStatement(
           "ALTER TABLE installment_contracts ADD COLUMN "
           "interest_accrual_method TEXT NOT NULL DEFAULT 'daily'",
+        );
+      }
+      if (from < 6) {
+        // 放款交易反查索引：交易详情页要识别"该 transaction 是某分期合同的放款"。
+        await database.customStatement(
+          'CREATE INDEX installment_contracts_disbursement_tx_idx '
+          'ON installment_contracts (disbursement_transaction_id) '
+          'WHERE disbursement_transaction_id IS NOT NULL',
         );
       }
     },

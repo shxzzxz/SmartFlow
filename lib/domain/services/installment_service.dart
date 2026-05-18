@@ -184,6 +184,12 @@ class RevertRepaymentCommand {
   final int transactionId;
 }
 
+class DeleteContractCommand {
+  const DeleteContractCommand({required this.contractId});
+
+  final int contractId;
+}
+
 /// pending 期次的单行手工编辑值（不会改 paid / skipped 行）。
 class SchedulePendingPatch {
   const SchedulePendingPatch({
@@ -280,6 +286,9 @@ abstract interface class InstallmentService {
 
   Future<Result<void>> revertRepayment(RevertRepaymentCommand command);
 
+  /// 删除合同：先回滚已发生的还款交易与放款交易，再级联删除 schedules / repayments / contract。
+  Future<Result<void>> deleteContract(DeleteContractCommand command);
+
   Future<List<InstallmentContract>> listContractsByLiabilityAccount(
     int liabilityAccountId,
   );
@@ -289,6 +298,30 @@ abstract interface class InstallmentService {
   Future<List<InstallmentSchedule>> listSchedules(int contractId);
 
   Future<List<InstallmentRepayment>> listRepayments(int contractId);
+
+  /// 反查交易是否被分期模块持有。
+  /// 命中放款侧返回 disbursement；命中还款侧返回 repayment；否则 null。
+  Future<InstallmentLink?> findLinkByTransaction(int transactionId);
+}
+
+/// 分期模块对某 transaction 的"所有权"指针。
+sealed class InstallmentLink {
+  const InstallmentLink({required this.contractId});
+
+  final int contractId;
+}
+
+class InstallmentDisbursementLink extends InstallmentLink {
+  const InstallmentDisbursementLink({required super.contractId});
+}
+
+class InstallmentRepaymentLink extends InstallmentLink {
+  const InstallmentRepaymentLink({
+    required super.contractId,
+    required this.repaymentType,
+  });
+
+  final InstallmentRepaymentType repaymentType;
 }
 
 class InstallmentServiceImpl implements InstallmentService {
@@ -892,6 +925,47 @@ class InstallmentServiceImpl implements InstallmentService {
   }
 
   @override
+  Future<Result<void>> deleteContract(DeleteContractCommand command) async {
+    final contract = await _repository.findContract(command.contractId);
+    if (contract == null) {
+      return const Result.failure(
+        Failure(
+          code: 'installment_contract_not_found',
+          message: 'Installment contract does not exist.',
+        ),
+      );
+    }
+
+    // 1. 回滚每一笔还款交易（按时间倒序更稳妥：晚于放款的先撤）。
+    final repayments = await _repository.listRepayments(command.contractId);
+    final sortedRepayments = [...repayments]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    for (final repayment in sortedRepayments) {
+      final result = await _transactionService.deleteTransaction(
+        DeleteTransactionCommand(transactionId: repayment.transactionId),
+      );
+      if (result case FailureResult(:final failure)) {
+        return Result.failure(failure);
+      }
+    }
+
+    // 2. 放款合同需要撤回放款交易；账单分期没有放款交易，跳过。
+    final disbursementTxId = contract.disbursementTransactionId;
+    if (disbursementTxId != null) {
+      final result = await _transactionService.deleteTransaction(
+        DeleteTransactionCommand(transactionId: disbursementTxId),
+      );
+      if (result case FailureResult(:final failure)) {
+        return Result.failure(failure);
+      }
+    }
+
+    // 3. 物理删除合同与子表。
+    await _repository.deleteContract(command.contractId);
+    return const Result.success(null);
+  }
+
+  @override
   Future<List<InstallmentContract>> listContractsByLiabilityAccount(
     int liabilityAccountId,
   ) {
@@ -911,6 +985,24 @@ class InstallmentServiceImpl implements InstallmentService {
   @override
   Future<List<InstallmentRepayment>> listRepayments(int contractId) {
     return _repository.listRepayments(contractId);
+  }
+
+  @override
+  Future<InstallmentLink?> findLinkByTransaction(int transactionId) async {
+    final repayment =
+        await _repository.findRepaymentByTransaction(transactionId);
+    if (repayment != null) {
+      return InstallmentRepaymentLink(
+        contractId: repayment.contractId,
+        repaymentType: repayment.repaymentType,
+      );
+    }
+    final contract =
+        await _repository.findContractByDisbursementTransaction(transactionId);
+    if (contract != null) {
+      return InstallmentDisbursementLink(contractId: contract.id);
+    }
+    return null;
   }
 
   Future<void> _maybeMarkContractSettled(int contractId) async {

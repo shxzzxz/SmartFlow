@@ -1789,6 +1789,101 @@ final class InstallmentRepaymentsFamily extends $Family
   String toString() => r'installmentRepaymentsProvider';
 }
 
+/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
+/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+
+@ProviderFor(installmentLinkByTransaction)
+final installmentLinkByTransactionProvider =
+    InstallmentLinkByTransactionFamily._();
+
+/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
+/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+
+final class InstallmentLinkByTransactionProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<InstallmentLink?>,
+          InstallmentLink?,
+          FutureOr<InstallmentLink?>
+        >
+    with $FutureModifier<InstallmentLink?>, $FutureProvider<InstallmentLink?> {
+  /// 反查 transaction 是否被分期模块持有（放款 / 还款）。
+  /// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+  InstallmentLinkByTransactionProvider._({
+    required InstallmentLinkByTransactionFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'installmentLinkByTransactionProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$installmentLinkByTransactionHash();
+
+  @override
+  String toString() {
+    return r'installmentLinkByTransactionProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<InstallmentLink?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<InstallmentLink?> create(Ref ref) {
+    final argument = this.argument as int;
+    return installmentLinkByTransaction(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is InstallmentLinkByTransactionProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$installmentLinkByTransactionHash() =>
+    r'a8d64923b687cce37cbac40c46682923befe0ab6';
+
+/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
+/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+
+final class InstallmentLinkByTransactionFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<InstallmentLink?>, int> {
+  InstallmentLinkByTransactionFamily._()
+    : super(
+        retry: null,
+        name: r'installmentLinkByTransactionProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// 反查 transaction 是否被分期模块持有（放款 / 还款）。
+  /// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+
+  InstallmentLinkByTransactionProvider call(int transactionId) =>
+      InstallmentLinkByTransactionProvider._(
+        argument: transactionId,
+        from: this,
+      );
+
+  @override
+  String toString() => r'installmentLinkByTransactionProvider';
+}
+
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
 /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
 

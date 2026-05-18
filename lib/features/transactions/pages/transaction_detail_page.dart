@@ -16,6 +16,7 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/services/installment_service.dart';
 import '../../../domain/services/posting_command.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
@@ -34,17 +35,24 @@ class TransactionDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(transactionDetailProvider(transactionId));
+    final linkAsync =
+        ref.watch(installmentLinkByTransactionProvider(transactionId));
+    final link = switch (linkAsync) {
+      AsyncData(value: final v) => v,
+      _ => null,
+    };
 
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
         title: const Text('交易详情'),
         actions: [
-          IconButton(
-            onPressed: () => _confirmDelete(context, ref),
-            icon: const Icon(RemixIcons.more_2_line),
-            tooltip: '更多',
-          ),
+          if (link == null)
+            IconButton(
+              onPressed: () => _confirmDelete(context, ref),
+              icon: const Icon(RemixIcons.more_2_line),
+              tooltip: '更多',
+            ),
         ],
       ),
       body: detailAsync.when(
@@ -54,7 +62,7 @@ class TransactionDetailPage extends ConsumerWidget {
           if (detail == null) {
             return const Center(child: Text('交易不存在'));
           }
-          return _DetailBody(detail: detail);
+          return _DetailBody(detail: detail, installmentLink: link);
         },
       ),
     );
@@ -97,9 +105,10 @@ class TransactionDetailPage extends ConsumerWidget {
 }
 
 class _DetailBody extends ConsumerWidget {
-  const _DetailBody({required this.detail});
+  const _DetailBody({required this.detail, this.installmentLink});
 
   final TransactionDetailView detail;
+  final InstallmentLink? installmentLink;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -114,8 +123,10 @@ class _DetailBody extends ConsumerWidget {
         ref.watch(accountsForUsageProvider(AccountUsage.reimbursement)).value ??
         const <Account>[];
 
-    final showRefund = purpose == BusinessPurpose.dailyExpense;
-    final showReimbursement = purpose == BusinessPurpose.reimbursementAdvance;
+    final linked = installmentLink != null;
+    final showRefund = purpose == BusinessPurpose.dailyExpense && !linked;
+    final showReimbursement =
+        purpose == BusinessPurpose.reimbursementAdvance && !linked;
 
     return Column(
       children: [
@@ -129,6 +140,10 @@ class _DetailBody extends ConsumerWidget {
             ),
             children: [
               _HeroCard(detail: detail, semantic: semantic),
+              if (installmentLink != null) ...[
+                const SizedBox(height: AppSpacing.space12),
+                _InstallmentLinkNotice(link: installmentLink!),
+              ],
               if (showRefund || showReimbursement) ...[
                 const SizedBox(height: AppSpacing.space12),
                 _RefundReimbursementCard(
@@ -141,15 +156,18 @@ class _DetailBody extends ConsumerWidget {
               _PrimaryMetaCard(
                 detail: detail,
                 accountRows: accountRows,
-                onOccurredAtTap: () => _editOccurredAt(context, ref),
-                onAccountTap:
-                    (row) => _editAccount(
-                      context,
-                      ref,
-                      row,
-                      settlementAccounts: settlementAccounts,
-                      reimbursementAccounts: reimbursementAccounts,
-                    ),
+                onOccurredAtTap: linked
+                    ? () => _showInstallmentBlocked(context)
+                    : () => _editOccurredAt(context, ref),
+                onAccountTap: linked
+                    ? (_) => _showInstallmentBlocked(context)
+                    : (row) => _editAccount(
+                          context,
+                          ref,
+                          row,
+                          settlementAccounts: settlementAccounts,
+                          reimbursementAccounts: reimbursementAccounts,
+                        ),
                 onNoteTap: () => _editNote(context, ref),
               ),
               if (detail.history.isNotEmpty) ...[
@@ -163,8 +181,17 @@ class _DetailBody extends ConsumerWidget {
             ],
           ),
         ),
-        _ActionBar(detail: detail),
+        if (installmentLink != null)
+          _InstallmentLinkActionBar(link: installmentLink!)
+        else
+          _ActionBar(detail: detail),
       ],
+    );
+  }
+
+  void _showInstallmentBlocked(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('此交易由分期合同管理，请在合同详情页修改')),
     );
   }
 
@@ -1036,6 +1063,97 @@ class _SecondaryAction extends StatelessWidget {
     return SizedBox(
       height: AppSpacing.space48,
       child: OutlinedButton(onPressed: onPressed, child: Text(label)),
+    );
+  }
+}
+
+class _InstallmentLinkNotice extends StatelessWidget {
+  const _InstallmentLinkNotice({required this.link});
+
+  final InstallmentLink link;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final styles = context.appTextStyles;
+    final (title, body) = switch (link) {
+      InstallmentDisbursementLink() => (
+        '分期合同放款',
+        '此为分期合同的放款交易，金额、账户、日期等需在合同详情页内调整。',
+      ),
+      InstallmentRepaymentLink(:final repaymentType) => switch (repaymentType) {
+        InstallmentRepaymentType.regular => (
+          '分期还款',
+          '此交易由分期合同生成，撤销请在合同详情页操作。',
+        ),
+        InstallmentRepaymentType.extraPrincipal => (
+          '分期提前还本',
+          '此交易由分期合同生成，撤销请在合同详情页操作。',
+        ),
+        InstallmentRepaymentType.earlySettlement => (
+          '分期提前结清',
+          '此交易由分期合同生成，撤销请在合同详情页操作。',
+        ),
+      },
+    };
+    return AppSurface(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space12),
+        child: Row(
+          children: [
+            Icon(
+              RemixIcons.information_2_line,
+              color: colors.primary,
+              size: AppSpacing.space20,
+            ),
+            const SizedBox(width: AppSpacing.space8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: styles.formValue),
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(
+                    body,
+                    style: styles.listSupporting
+                        .copyWith(color: colors.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InstallmentLinkActionBar extends StatelessWidget {
+  const _InstallmentLinkActionBar({required this.link});
+
+  final InstallmentLink link;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          AppSpacing.space12,
+          AppSpacing.space16,
+          AppSpacing.space12,
+        ),
+        child: SizedBox(
+          height: AppSpacing.space48,
+          child: FilledButton.icon(
+            onPressed: () =>
+                context.push('/installments/${link.contractId}'),
+            icon: const Icon(RemixIcons.external_link_line),
+            label: const Text('去分期合同详情'),
+          ),
+        ),
+      ),
     );
   }
 }

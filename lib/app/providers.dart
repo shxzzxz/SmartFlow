@@ -280,6 +280,18 @@ Future<List<InstallmentRepayment>> installmentRepayments(
   return ref.watch(installmentServiceProvider).listRepayments(contractId);
 }
 
+/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
+/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+@riverpod
+Future<InstallmentLink?> installmentLinkByTransaction(
+  Ref ref,
+  int transactionId,
+) {
+  return ref
+      .watch(installmentServiceProvider)
+      .findLinkByTransaction(transactionId);
+}
+
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
 /// 内部读取每张 repayment 关联交易的 details，把本金 / 利息 / 手续费拆出。
 @riverpod

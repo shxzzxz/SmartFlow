@@ -30,7 +30,10 @@ class DriftInstallmentRepository implements InstallmentRepository {
     final rows =
         await (_database.select(_database.installmentContracts)
               ..where((c) => c.liabilityAccountId.equals(liabilityAccountId))
-              ..orderBy([(c) => OrderingTerm.desc(c.borrowingDate)]))
+              ..orderBy([
+                (c) => OrderingTerm.desc(c.createdAt),
+                (c) => OrderingTerm.desc(c.id),
+              ]))
             .get();
     return rows.map(_mapContract).toList();
   }
@@ -73,6 +76,19 @@ class DriftInstallmentRepository implements InstallmentRepository {
               ..where((r) => r.transactionId.equals(transactionId)))
             .getSingleOrNull();
     return row == null ? null : _mapRepayment(row);
+  }
+
+  @override
+  Future<InstallmentContract?> findContractByDisbursementTransaction(
+    int transactionId,
+  ) async {
+    final row =
+        await (_database.select(_database.installmentContracts)
+              ..where(
+                (c) => c.disbursementTransactionId.equals(transactionId),
+              ))
+            .getSingleOrNull();
+    return row == null ? null : _mapContract(row);
   }
 
   @override
@@ -275,6 +291,21 @@ class DriftInstallmentRepository implements InstallmentRepository {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  @override
+  Future<void> deleteContract(int contractId) async {
+    await _database.transaction(() async {
+      await (_database.delete(_database.installmentRepayments)
+            ..where((r) => r.contractId.equals(contractId)))
+          .go();
+      await (_database.delete(_database.installmentSchedules)
+            ..where((s) => s.contractId.equals(contractId)))
+          .go();
+      await (_database.delete(_database.installmentContracts)
+            ..where((c) => c.id.equals(contractId)))
+          .go();
+    });
   }
 
   InstallmentContract _mapContract(InstallmentContractRow row) {

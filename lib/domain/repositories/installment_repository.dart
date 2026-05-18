@@ -124,6 +124,12 @@ abstract interface class InstallmentRepository {
 
   Future<InstallmentRepayment?> findRepaymentByTransaction(int transactionId);
 
+  /// 反查：transaction 是否为某合同的放款交易；若是返回该合同，否则返回 null。
+  /// 仅 `sourceType == disbursement` 的合同会命中。
+  Future<InstallmentContract?> findContractByDisbursementTransaction(
+    int transactionId,
+  );
+
   Future<int> insertContract(InstallmentContractDraft draft);
 
   Future<void> updateContract(int contractId, InstallmentContractPatch patch);
@@ -150,4 +156,8 @@ abstract interface class InstallmentRepository {
     int contractId,
     InstallmentContractStatus status,
   );
+
+  /// 物理删除合同：连同 schedules 与 repayments 一并清理。
+  /// 调用方负责先把对应的放款 / 还款交易撤回，本方法不动 transactions 表。
+  Future<void> deleteContract(int contractId);
 }

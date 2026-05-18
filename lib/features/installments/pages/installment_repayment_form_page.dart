@@ -123,6 +123,11 @@ class _InstallmentRepaymentFormPageState
           currency: contract.principal.currency,
         ).major.toString();
       }
+      final disbursementId = contract.disbursementAccountId;
+      if (disbursementId != null &&
+          fundAccounts.any((a) => a.id == disbursementId)) {
+        _paidFromAccountId = disbursementId;
+      }
     }
 
     return Form(
@@ -151,9 +156,7 @@ class _InstallmentRepaymentFormPageState
                   validator: _validateOptionalMoney,
                 ),
               MoneyPlainFormRow(
-                label: widget.mode == InstallmentRepaymentMode.extraPrincipal
-                    ? '提前还款手续费'
-                    : '手续费',
+                label: '手续费',
                 controller: _feeController,
                 hintText: '请输入手续费（可选）',
                 validator: _validateOptionalMoney,

@@ -502,72 +502,110 @@ class _EmptyAccountTransactions extends StatelessWidget {
   }
 }
 
-class _InstallmentSection extends StatelessWidget {
+class _InstallmentSection extends StatefulWidget {
   const _InstallmentSection({required this.contractsAsync});
 
   final AsyncValue<List<InstallmentContract>> contractsAsync;
 
   @override
+  State<_InstallmentSection> createState() => _InstallmentSectionState();
+}
+
+class _InstallmentSectionState extends State<_InstallmentSection> {
+  bool _expanded = true;
+
+  @override
   Widget build(BuildContext context) {
     final styles = context.appTextStyles;
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space4,
-            0,
-            AppSpacing.space4,
-            AppSpacing.space4,
-          ),
-          child: Text('分期合同', style: styles.dateSectionTitle),
-        ),
-        switch (contractsAsync) {
-          AsyncData(value: final contracts) =>
-            contracts.isEmpty
-                ? AppSurface(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.space20),
-                    child: Text(
-                      '暂无分期合同',
-                      style: styles.formLabel.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                )
-                : AppSurface(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < contracts.length; i++) ...[
-                        _ContractRow(contract: contracts[i]),
-                        if (i < contracts.length - 1)
-                          Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.space16,
-                            ),
-                            height: 1,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
-                          ),
-                      ],
-                    ],
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(AppRadius.radiusSm),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.space4,
+              AppSpacing.space2,
+              AppSpacing.space4,
+              AppSpacing.space4,
+            ),
+            child: Row(
+              children: [
+                Text('分期合同', style: styles.dateSectionTitle),
+                const Spacer(),
+                AnimatedRotation(
+                  duration: const Duration(milliseconds: 180),
+                  turns: _expanded ? 0.5 : 0,
+                  child: Icon(
+                    RemixIcons.arrow_down_s_line,
+                    color: colors.onSurfaceVariant,
+                    size: AppSpacing.space20,
                   ),
                 ),
-          AsyncError(:final error) => AppSurface(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.space12),
-              child: Text('合同加载失败：$error'),
+              ],
             ),
           ),
-          _ => const Padding(
-            padding: EdgeInsets.all(AppSpacing.space12),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        },
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.topCenter,
+          curve: Curves.easeInOut,
+          child:
+              _expanded
+                  ? _buildBody(context, styles)
+                  : const SizedBox(width: double.infinity),
+        ),
       ],
     );
+  }
+
+  Widget _buildBody(BuildContext context, AppTextStyles styles) {
+    return switch (widget.contractsAsync) {
+      AsyncData(value: final contracts) =>
+        contracts.isEmpty
+            ? AppSurface(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.space20),
+                child: Text(
+                  '暂无分期合同',
+                  style: styles.formLabel.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            )
+            : AppSurface(
+              child: Column(
+                children: [
+                  for (var i = 0; i < contracts.length; i++) ...[
+                    _ContractRow(contract: contracts[i]),
+                    if (i < contracts.length - 1)
+                      Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space16,
+                        ),
+                        height: 1,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+      AsyncError(:final error) => AppSurface(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space12),
+          child: Text('合同加载失败：$error'),
+        ),
+      ),
+      _ => const Padding(
+        padding: EdgeInsets.all(AppSpacing.space12),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+    };
   }
 }
 
@@ -585,6 +623,11 @@ class _ContractRow extends StatelessWidget {
       InstallmentContractStatus.settled => ('已结清', colors.tertiary),
       InstallmentContractStatus.closed => ('已关闭', colors.outline),
     };
+    final meta =
+        '${_formatContractDate(contract.borrowingDate)} · '
+        '${contract.totalPeriods} 期 · '
+        '${_methodShort(contract.repaymentMethod)} · '
+        '${_accrualLabel(contract.interestAccrualMethod)}';
     return InkWell(
       onTap: () => context.push('/installments/${contract.id}'),
       child: Padding(
@@ -598,48 +641,34 @@ class _ContractRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        contract.principal.format(),
-                        style: styles.formLabel,
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.space6,
-                          vertical: AppSpacing.space2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          statusLabel,
-                          style: styles.listSupporting.copyWith(
-                            color: statusColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  Text(contract.principal.format(), style: styles.formLabel),
+                  const SizedBox(height: AppSpacing.space2),
                   Text(
-                    '${contract.totalPeriods} 期 · ${_methodShort(contract.repaymentMethod)}',
+                    meta,
                     style: styles.listSupporting.copyWith(
                       color: colors.onSurfaceVariant,
                     ),
-                  ),
-                  Text(
-                    '${_formatContractDate(contract.borrowingDate)} · '
-                    '${_accrualLabel(contract.interestAccrualMethod)}',
-                    style: styles.listSupporting.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(RemixIcons.arrow_right_s_line, color: colors.onSurfaceVariant),
+            const SizedBox(width: AppSpacing.space8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space6,
+                vertical: AppSpacing.space2,
+              ),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                statusLabel,
+                style: styles.listSupporting.copyWith(color: statusColor),
+              ),
+            ),
           ],
         ),
       ),
