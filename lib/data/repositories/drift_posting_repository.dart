@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/money/money.dart';
 import '../../domain/entities/account.dart' as domain;
+import '../../domain/entities/transaction_ownership.dart';
 import '../../domain/enums/accounting_enums.dart';
 import '../../domain/ledger/ledger_rules.dart';
 import '../../domain/repositories/posting_repository.dart';
@@ -87,6 +88,9 @@ class DriftPostingRepository implements PostingRepository {
             mutationKind: command.mutationKind,
             businessState: command.businessState,
             sourceKind: command.sourceKind,
+            ownerType: Value(command.ownership?.ownerType),
+            ownerId: Value(command.ownership?.ownerId),
+            ownerRole: Value(command.ownership?.ownerRole),
             rootTransactionId: Value(command.rootTransactionId),
             counterpartyName: Value(command.counterpartyName),
             note: Value(command.note),
@@ -194,6 +198,22 @@ class DriftPostingRepository implements PostingRepository {
             isExcludedFromBudget == null
                 ? const Value.absent()
                 : Value(isExcludedFromBudget),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  @override
+  Future<void> updateTransactionOwnership({
+    required int transactionId,
+    required TransactionOwnership ownership,
+  }) async {
+    await (_database.update(_database.transactions)
+      ..where((t) => t.id.equals(transactionId))).write(
+      TransactionsCompanion(
+        ownerType: Value(ownership.ownerType),
+        ownerId: Value(ownership.ownerId),
+        ownerRole: Value(ownership.ownerRole),
         updatedAt: Value(DateTime.now()),
       ),
     );

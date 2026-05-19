@@ -1,4 +1,5 @@
 import '../../core/money/money.dart';
+import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';
 
 class PostTransactionCommand {
@@ -21,6 +22,7 @@ class PostTransactionCommand {
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
     this.sourceKind = SourceKind.manual,
+    this.ownership,
   });
 
   final BusinessPurpose businessPurpose;
@@ -41,6 +43,7 @@ class PostTransactionCommand {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+  final TransactionOwnership? ownership;
 }
 
 class PostTransactionDetailInput {

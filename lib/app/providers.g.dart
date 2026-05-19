@@ -1473,7 +1473,7 @@ final class InstallmentServiceProvider
 }
 
 String _$installmentServiceHash() =>
-    r'18ba66063e6b929b1c360899d861421e21e37413';
+    r'd9a47858e26d41d4133e5dbfe7797e33e327dfcc';
 
 @ProviderFor(installmentContractsByAccount)
 final installmentContractsByAccountProvider =
@@ -1789,116 +1789,70 @@ final class InstallmentRepaymentsFamily extends $Family
   String toString() => r'installmentRepaymentsProvider';
 }
 
-/// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
+/// 交易详情页据此获取该笔交易适用的 action policy。
+/// policy 按 transaction.owner_type 预解析，UI 不再按业务模块分流。
 
-@ProviderFor(orchestrationRegistry)
-final orchestrationRegistryProvider = OrchestrationRegistryProvider._();
+@ProviderFor(transactionActionPolicy)
+final transactionActionPolicyProvider = TransactionActionPolicyFamily._();
 
-/// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
+/// 交易详情页据此获取该笔交易适用的 action policy。
+/// policy 按 transaction.owner_type 预解析，UI 不再按业务模块分流。
 
-final class OrchestrationRegistryProvider
+final class TransactionActionPolicyProvider
     extends
         $FunctionalProvider<
-          OrchestrationRegistry,
-          OrchestrationRegistry,
-          OrchestrationRegistry
+          TransactionActionPolicy,
+          TransactionActionPolicy,
+          TransactionActionPolicy
         >
-    with $Provider<OrchestrationRegistry> {
-  /// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
-  OrchestrationRegistryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'orchestrationRegistryProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$orchestrationRegistryHash();
-
-  @$internal
-  @override
-  $ProviderElement<OrchestrationRegistry> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  OrchestrationRegistry create(Ref ref) {
-    return orchestrationRegistry(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(OrchestrationRegistry value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<OrchestrationRegistry>(value),
-    );
-  }
-}
-
-String _$orchestrationRegistryHash() =>
-    r'b223ab68b2cab262180646c28b8609c69d54f509';
-
-/// 交易详情页据此获取该笔交易适用的 handler；
-/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
-
-@ProviderFor(transactionHandlers)
-final transactionHandlersProvider = TransactionHandlersFamily._();
-
-/// 交易详情页据此获取该笔交易适用的 handler；
-/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
-
-final class TransactionHandlersProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<TransactionHandlers>,
-          TransactionHandlers,
-          FutureOr<TransactionHandlers>
-        >
-    with
-        $FutureModifier<TransactionHandlers>,
-        $FutureProvider<TransactionHandlers> {
-  /// 交易详情页据此获取该笔交易适用的 handler；
-  /// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
-  TransactionHandlersProvider._({
-    required TransactionHandlersFamily super.from,
-    required int super.argument,
+    with $Provider<TransactionActionPolicy> {
+  /// 交易详情页据此获取该笔交易适用的 action policy。
+  /// policy 按 transaction.owner_type 预解析，UI 不再按业务模块分流。
+  TransactionActionPolicyProvider._({
+    required TransactionActionPolicyFamily super.from,
+    required domain.Transaction super.argument,
   }) : super(
          retry: null,
-         name: r'transactionHandlersProvider',
+         name: r'transactionActionPolicyProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$transactionHandlersHash();
+  String debugGetCreateSourceHash() => _$transactionActionPolicyHash();
 
   @override
   String toString() {
-    return r'transactionHandlersProvider'
+    return r'transactionActionPolicyProvider'
         ''
         '($argument)';
   }
 
   @$internal
   @override
-  $FutureProviderElement<TransactionHandlers> $createElement(
+  $ProviderElement<TransactionActionPolicy> $createElement(
     $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+  ) => $ProviderElement(pointer);
 
   @override
-  FutureOr<TransactionHandlers> create(Ref ref) {
-    final argument = this.argument as int;
-    return transactionHandlers(ref, argument);
+  TransactionActionPolicy create(Ref ref) {
+    final argument = this.argument as domain.Transaction;
+    return transactionActionPolicy(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransactionActionPolicy value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransactionActionPolicy>(value),
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is TransactionHandlersProvider && other.argument == argument;
+    return other is TransactionActionPolicyProvider &&
+        other.argument == argument;
   }
 
   @override
@@ -1907,31 +1861,32 @@ final class TransactionHandlersProvider
   }
 }
 
-String _$transactionHandlersHash() =>
-    r'33d3498b431d46c8f1190eda820fc49904b788ba';
+String _$transactionActionPolicyHash() =>
+    r'a72da39d249e2ac2b3a683b4e93364ad81871f1b';
 
-/// 交易详情页据此获取该笔交易适用的 handler；
-/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
+/// 交易详情页据此获取该笔交易适用的 action policy。
+/// policy 按 transaction.owner_type 预解析，UI 不再按业务模块分流。
 
-final class TransactionHandlersFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<TransactionHandlers>, int> {
-  TransactionHandlersFamily._()
+final class TransactionActionPolicyFamily extends $Family
+    with
+        $FunctionalFamilyOverride<TransactionActionPolicy, domain.Transaction> {
+  TransactionActionPolicyFamily._()
     : super(
         retry: null,
-        name: r'transactionHandlersProvider',
+        name: r'transactionActionPolicyProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  /// 交易详情页据此获取该笔交易适用的 handler；
-  /// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
+  /// 交易详情页据此获取该笔交易适用的 action policy。
+  /// policy 按 transaction.owner_type 预解析，UI 不再按业务模块分流。
 
-  TransactionHandlersProvider call(int transactionId) =>
-      TransactionHandlersProvider._(argument: transactionId, from: this);
+  TransactionActionPolicyProvider call(domain.Transaction transaction) =>
+      TransactionActionPolicyProvider._(argument: transaction, from: this);
 
   @override
-  String toString() => r'transactionHandlersProvider';
+  String toString() => r'transactionActionPolicyProvider';
 }
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。

@@ -1,4 +1,5 @@
 import '../entities/account.dart';
+import '../entities/transaction_ownership.dart';
 import '../services/posting_command.dart';
 
 abstract interface class PostingRepository {
@@ -20,6 +21,11 @@ abstract interface class PostingRepository {
     String? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
+  });
+
+  Future<void> updateTransactionOwnership({
+    required int transactionId,
+    required TransactionOwnership ownership,
   });
 
   Future<void> updateTransactionBasics({

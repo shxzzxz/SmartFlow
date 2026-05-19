@@ -16,7 +16,7 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
-import '../../../domain/orchestration/transaction_handlers.dart';
+import '../../../domain/orchestration/transaction_action_policy.dart';
 import '../../../domain/services/posting_command.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
@@ -35,18 +35,22 @@ class TransactionDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(transactionDetailProvider(transactionId));
-    final handlersAsync =
-        ref.watch(transactionHandlersProvider(transactionId));
-    final handlers = handlersAsync.value;
+    final detailValue = detailAsync.value;
+    final policy =
+        detailValue == null
+            ? null
+            : ref.watch(
+              transactionActionPolicyProvider(detailValue.transaction),
+            );
 
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
         title: const Text('交易详情'),
         actions: [
-          if (handlers != null)
+          if (policy != null)
             IconButton(
-              onPressed: () => _confirmDelete(context, handlers),
+              onPressed: () => _confirmDelete(context, policy),
               icon: const Icon(RemixIcons.more_2_line),
               tooltip: '更多',
             ),
@@ -59,10 +63,7 @@ class TransactionDetailPage extends ConsumerWidget {
           if (detail == null) {
             return const Center(child: Text('交易不存在'));
           }
-          if (handlers == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return _DetailBody(detail: detail, handlers: handlers);
+          return _DetailBody(detail: detail, policy: policy!);
         },
       ),
     );
@@ -70,7 +71,7 @@ class TransactionDetailPage extends ConsumerWidget {
 
   Future<void> _confirmDelete(
     BuildContext context,
-    TransactionHandlers handlers,
+    TransactionActionPolicy policy,
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -91,7 +92,7 @@ class TransactionDetailPage extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    final result = await handlers.delete();
+    final result = await policy.delete();
     if (!context.mounted) return;
     result.when(
       success: (_) => context.pop(),
@@ -104,10 +105,10 @@ class TransactionDetailPage extends ConsumerWidget {
 }
 
 class _DetailBody extends ConsumerWidget {
-  const _DetailBody({required this.detail, required this.handlers});
+  const _DetailBody({required this.detail, required this.policy});
 
   final TransactionDetailView detail;
-  final TransactionHandlers handlers;
+  final TransactionActionPolicy policy;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -124,7 +125,7 @@ class _DetailBody extends ConsumerWidget {
 
     final showRefund = purpose == BusinessPurpose.dailyExpense;
     final showReimbursement = purpose == BusinessPurpose.reimbursementAdvance;
-    final banner = handlers.displayBanner();
+    final banner = policy.displayBanner();
 
     return Column(
       children: [
@@ -159,13 +160,14 @@ class _DetailBody extends ConsumerWidget {
                   EditableField.occurredAt,
                   () => _editOccurredAt(context),
                 ),
-                onAccountTap: (row) => _handleAccountTap(
-                  context,
-                  ref,
-                  row,
-                  settlementAccounts: settlementAccounts,
-                  reimbursementAccounts: reimbursementAccounts,
-                ),
+                onAccountTap:
+                    (row) => _handleAccountTap(
+                      context,
+                      ref,
+                      row,
+                      settlementAccounts: settlementAccounts,
+                      reimbursementAccounts: reimbursementAccounts,
+                    ),
                 onNoteTap: _resolveTap(
                   context,
                   EditableField.note,
@@ -183,7 +185,7 @@ class _DetailBody extends ConsumerWidget {
             ],
           ),
         ),
-        _ActionBar(detail: detail, handlers: handlers),
+        _ActionBar(detail: detail, policy: policy),
       ],
     );
   }
@@ -193,7 +195,7 @@ class _DetailBody extends ConsumerWidget {
     EditableField field,
     Future<void> Function() editor,
   ) {
-    final permission = handlers.canEdit(field);
+    final permission = policy.canEdit(field);
     if (permission.isAllowed) {
       return () => editor();
     }
@@ -208,7 +210,7 @@ class _DetailBody extends ConsumerWidget {
     required List<Account> reimbursementAccounts,
   }) {
     if (row.editKind == _AccountEditKind.settlement) {
-      final permission = handlers.canEdit(EditableField.settlementAccount);
+      final permission = policy.canEdit(EditableField.settlementAccount);
       if (!permission.isAllowed) {
         _showDenied(context, permission.deniedReason);
         return;
@@ -224,9 +226,9 @@ class _DetailBody extends ConsumerWidget {
   }
 
   void _showDenied(BuildContext context, String? reason) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(reason ?? '此字段在当前上下文不可编辑')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(reason ?? '此字段在当前上下文不可编辑')));
   }
 
   Future<void> _editNote(BuildContext context) async {
@@ -265,8 +267,7 @@ class _DetailBody extends ConsumerWidget {
     if (updated == null) return;
     if (updated == current) return;
 
-    final result =
-        await handlers.changeNote(updated.isEmpty ? null : updated);
+    final result = await policy.changeNote(updated.isEmpty ? null : updated);
     if (!context.mounted) return;
     _showResultSnackBar(context, result, success: '备注已更新');
   }
@@ -280,7 +281,7 @@ class _DetailBody extends ConsumerWidget {
     );
     if (updated == null || !context.mounted) return;
     if (updated == current) return;
-    final result = await handlers.changeOccurredAt(updated);
+    final result = await policy.changeOccurredAt(updated);
     if (!context.mounted) return;
     _showResultSnackBar(context, result, success: '交易时间已更新');
   }
@@ -305,7 +306,7 @@ class _DetailBody extends ConsumerWidget {
     if (selectedId == null || selectedId == row.accountId) return;
     final Result<void> result;
     if (row.editKind == _AccountEditKind.settlement) {
-      result = await handlers.changeSettlementAccount(selectedId);
+      result = await policy.changeSettlementAccount(selectedId);
     } else {
       // reimbursement 账户变更属 reimbursementAdvance 流图原语自身的字段，
       // 不经 handler；直接走 transactionService（参见 docs/08.2 动作二分）。
@@ -636,10 +637,10 @@ class _RowCard extends StatelessWidget {
 }
 
 class _ActionBar extends StatelessWidget {
-  const _ActionBar({required this.detail, required this.handlers});
+  const _ActionBar({required this.detail, required this.policy});
 
   final TransactionDetailView detail;
-  final TransactionHandlers handlers;
+  final TransactionActionPolicy policy;
 
   @override
   Widget build(BuildContext context) {
@@ -679,10 +680,11 @@ class _ActionBar extends StatelessWidget {
       default:
         break;
     }
+    final editPath = policy.editRoutePath();
     actions.add(
       _PrimaryAction(
         label: '编辑',
-        onPressed: () => context.push(handlers.editRoutePath()),
+        onPressed: editPath.isEmpty ? null : () => _openEdit(context, editPath),
       ),
     );
 
@@ -711,6 +713,14 @@ class _ActionBar extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('报销已结束')));
+  }
+
+  Future<void> _openEdit(BuildContext context, String editPath) async {
+    final result = await context.push<int>(editPath);
+    if (!context.mounted || result == null) {
+      return;
+    }
+    context.replace('/transactions/$result');
   }
 
   void _showReimbursementDialog(
@@ -1254,8 +1264,7 @@ List<_AccountRowInfo> _resolveAccountRows(TransactionDetailView detail) {
       );
       return [
         _AccountRowInfo(
-          label:
-              purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户',
+          label: purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户',
           accountId: outAccount.accountId,
           endpoint: _endpointFromEntry(outAccount),
           editKind: _AccountEditKind.settlement,

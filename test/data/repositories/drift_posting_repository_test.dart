@@ -4,6 +4,7 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/repositories/drift_posting_repository.dart';
+import 'package:smartflow/domain/entities/transaction_ownership.dart';
 import 'package:smartflow/domain/enums/accounting_enums.dart';
 import 'package:smartflow/domain/ledger/ledger_rules.dart';
 import 'package:smartflow/domain/services/posting_command.dart';
@@ -115,6 +116,59 @@ void main() {
       expect(await _balanceOf(database, bankId), 1000000);
       expect(await _balanceOf(database, salaryId), 1000000);
       await _expectStoredBalancesMatchEntries(database);
+    });
+
+    test('persists transaction ownership when provided', () async {
+      final bankId = await _insertAccount(
+        database,
+        name: 'Bank',
+        type: AccountType.asset,
+      );
+      final debtId = await _insertAccount(
+        database,
+        name: 'Loan',
+        type: AccountType.liability,
+      );
+
+      final result = await service.post(
+        PostTransactionCommand(
+          businessPurpose: BusinessPurpose.borrowing,
+          occurredAt: DateTime(2026, 5),
+          primaryAmount: const Money(minorUnits: 100000),
+          ownership: const TransactionOwnership(
+            ownerType: 'installment',
+            ownerId: 42,
+            ownerRole: 'disbursement',
+          ),
+          details: const [
+            PostTransactionDetailInput(
+              lineNo: 1,
+              type: TransactionDetailType.borrowingPrincipal,
+              amount: Money(minorUnits: 100000),
+            ),
+          ],
+          entries: [
+            PostEntryInput(
+              accountId: bankId,
+              direction: EntryDirection.debit,
+              amount: const Money(minorUnits: 100000),
+            ),
+            PostEntryInput(
+              accountId: debtId,
+              direction: EntryDirection.credit,
+              amount: const Money(minorUnits: 100000),
+            ),
+          ],
+        ),
+      );
+
+      final posted = (result as Success<PostTransactionResult>).value;
+      final row =
+          await (database.select(database.transactions)
+            ..where((t) => t.id.equals(posted.transactionId))).getSingle();
+      expect(row.ownerType, 'installment');
+      expect(row.ownerId, 42);
+      expect(row.ownerRole, 'disbursement');
     });
 
     test('posts a transfer to a liability account', () async {

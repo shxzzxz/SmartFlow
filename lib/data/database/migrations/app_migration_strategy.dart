@@ -33,6 +33,10 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
         'is_excluded_from_stats)',
       );
       await database.customStatement(
+        'CREATE INDEX transactions_owner_idx '
+        'ON transactions (owner_type, owner_id, owner_role)',
+      );
+      await database.customStatement(
         'CREATE INDEX entries_transaction_idx ON entries (transaction_id)',
       );
       await database.customStatement(
@@ -130,6 +134,57 @@ MigrationStrategy buildMigrationStrategy(AppDatabase database) {
           'CREATE INDEX installment_contracts_disbursement_tx_idx '
           'ON installment_contracts (disbursement_transaction_id) '
           'WHERE disbursement_transaction_id IS NOT NULL',
+        );
+      }
+      if (from < 7) {
+        await migrator.addColumn(
+          database.transactions,
+          database.transactions.ownerType,
+        );
+        await migrator.addColumn(
+          database.transactions,
+          database.transactions.ownerId,
+        );
+        await migrator.addColumn(
+          database.transactions,
+          database.transactions.ownerRole,
+        );
+        await database.customStatement(
+          'CREATE INDEX transactions_owner_idx '
+          'ON transactions (owner_type, owner_id, owner_role)',
+        );
+        await database.customStatement(
+          "UPDATE transactions "
+          "SET owner_type = 'installment', "
+          "owner_id = ("
+          "SELECT c.id FROM installment_contracts c "
+          "WHERE c.disbursement_transaction_id = transactions.id"
+          "), "
+          "owner_role = 'disbursement' "
+          "WHERE EXISTS ("
+          "SELECT 1 FROM installment_contracts c "
+          "WHERE c.disbursement_transaction_id = transactions.id"
+          ")",
+        );
+        await database.customStatement(
+          "UPDATE transactions "
+          "SET owner_type = 'installment', "
+          "owner_id = ("
+          "SELECT r.contract_id FROM installment_repayments r "
+          "WHERE r.transaction_id = transactions.id"
+          "), "
+          "owner_role = ("
+          "SELECT CASE r.repayment_type "
+          "WHEN 'regular' THEN 'regular_repayment' "
+          "WHEN 'extraPrincipal' THEN 'extra_principal' "
+          "WHEN 'earlySettlement' THEN 'early_settlement' "
+          "END FROM installment_repayments r "
+          "WHERE r.transaction_id = transactions.id"
+          ") "
+          "WHERE EXISTS ("
+          "SELECT 1 FROM installment_repayments r "
+          "WHERE r.transaction_id = transactions.id"
+          ")",
         );
       }
     },

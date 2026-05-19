@@ -1,5 +1,6 @@
 import '../../core/money/money.dart';
 import '../enums/accounting_enums.dart';
+import 'transaction_ownership.dart';
 
 class Transaction {
   const Transaction({
@@ -15,6 +16,7 @@ class Transaction {
     required this.isExcludedFromBudget,
     required this.sourceKind,
     required this.createdAt,
+    this.ownership,
     this.counterpartyName,
     this.note,
     this.parentTransactionId,
@@ -40,5 +42,6 @@ class Transaction {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+  final TransactionOwnership? ownership;
   final DateTime createdAt;
 }

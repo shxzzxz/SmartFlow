@@ -37,6 +37,9 @@ class Transactions extends Table {
           .named('is_excluded_from_budget')
           .withDefault(const Constant(false))();
   TextColumn get sourceKind => textEnum<SourceKind>().named('source_kind')();
+  TextColumn get ownerType => text().named('owner_type').nullable()();
+  IntColumn get ownerId => integer().named('owner_id').nullable()();
+  TextColumn get ownerRole => text().named('owner_role').nullable()();
   DateTimeColumn get createdAt =>
       dateTime().named('created_at').withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt =>

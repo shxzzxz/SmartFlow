@@ -3,6 +3,7 @@ import '../../core/money/money.dart';
 import '../../core/result/result.dart';
 import '../accounts/account_usage.dart';
 import '../entities/transaction.dart';
+import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/account_repository.dart';
 import '../repositories/posting_repository.dart';
@@ -834,6 +835,7 @@ class TransactionServiceImpl implements TransactionService {
         primaryAmount: totalPaid,
         counterpartyName: command.counterpartyName,
         note: command.note,
+        ownership: command.ownership,
         isExcludedFromStats: command.isExcludedFromStats,
         isExcludedFromBudget: command.isExcludedFromBudget,
         details: details,
@@ -880,6 +882,7 @@ class TransactionServiceImpl implements TransactionService {
         primaryAmount: command.amount,
         counterpartyName: command.counterpartyName,
         note: command.note,
+        ownership: command.ownership,
         isExcludedFromStats: command.isExcludedFromStats,
         isExcludedFromBudget: command.isExcludedFromBudget,
         details: [
@@ -1444,6 +1447,7 @@ class TransactionServiceImpl implements TransactionService {
       BusinessPurpose.dailyIncome ||
       BusinessPurpose.transfer ||
       BusinessPurpose.reimbursementAdvance ||
+      BusinessPurpose.debtRepayment ||
       BusinessPurpose.borrowing => true,
       _ => false,
     };
@@ -1471,6 +1475,7 @@ class TransactionServiceImpl implements TransactionService {
       isExcludedFromStats: transaction.isExcludedFromStats,
       isExcludedFromBudget: transaction.isExcludedFromBudget,
       sourceKind: transaction.sourceKind,
+      ownership: transaction.ownership,
       details: [
         for (final line in detail.details)
           PostTransactionDetailInput(
@@ -1498,6 +1503,10 @@ class TransactionServiceImpl implements TransactionService {
     final roleFailure = await _validateReplacementRoles(base);
     if (roleFailure != null) {
       return Result.failure(roleFailure);
+    }
+
+    if (command.businessPurpose == BusinessPurpose.debtRepayment) {
+      return _buildRepaymentReplacementCommand(command, original);
     }
 
     final transaction = original.transaction;
@@ -1530,6 +1539,7 @@ class TransactionServiceImpl implements TransactionService {
         isExcludedFromStats: command.isExcludedFromStats,
         isExcludedFromBudget: command.isExcludedFromBudget,
         sourceKind: transaction.sourceKind,
+        ownership: transaction.ownership,
         details: _replacementDetails(command.businessPurpose, amount),
         entries: _replacementEntries(command.businessPurpose, base, amount),
       ),
@@ -1568,6 +1578,12 @@ class TransactionServiceImpl implements TransactionService {
         if (structure.receiveAccountId != null)
           structure.receiveAccountId!: AccountUsage.fund,
       }),
+      BusinessPurpose.debtRepayment => _validateAccountConstraints(
+        usages: {
+          structure.liabilityAccountId!: AccountUsage.repaymentTarget,
+          structure.paidFromAccountId!: AccountUsage.repaymentSource,
+        },
+      ),
       _ => Future.value(
         const Failure(
           code: 'replacement_purpose_unsupported',
@@ -1587,6 +1603,7 @@ class TransactionServiceImpl implements TransactionService {
       BusinessPurpose.transfer => TransactionDetailType.transferMain,
       BusinessPurpose.reimbursementAdvance =>
         TransactionDetailType.reimbursementAdvanceMain,
+      BusinessPurpose.debtRepayment => TransactionDetailType.repaymentPrincipal,
       BusinessPurpose.borrowing => TransactionDetailType.borrowingPrincipal,
       _ => TransactionDetailType.primaryExpense,
     };
@@ -1659,8 +1676,191 @@ class TransactionServiceImpl implements TransactionService {
           amount: amount,
         ),
       ],
+      BusinessPurpose.debtRepayment => [
+        PostEntryInput(
+          accountId: structure.liabilityAccountId!,
+          direction: EntryDirection.debit,
+          amount: amount,
+        ),
+        PostEntryInput(
+          accountId: structure.paidFromAccountId!,
+          direction: EntryDirection.credit,
+          amount: amount,
+        ),
+      ],
       _ => const [],
     };
+  }
+
+  Future<Result<PostTransactionCommand>> _buildRepaymentReplacementCommand(
+    CorrectTransactionCommand command,
+    TransactionDetailView original,
+  ) async {
+    final principal = command.amount;
+    final interest = command.repaymentInterest;
+    final fee = command.repaymentFee;
+    final discount = command.repaymentDiscount;
+    if (principal.minorUnits <= 0) {
+      return const Result.failure(
+        Failure(
+          code: 'repayment_principal_not_positive',
+          message: 'Repayment principal must be positive.',
+        ),
+      );
+    }
+    if (interest != null && interest.currency != principal.currency) {
+      return const Result.failure(
+        Failure(
+          code: 'repayment_currency_mismatch',
+          message: 'Repayment interest currency mismatch.',
+        ),
+      );
+    }
+    if (fee != null && fee.currency != principal.currency) {
+      return const Result.failure(
+        Failure(
+          code: 'repayment_currency_mismatch',
+          message: 'Repayment fee currency mismatch.',
+        ),
+      );
+    }
+    if (discount != null && discount.currency != principal.currency) {
+      return const Result.failure(
+        Failure(
+          code: 'repayment_currency_mismatch',
+          message: 'Repayment discount currency mismatch.',
+        ),
+      );
+    }
+
+    final hasInterest = interest != null && interest.minorUnits > 0;
+    final hasFee = fee != null && fee.minorUnits > 0;
+    final hasDiscount = discount != null && discount.minorUnits > 0;
+    if (hasFee && command.feeExpenseAccountId == null) {
+      return const Result.failure(
+        Failure(
+          code: 'repayment_fee_account_required',
+          message: 'Fee category is required when fee is positive.',
+        ),
+      );
+    }
+
+    final totalPaid =
+        principal +
+        (hasInterest ? interest : Money.zero(currency: principal.currency)) +
+        (hasFee ? fee : Money.zero(currency: principal.currency)) -
+        (hasDiscount ? discount : Money.zero(currency: principal.currency));
+    if (totalPaid.minorUnits <= 0) {
+      return const Result.failure(
+        Failure(
+          code: 'repayment_total_paid_not_positive',
+          message: 'Repayment total paid must be positive.',
+        ),
+      );
+    }
+
+    final interestExpenseAccountId =
+        hasInterest && command.interestExpenseAccountId == null
+            ? await _requireSystemAccountResolver().resolveDebtInterestExpense(
+              currencyCode: principal.currency,
+            )
+            : command.interestExpenseAccountId;
+    final discountIncomeAccountId =
+        hasDiscount
+            ? await _requireSystemAccountResolver().resolveDiscountIncome(
+              currencyCode: principal.currency,
+            )
+            : null;
+
+    final roleFailure = await _validateAccountConstraints(
+      usages: {
+        command.liabilityAccountId!: AccountUsage.repaymentTarget,
+        command.paidFromAccountId!: AccountUsage.repaymentSource,
+      },
+      types: {
+        if (hasInterest) interestExpenseAccountId!: {AccountType.expense},
+        if (hasFee) command.feeExpenseAccountId!: {AccountType.expense},
+        if (hasDiscount) discountIncomeAccountId!: {AccountType.income},
+      },
+    );
+    if (roleFailure != null) {
+      return Result.failure(roleFailure);
+    }
+
+    final transaction = original.transaction;
+    return Result.success(
+      PostTransactionCommand(
+        businessPurpose: BusinessPurpose.debtRepayment,
+        occurredAt: command.occurredAt,
+        currencyCode: principal.currency,
+        primaryAmount: totalPaid,
+        counterpartyName: command.counterpartyName,
+        note: command.note,
+        rootTransactionId: transaction.rootTransactionId,
+        parentTransactionId: transaction.parentTransactionId,
+        mutationKind: MutationKind.correction,
+        mutationPreviousTransactionId: transaction.id,
+        isExcludedFromStats: command.isExcludedFromStats,
+        isExcludedFromBudget: command.isExcludedFromBudget,
+        sourceKind: transaction.sourceKind,
+        ownership: transaction.ownership,
+        details: [
+          PostTransactionDetailInput(
+            lineNo: 1,
+            type: TransactionDetailType.repaymentPrincipal,
+            amount: principal,
+          ),
+          if (hasInterest)
+            PostTransactionDetailInput(
+              lineNo: 2,
+              type: TransactionDetailType.repaymentInterest,
+              amount: interest,
+            ),
+          if (hasFee)
+            PostTransactionDetailInput(
+              lineNo: hasInterest ? 3 : 2,
+              type: TransactionDetailType.repaymentFee,
+              amount: fee,
+            ),
+          if (hasDiscount)
+            PostTransactionDetailInput(
+              lineNo: 2 + (hasInterest ? 1 : 0) + (hasFee ? 1 : 0),
+              type: TransactionDetailType.repaymentDiscount,
+              amount: discount,
+            ),
+        ],
+        entries: [
+          PostEntryInput(
+            accountId: command.liabilityAccountId!,
+            direction: EntryDirection.debit,
+            amount: principal,
+          ),
+          if (hasInterest)
+            PostEntryInput(
+              accountId: interestExpenseAccountId!,
+              direction: EntryDirection.debit,
+              amount: interest,
+            ),
+          if (hasFee)
+            PostEntryInput(
+              accountId: command.feeExpenseAccountId!,
+              direction: EntryDirection.debit,
+              amount: fee,
+            ),
+          if (hasDiscount)
+            PostEntryInput(
+              accountId: discountIncomeAccountId!,
+              direction: EntryDirection.credit,
+              amount: discount,
+            ),
+          PostEntryInput(
+            accountId: command.paidFromAccountId!,
+            direction: EntryDirection.credit,
+            amount: totalPaid,
+          ),
+        ],
+      ),
+    );
   }
 
   _ReplacementStructure _replacementStructure(
@@ -1730,6 +1930,10 @@ class TransactionServiceImpl implements TransactionService {
         replacement.liabilityAccountId ==
                 firstAccount(AccountType.liability, EntryDirection.credit) &&
             replacement.receiveAccountId == firstAsset(EntryDirection.debit),
+      BusinessPurpose.debtRepayment =>
+        replacement.liabilityAccountId ==
+                firstAccount(AccountType.liability, EntryDirection.debit) &&
+            replacement.paidFromAccountId == firstAsset(EntryDirection.credit),
       _ => false,
     };
   }
@@ -2111,6 +2315,7 @@ class CreateRepaymentCommand {
     this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
+    this.ownership,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
   });
@@ -2126,6 +2331,7 @@ class CreateRepaymentCommand {
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
+  final TransactionOwnership? ownership;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
 }
@@ -2138,6 +2344,7 @@ class CreateBorrowingCommand {
     this.receiveAccountId,
     this.counterpartyName,
     this.note,
+    this.ownership,
     this.isExcludedFromStats = false,
     this.isExcludedFromBudget = false,
   });
@@ -2148,6 +2355,7 @@ class CreateBorrowingCommand {
   final DateTime occurredAt;
   final String? counterpartyName;
   final String? note;
+  final TransactionOwnership? ownership;
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
 }
@@ -2186,6 +2394,11 @@ class CorrectTransactionCommand {
     this.fromAccountId,
     this.toAccountId,
     this.liabilityAccountId,
+    this.repaymentInterest,
+    this.repaymentFee,
+    this.repaymentDiscount,
+    this.interestExpenseAccountId,
+    this.feeExpenseAccountId,
     this.counterpartyName,
     this.note,
     this.isExcludedFromStats = false,
@@ -2204,6 +2417,11 @@ class CorrectTransactionCommand {
   final int? fromAccountId;
   final int? toAccountId;
   final int? liabilityAccountId;
+  final Money? repaymentInterest;
+  final Money? repaymentFee;
+  final Money? repaymentDiscount;
+  final int? interestExpenseAccountId;
+  final int? feeExpenseAccountId;
   final String? counterpartyName;
   final String? note;
   final bool isExcludedFromStats;

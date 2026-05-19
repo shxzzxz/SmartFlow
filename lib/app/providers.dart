@@ -12,10 +12,11 @@ import '../domain/entities/account.dart';
 import '../domain/entities/installment_contract.dart';
 import '../domain/entities/installment_repayment.dart';
 import '../domain/entities/installment_schedule.dart';
+import '../domain/entities/transaction.dart' as domain;
 import '../domain/enums/accounting_enums.dart';
-import '../domain/orchestration/default_transaction_handlers.dart';
-import '../domain/orchestration/orchestration_registry.dart';
-import '../domain/orchestration/transaction_handlers.dart';
+import '../domain/enums/installment_enums.dart';
+import '../domain/orchestration/default_transaction_action_policy.dart';
+import '../domain/orchestration/transaction_action_policy.dart';
 import '../domain/repositories/account_repository.dart';
 import '../domain/repositories/financial_metrics_repository.dart';
 import '../domain/repositories/installment_repository.dart';
@@ -30,7 +31,7 @@ import '../domain/services/installment_service.dart';
 import '../domain/services/posting_service.dart';
 import '../domain/services/transaction_query_service.dart';
 import '../domain/services/transaction_service.dart';
-import '../features/installments/orchestration/installment_contribution.dart';
+import '../features/installments/orchestration/installment_transaction_action_policy.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
@@ -248,6 +249,7 @@ InstallmentRepository installmentRepository(Ref ref) {
 InstallmentService installmentService(Ref ref) {
   return InstallmentServiceImpl(
     repository: ref.watch(installmentRepositoryProvider),
+    postingRepository: ref.watch(postingRepositoryProvider),
     transactionService: ref.watch(transactionServiceProvider),
     queryRepository: ref.watch(transactionQueryRepositoryProvider),
   );
@@ -284,31 +286,41 @@ Future<List<InstallmentRepayment>> installmentRepayments(
   return ref.watch(installmentServiceProvider).listRepayments(contractId);
 }
 
-/// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
-@Riverpod(keepAlive: true)
-OrchestrationRegistry orchestrationRegistry(Ref ref) {
-  return OrchestrationRegistry([
-    InstallmentContribution(
-      ref.watch(installmentServiceProvider),
-      ref.watch(transactionServiceProvider),
-    ),
-  ]);
-}
-
-/// 交易详情页据此获取该笔交易适用的 handler；
-/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
+/// 交易详情页据此获取该笔交易适用的 action policy。
+/// policy 按 transaction.owner_type 预解析，UI 不再按业务模块分流。
 @riverpod
-Future<TransactionHandlers> transactionHandlers(
+TransactionActionPolicy transactionActionPolicy(
   Ref ref,
-  int transactionId,
-) async {
-  final registry = ref.watch(orchestrationRegistryProvider);
-  final orchestrationHandlers = await registry.handlersFor(transactionId);
-  return orchestrationHandlers ??
-      DefaultTransactionHandlers(
-        service: ref.watch(transactionServiceProvider),
-        transactionId: transactionId,
+  domain.Transaction transaction,
+) {
+  final ownership = transaction.ownership;
+  if (ownership == null) {
+    return DefaultTransactionActionPolicy(
+      service: ref.watch(transactionServiceProvider),
+      transactionId: transaction.id,
+      businessPurpose: transaction.businessPurpose,
+    );
+  }
+
+  if (ownership.ownerType == installmentOwnerType &&
+      ownership.ownerId != null) {
+    final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
+    if (role != null) {
+      return InstallmentTransactionActionPolicy(
+        installment: ref.watch(installmentServiceProvider),
+        fallback: ref.watch(transactionServiceProvider),
+        contractId: ownership.ownerId!,
+        ownerRole: role,
+        transactionId: transaction.id,
       );
+    }
+  }
+
+  return UnknownOwnedTransactionActionPolicy(
+    service: ref.watch(transactionServiceProvider),
+    transactionId: transaction.id,
+    ownerType: ownership.ownerType,
+  );
 }
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
@@ -318,12 +330,14 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
   Ref ref,
   int contractId,
 ) async {
-  final repayments =
-      await ref.watch(installmentRepaymentsProvider(contractId).future);
+  final repayments = await ref.watch(
+    installmentRepaymentsProvider(contractId).future,
+  );
   final queryRepository = ref.watch(transactionQueryRepositoryProvider);
   final result = <RepaymentCashflow>[];
   for (final r in repayments) {
-    final view = await queryRepository.watchTransactionDetail(r.transactionId).first;
+    final view =
+        await queryRepository.watchTransactionDetail(r.transactionId).first;
     if (view == null) continue;
     final currency = view.transaction.currencyCode;
     var principalMinor = 0;
@@ -362,14 +376,19 @@ Future<List<RepaymentCashflow>> installmentRepaymentCashflows(
 
 /// 计算 designed / actual 两个视图的 metrics 一并返回，UI 选择展示。
 @riverpod
-Future<({ContractMetrics designed, ContractMetrics actual})>
-    installmentMetrics(Ref ref, int contractId) async {
-  final contract =
-      await ref.watch(installmentContractProvider(contractId).future);
-  final schedules =
-      await ref.watch(installmentSchedulesProvider(contractId).future);
-  final repayments =
-      await ref.watch(installmentRepaymentCashflowsProvider(contractId).future);
+Future<({ContractMetrics designed, ContractMetrics actual})> installmentMetrics(
+  Ref ref,
+  int contractId,
+) async {
+  final contract = await ref.watch(
+    installmentContractProvider(contractId).future,
+  );
+  final schedules = await ref.watch(
+    installmentSchedulesProvider(contractId).future,
+  );
+  final repayments = await ref.watch(
+    installmentRepaymentCashflowsProvider(contractId).future,
+  );
   if (contract == null) {
     throw StateError('Contract $contractId not found');
   }

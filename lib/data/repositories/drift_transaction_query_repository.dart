@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/money/money.dart';
 import '../../domain/entities/transaction.dart' as domain;
+import '../../domain/entities/transaction_ownership.dart';
 import '../../domain/enums/accounting_enums.dart';
 import '../../domain/repositories/transaction_query_repository.dart';
 import '../../domain/services/transaction_query_service.dart';
@@ -667,6 +668,14 @@ class DriftTransactionQueryRepository implements TransactionQueryRepository {
       isExcludedFromStats: row.isExcludedFromStats,
       isExcludedFromBudget: row.isExcludedFromBudget,
       sourceKind: row.sourceKind,
+      ownership:
+          row.ownerType == null
+              ? null
+              : TransactionOwnership(
+                ownerType: row.ownerType!,
+                ownerId: row.ownerId,
+                ownerRole: row.ownerRole,
+              ),
       createdAt: row.createdAt,
     );
   }

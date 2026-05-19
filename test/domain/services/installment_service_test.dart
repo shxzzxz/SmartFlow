@@ -11,6 +11,7 @@ import 'package:smartflow/data/repositories/drift_transaction_query_repository.d
 import 'package:smartflow/domain/enums/accounting_enums.dart';
 import 'package:smartflow/domain/enums/installment_enums.dart';
 import 'package:smartflow/domain/services/installment_service.dart';
+import 'package:smartflow/domain/services/posting_command.dart';
 import 'package:smartflow/domain/services/posting_service.dart';
 import 'package:smartflow/domain/services/transaction_service.dart';
 
@@ -38,6 +39,7 @@ void main() {
       );
       service = InstallmentServiceImpl(
         repository: DriftInstallmentRepository(database),
+        postingRepository: DriftPostingRepository(database),
         transactionService: transactionService,
         queryRepository: queryRepository,
       );
@@ -99,6 +101,12 @@ void main() {
       expect(contract!.sourceType, InstallmentSourceType.disbursement);
       expect(contract.status, InstallmentContractStatus.active);
       expect(contract.disbursementTransactionId, isNotNull);
+      await _expectOwnership(
+        database,
+        transactionId: contract.disbursementTransactionId!,
+        ownerId: contractId,
+        ownerRole: 'disbursement',
+      );
       expect(contract.firstRepaymentDate, DateTime(2026, 6, 10));
       expect(contract.lastRepaymentDate, DateTime(2027, 5, 10));
 
@@ -154,6 +162,14 @@ void main() {
         ),
       );
       expect(result, isA<Success>());
+      final transactionId =
+          (result as Success<PostTransactionResult>).value.transactionId;
+      await _expectOwnership(
+        database,
+        transactionId: transactionId,
+        ownerId: contractId,
+        ownerRole: 'regular_repayment',
+      );
       final updated = await service.listSchedules(contractId);
       expect(updated.single.status, InstallmentScheduleStatus.paid);
       final contract = await service.findContract(contractId);
@@ -175,9 +191,10 @@ void main() {
       final contractId =
           (result as Success<CreateContractResult>).value.contractId;
 
-      final beforeDates = (await service.listSchedules(contractId))
-          .map((s) => s.expectedRepaymentDate)
-          .toList();
+      final beforeDates =
+          (await service.listSchedules(
+            contractId,
+          )).map((s) => s.expectedRepaymentDate).toList();
 
       final extra = await service.createExtraPrincipalRepayment(
         CreateExtraPrincipalRepaymentCommand(
@@ -188,6 +205,14 @@ void main() {
         ),
       );
       expect(extra, isA<Success>());
+      final transactionId =
+          (extra as Success<PostTransactionResult>).value.transactionId;
+      await _expectOwnership(
+        database,
+        transactionId: transactionId,
+        ownerId: contractId,
+        ownerRole: 'extra_principal',
+      );
 
       final schedules = await service.listSchedules(contractId);
       final pendingPrincipalSum = schedules
@@ -196,8 +221,7 @@ void main() {
       expect(pendingPrincipalSum, 700000);
 
       // 提前还本后日期不能变。
-      final afterDates =
-          schedules.map((s) => s.expectedRepaymentDate).toList();
+      final afterDates = schedules.map((s) => s.expectedRepaymentDate).toList();
       expect(afterDates, beforeDates);
     });
 
@@ -256,6 +280,14 @@ void main() {
         ),
       );
       expect(settle, isA<Success>());
+      final transactionId =
+          (settle as Success<PostTransactionResult>).value.transactionId;
+      await _expectOwnership(
+        database,
+        transactionId: transactionId,
+        ownerId: contractId,
+        ownerRole: 'early_settlement',
+      );
       final contract = await service.findContract(contractId);
       expect(contract!.status, InstallmentContractStatus.closed);
       final schedules = await service.listSchedules(contractId);
@@ -279,8 +311,9 @@ void main() {
       );
       final txId = (repayResult as Success).value.transactionId;
 
-      final revert = await service
-          .revertRepayment(RevertRepaymentCommand(transactionId: txId));
+      final revert = await service.revertRepayment(
+        RevertRepaymentCommand(transactionId: txId),
+      );
       expect(revert, isA<Success>());
 
       final updated = await service.listSchedules(contractId);
@@ -289,42 +322,44 @@ void main() {
       expect(contract!.status, InstallmentContractStatus.active);
     });
 
-    test('revertRepayment(earlySettlement) 恢复期次为 pending 且合同回 active',
-        () async {
-      final contractResult = await service.createDisbursementContract(
-        CreateDisbursementContractCommand(
-          liabilityAccountId: liabilityAccountId,
-          disbursementAccountId: assetAccountId,
-          principal: const Money(minorUnits: 500000),
-          totalPeriods: 5,
-          borrowingDate: DateTime(2026, 5, 10),
-          firstRepaymentDate: DateTime(2026, 6, 10),
-          repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
-        ),
-      );
-      final contractId =
-          (contractResult as Success<CreateContractResult>).value.contractId;
-      final settle = await service.createEarlySettlement(
-        CreateEarlySettlementCommand(
-          contractId: contractId,
-          principal: const Money(minorUnits: 500000),
-          paidFromAccountId: assetAccountId,
-          occurredAt: DateTime(2026, 7, 1),
-        ),
-      );
-      final settleTxId = (settle as Success).value.transactionId;
+    test(
+      'revertRepayment(earlySettlement) 恢复期次为 pending 且合同回 active',
+      () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 500000),
+            totalPeriods: 5,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+        final settle = await service.createEarlySettlement(
+          CreateEarlySettlementCommand(
+            contractId: contractId,
+            principal: const Money(minorUnits: 500000),
+            paidFromAccountId: assetAccountId,
+            occurredAt: DateTime(2026, 7, 1),
+          ),
+        );
+        final settleTxId = (settle as Success).value.transactionId;
 
-      final revert = await service.revertRepayment(
-        RevertRepaymentCommand(transactionId: settleTxId),
-      );
-      expect(revert, isA<Success>());
-      final contract = await service.findContract(contractId);
-      expect(contract!.status, InstallmentContractStatus.active);
-      final schedules = await service.listSchedules(contractId);
-      for (final s in schedules) {
-        expect(s.status, InstallmentScheduleStatus.pending);
-      }
-    });
+        final revert = await service.revertRepayment(
+          RevertRepaymentCommand(transactionId: settleTxId),
+        );
+        expect(revert, isA<Success>());
+        final contract = await service.findContract(contractId);
+        expect(contract!.status, InstallmentContractStatus.active);
+        final schedules = await service.listSchedules(contractId);
+        for (final s in schedules) {
+          expect(s.status, InstallmentScheduleStatus.pending);
+        }
+      },
+    );
 
     group('updateContract', () {
       test('调整末期还款日：仅末期日期变更，其它 pending 行日期不变', () async {
@@ -422,12 +457,14 @@ void main() {
         expect(res, isA<Success>());
 
         final schedules = await service.listSchedules(contractId);
-        final pending = schedules
-            .where((s) => s.status == InstallmentScheduleStatus.pending)
-            .toList();
-        final skipped = schedules
-            .where((s) => s.status == InstallmentScheduleStatus.skipped)
-            .toList();
+        final pending =
+            schedules
+                .where((s) => s.status == InstallmentScheduleStatus.pending)
+                .toList();
+        final skipped =
+            schedules
+                .where((s) => s.status == InstallmentScheduleStatus.skipped)
+                .toList();
         expect(pending, hasLength(3));
         expect(skipped, hasLength(3));
         final principalSum = pending.fold<int>(
@@ -471,7 +508,9 @@ void main() {
         );
         final schedules = await service.listSchedules(contractId);
         expect(
-          schedules.firstWhere((s) => s.periodNo == 3).expectedPrincipal
+          schedules
+              .firstWhere((s) => s.periodNo == 3)
+              .expectedPrincipal
               .minorUnits,
           200000,
         );
@@ -535,7 +574,9 @@ Future<int> _insertAccount(
   AccountSubtype? subtype,
   int balanceMinor = 0,
 }) {
-  return database.into(database.accounts).insert(
+  return database
+      .into(database.accounts)
+      .insert(
         AccountsCompanion.insert(
           name: name,
           accountType: type,
@@ -547,8 +588,22 @@ Future<int> _insertAccount(
 }
 
 Future<int> _balanceOf(AppDatabase database, int accountId) async {
-  final row = await (database.select(database.accounts)
-        ..where((a) => a.id.equals(accountId)))
-      .getSingle();
+  final row =
+      await (database.select(database.accounts)
+        ..where((a) => a.id.equals(accountId))).getSingle();
   return row.balanceMinor;
+}
+
+Future<void> _expectOwnership(
+  AppDatabase database, {
+  required int transactionId,
+  required int ownerId,
+  required String ownerRole,
+}) async {
+  final row =
+      await (database.select(database.transactions)
+        ..where((t) => t.id.equals(transactionId))).getSingle();
+  expect(row.ownerType, 'installment');
+  expect(row.ownerId, ownerId);
+  expect(row.ownerRole, ownerRole);
 }

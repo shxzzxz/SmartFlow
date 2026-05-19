@@ -46,6 +46,23 @@ void main() {
       expect(row.read<int>('foreign_keys'), 0);
     });
 
+    test('creates transaction ownership columns and index', () async {
+      final columns =
+          await database.customSelect('PRAGMA table_info(transactions)').get();
+      final columnNames = columns.map((row) => row.read<String>('name'));
+      expect(
+        columnNames,
+        containsAll(['owner_type', 'owner_id', 'owner_role']),
+      );
+
+      final indexes =
+          await database.customSelect('PRAGMA index_list(transactions)').get();
+      expect(
+        indexes.map((row) => row.read<String>('name')),
+        contains('transactions_owner_idx'),
+      );
+    });
+
     test('enforces total and category budget uniqueness', () async {
       final accountId = await database
           .into(database.accounts)

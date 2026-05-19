@@ -1574,6 +1574,39 @@ class $TransactionsTable extends Transactions
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<SourceKind>($TransactionsTable.$convertersourceKind);
+  static const VerificationMeta _ownerTypeMeta = const VerificationMeta(
+    'ownerType',
+  );
+  @override
+  late final GeneratedColumn<String> ownerType = GeneratedColumn<String>(
+    'owner_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ownerIdMeta = const VerificationMeta(
+    'ownerId',
+  );
+  @override
+  late final GeneratedColumn<int> ownerId = GeneratedColumn<int>(
+    'owner_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ownerRoleMeta = const VerificationMeta(
+    'ownerRole',
+  );
+  @override
+  late final GeneratedColumn<String> ownerRole = GeneratedColumn<String>(
+    'owner_role',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1617,6 +1650,9 @@ class $TransactionsTable extends Transactions
     isExcludedFromStats,
     isExcludedFromBudget,
     sourceKind,
+    ownerType,
+    ownerId,
+    ownerRole,
     createdAt,
     updatedAt,
   ];
@@ -1734,6 +1770,24 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('owner_type')) {
+      context.handle(
+        _ownerTypeMeta,
+        ownerType.isAcceptableOrUnknown(data['owner_type']!, _ownerTypeMeta),
+      );
+    }
+    if (data.containsKey('owner_id')) {
+      context.handle(
+        _ownerIdMeta,
+        ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta),
+      );
+    }
+    if (data.containsKey('owner_role')) {
+      context.handle(
+        _ownerRoleMeta,
+        ownerRole.isAcceptableOrUnknown(data['owner_role']!, _ownerRoleMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1839,6 +1893,18 @@ class $TransactionsTable extends Transactions
           data['${effectivePrefix}source_kind'],
         )!,
       ),
+      ownerType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_type'],
+      ),
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}owner_id'],
+      ),
+      ownerRole: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_role'],
+      ),
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -1899,6 +1965,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final bool isExcludedFromStats;
   final bool isExcludedFromBudget;
   final SourceKind sourceKind;
+  final String? ownerType;
+  final int? ownerId;
+  final String? ownerRole;
   final DateTime createdAt;
   final DateTime updatedAt;
   const TransactionRow({
@@ -1919,6 +1988,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.isExcludedFromStats,
     required this.isExcludedFromBudget,
     required this.sourceKind,
+    this.ownerType,
+    this.ownerId,
+    this.ownerRole,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1978,6 +2050,15 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         $TransactionsTable.$convertersourceKind.toSql(sourceKind),
       );
     }
+    if (!nullToAbsent || ownerType != null) {
+      map['owner_type'] = Variable<String>(ownerType);
+    }
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<int>(ownerId);
+    }
+    if (!nullToAbsent || ownerRole != null) {
+      map['owner_role'] = Variable<String>(ownerRole);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -2020,6 +2101,18 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       isExcludedFromStats: Value(isExcludedFromStats),
       isExcludedFromBudget: Value(isExcludedFromBudget),
       sourceKind: Value(sourceKind),
+      ownerType:
+          ownerType == null && nullToAbsent
+              ? const Value.absent()
+              : Value(ownerType),
+      ownerId:
+          ownerId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(ownerId),
+      ownerRole:
+          ownerRole == null && nullToAbsent
+              ? const Value.absent()
+              : Value(ownerRole),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2068,6 +2161,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       sourceKind: $TransactionsTable.$convertersourceKind.fromJson(
         serializer.fromJson<String>(json['sourceKind']),
       ),
+      ownerType: serializer.fromJson<String?>(json['ownerType']),
+      ownerId: serializer.fromJson<int?>(json['ownerId']),
+      ownerRole: serializer.fromJson<String?>(json['ownerRole']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2107,6 +2203,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'sourceKind': serializer.toJson<String>(
         $TransactionsTable.$convertersourceKind.toJson(sourceKind),
       ),
+      'ownerType': serializer.toJson<String?>(ownerType),
+      'ownerId': serializer.toJson<int?>(ownerId),
+      'ownerRole': serializer.toJson<String?>(ownerRole),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2130,6 +2229,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
     SourceKind? sourceKind,
+    Value<String?> ownerType = const Value.absent(),
+    Value<int?> ownerId = const Value.absent(),
+    Value<String?> ownerRole = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => TransactionRow(
@@ -2166,6 +2268,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
     isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
     sourceKind: sourceKind ?? this.sourceKind,
+    ownerType: ownerType.present ? ownerType.value : this.ownerType,
+    ownerId: ownerId.present ? ownerId.value : this.ownerId,
+    ownerRole: ownerRole.present ? ownerRole.value : this.ownerRole,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2229,6 +2334,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
               : this.isExcludedFromBudget,
       sourceKind:
           data.sourceKind.present ? data.sourceKind.value : this.sourceKind,
+      ownerType: data.ownerType.present ? data.ownerType.value : this.ownerType,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      ownerRole: data.ownerRole.present ? data.ownerRole.value : this.ownerRole,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2258,6 +2366,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
           ..write('isExcludedFromBudget: $isExcludedFromBudget, ')
           ..write('sourceKind: $sourceKind, ')
+          ..write('ownerType: $ownerType, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('ownerRole: $ownerRole, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2265,7 +2376,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     rootTransactionId,
     businessPurpose,
@@ -2283,9 +2394,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     isExcludedFromStats,
     isExcludedFromBudget,
     sourceKind,
+    ownerType,
+    ownerId,
+    ownerRole,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2309,6 +2423,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.isExcludedFromStats == this.isExcludedFromStats &&
           other.isExcludedFromBudget == this.isExcludedFromBudget &&
           other.sourceKind == this.sourceKind &&
+          other.ownerType == this.ownerType &&
+          other.ownerId == this.ownerId &&
+          other.ownerRole == this.ownerRole &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2331,6 +2448,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<bool> isExcludedFromStats;
   final Value<bool> isExcludedFromBudget;
   final Value<SourceKind> sourceKind;
+  final Value<String?> ownerType;
+  final Value<int?> ownerId;
+  final Value<String?> ownerRole;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TransactionsCompanion({
@@ -2351,6 +2471,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.isExcludedFromStats = const Value.absent(),
     this.isExcludedFromBudget = const Value.absent(),
     this.sourceKind = const Value.absent(),
+    this.ownerType = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.ownerRole = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2372,6 +2495,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.isExcludedFromStats = const Value.absent(),
     this.isExcludedFromBudget = const Value.absent(),
     required SourceKind sourceKind,
+    this.ownerType = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.ownerRole = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : businessPurpose = Value(businessPurpose),
@@ -2399,6 +2525,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<bool>? isExcludedFromStats,
     Expression<bool>? isExcludedFromBudget,
     Expression<String>? sourceKind,
+    Expression<String>? ownerType,
+    Expression<int>? ownerId,
+    Expression<String>? ownerRole,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2426,6 +2555,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (isExcludedFromBudget != null)
         'is_excluded_from_budget': isExcludedFromBudget,
       if (sourceKind != null) 'source_kind': sourceKind,
+      if (ownerType != null) 'owner_type': ownerType,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (ownerRole != null) 'owner_role': ownerRole,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2449,6 +2581,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<bool>? isExcludedFromStats,
     Value<bool>? isExcludedFromBudget,
     Value<SourceKind>? sourceKind,
+    Value<String?>? ownerType,
+    Value<int?>? ownerId,
+    Value<String?>? ownerRole,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2472,6 +2607,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       isExcludedFromStats: isExcludedFromStats ?? this.isExcludedFromStats,
       isExcludedFromBudget: isExcludedFromBudget ?? this.isExcludedFromBudget,
       sourceKind: sourceKind ?? this.sourceKind,
+      ownerType: ownerType ?? this.ownerType,
+      ownerId: ownerId ?? this.ownerId,
+      ownerRole: ownerRole ?? this.ownerRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2551,6 +2689,15 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
         $TransactionsTable.$convertersourceKind.toSql(sourceKind.value),
       );
     }
+    if (ownerType.present) {
+      map['owner_type'] = Variable<String>(ownerType.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<int>(ownerId.value);
+    }
+    if (ownerRole.present) {
+      map['owner_role'] = Variable<String>(ownerRole.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2584,6 +2731,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('isExcludedFromStats: $isExcludedFromStats, ')
           ..write('isExcludedFromBudget: $isExcludedFromBudget, ')
           ..write('sourceKind: $sourceKind, ')
+          ..write('ownerType: $ownerType, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('ownerRole: $ownerRole, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -7194,6 +7344,9 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       required SourceKind sourceKind,
+      Value<String?> ownerType,
+      Value<int?> ownerId,
+      Value<String?> ownerRole,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -7216,6 +7369,9 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<bool> isExcludedFromStats,
       Value<bool> isExcludedFromBudget,
       Value<SourceKind> sourceKind,
+      Value<String?> ownerType,
+      Value<int?> ownerId,
+      Value<String?> ownerRole,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -7317,6 +7473,21 @@ class $$TransactionsTableFilterComposer
   get sourceKind => $composableBuilder(
     column: $table.sourceKind,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get ownerType => $composableBuilder(
+    column: $table.ownerType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerRole => $composableBuilder(
+    column: $table.ownerRole,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
@@ -7421,6 +7592,21 @@ class $$TransactionsTableOrderingComposer
 
   ColumnOrderings<String> get sourceKind => $composableBuilder(
     column: $table.sourceKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerType => $composableBuilder(
+    column: $table.ownerType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ownerId => $composableBuilder(
+    column: $table.ownerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerRole => $composableBuilder(
+    column: $table.ownerRole,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7530,6 +7716,15 @@ class $$TransactionsTableAnnotationComposer
         builder: (column) => column,
       );
 
+  GeneratedColumn<String> get ownerType =>
+      $composableBuilder(column: $table.ownerType, builder: (column) => column);
+
+  GeneratedColumn<int> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerRole =>
+      $composableBuilder(column: $table.ownerRole, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -7588,6 +7783,9 @@ class $$TransactionsTableTableManager
                 Value<bool> isExcludedFromStats = const Value.absent(),
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 Value<SourceKind> sourceKind = const Value.absent(),
+                Value<String?> ownerType = const Value.absent(),
+                Value<int?> ownerId = const Value.absent(),
+                Value<String?> ownerRole = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion(
@@ -7608,6 +7806,9 @@ class $$TransactionsTableTableManager
                 isExcludedFromStats: isExcludedFromStats,
                 isExcludedFromBudget: isExcludedFromBudget,
                 sourceKind: sourceKind,
+                ownerType: ownerType,
+                ownerId: ownerId,
+                ownerRole: ownerRole,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -7632,6 +7833,9 @@ class $$TransactionsTableTableManager
                 Value<bool> isExcludedFromStats = const Value.absent(),
                 Value<bool> isExcludedFromBudget = const Value.absent(),
                 required SourceKind sourceKind,
+                Value<String?> ownerType = const Value.absent(),
+                Value<int?> ownerId = const Value.absent(),
+                Value<String?> ownerRole = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -7652,6 +7856,9 @@ class $$TransactionsTableTableManager
                 isExcludedFromStats: isExcludedFromStats,
                 isExcludedFromBudget: isExcludedFromBudget,
                 sourceKind: sourceKind,
+                ownerType: ownerType,
+                ownerId: ownerId,
+                ownerRole: ownerRole,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

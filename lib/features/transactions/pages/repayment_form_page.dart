@@ -11,13 +11,23 @@ import '../../../design_system/widgets/app_plain_form_row.dart';
 import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
+import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/services/posting_command.dart';
+import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 
 class RepaymentFormPage extends ConsumerStatefulWidget {
-  const RepaymentFormPage({required this.liabilityAccountId, super.key});
+  const RepaymentFormPage({required this.liabilityAccountId, super.key})
+    : editTransactionId = null,
+      assert(liabilityAccountId != null);
 
-  final int liabilityAccountId;
+  const RepaymentFormPage.edit({required this.editTransactionId, super.key})
+    : liabilityAccountId = null,
+      assert(editTransactionId != null);
+
+  final int? liabilityAccountId;
+  final int? editTransactionId;
 
   @override
   ConsumerState<RepaymentFormPage> createState() => _RepaymentFormPageState();
@@ -33,7 +43,12 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
   DateTime _occurredAt = DateTime.now();
   late int? _liabilityAccountId;
   int? _paidFromAccountId;
+  Money? _existingFee;
+  int? _existingFeeExpenseAccountId;
   bool _submitting = false;
+  bool _editInitialized = false;
+  bool _excludeStats = false;
+  bool _excludeBudget = false;
 
   @override
   void initState() {
@@ -58,22 +73,51 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     final repaymentAccountsAsync = ref.watch(
       accountsForUsageProvider(AccountUsage.repaymentSource),
     );
+    final editTransactionId = widget.editTransactionId;
+    final editDetailAsync =
+        editTransactionId == null
+            ? null
+            : ref.watch(transactionDetailProvider(editTransactionId));
 
     final accountsError =
-        liabilityAccountsAsync.error ?? repaymentAccountsAsync.error;
+        liabilityAccountsAsync.error ??
+        repaymentAccountsAsync.error ??
+        editDetailAsync?.error;
     if (accountsError != null) {
       return Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        appBar: AppBar(title: const Text('还款')),
+        appBar: AppBar(title: Text(_pageTitle)),
         body: Center(child: Text('加载失败：$accountsError')),
       );
     }
-    if (!liabilityAccountsAsync.hasValue || !repaymentAccountsAsync.hasValue) {
+    if (!liabilityAccountsAsync.hasValue ||
+        !repaymentAccountsAsync.hasValue ||
+        (editTransactionId != null && !(editDetailAsync?.hasValue ?? false))) {
       return Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        appBar: AppBar(title: const Text('还款')),
+        appBar: AppBar(title: Text(_pageTitle)),
         body: const Center(child: CircularProgressIndicator()),
       );
+    }
+    final editDetail = editDetailAsync?.value;
+    if (editTransactionId != null && editDetail == null) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: AppBar(title: Text(_pageTitle)),
+        body: const Center(child: Text('交易不存在')),
+      );
+    }
+    if (editDetail != null &&
+        editDetail.transaction.businessPurpose !=
+            BusinessPurpose.debtRepayment) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        appBar: AppBar(title: Text(_pageTitle)),
+        body: const Center(child: Text('该交易不是还款记录')),
+      );
+    }
+    if (!_editInitialized && editDetail != null) {
+      _applyEditData(editDetail);
     }
 
     final liabilityAccounts = liabilityAccountsAsync.value ?? const <Account>[];
@@ -99,7 +143,7 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('还款')),
+      appBar: AppBar(title: Text(_pageTitle)),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -260,31 +304,102 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
     final note = _blankToNull(_noteController.text);
 
     setState(() => _submitting = true);
-    final result = await ref
-        .read(transactionServiceProvider)
-        .createRepayment(
-          CreateRepaymentCommand(
-            principal: principal,
-            interest: interest.minorUnits > 0 ? interest : null,
-            discount: discount.minorUnits > 0 ? discount : null,
-            liabilityAccountId: liabilityAccountId,
-            paidFromAccountId: paidFromAccountId,
-            occurredAt: _occurredAt,
-            note: note,
-          ),
-        );
+    final service = ref.read(transactionServiceProvider);
+    final editTransactionId = widget.editTransactionId;
+    final Result<PostTransactionResult> result;
+    if (editTransactionId == null) {
+      result = await service.createRepayment(
+        CreateRepaymentCommand(
+          principal: principal,
+          interest: interest.minorUnits > 0 ? interest : null,
+          discount: discount.minorUnits > 0 ? discount : null,
+          liabilityAccountId: liabilityAccountId,
+          paidFromAccountId: paidFromAccountId,
+          occurredAt: _occurredAt,
+          note: note,
+        ),
+      );
+    } else {
+      result = await service.correctTransaction(
+        CorrectTransactionCommand(
+          transactionId: editTransactionId,
+          businessPurpose: BusinessPurpose.debtRepayment,
+          amount: principal,
+          repaymentInterest: interest.minorUnits > 0 ? interest : null,
+          repaymentFee: _existingFee,
+          repaymentDiscount: discount.minorUnits > 0 ? discount : null,
+          feeExpenseAccountId: _existingFeeExpenseAccountId,
+          liabilityAccountId: liabilityAccountId,
+          paidFromAccountId: paidFromAccountId,
+          occurredAt: _occurredAt,
+          note: note,
+          isExcludedFromStats: _excludeStats,
+          isExcludedFromBudget: _excludeBudget,
+        ),
+      );
+    }
     if (!mounted) {
       return;
     }
     setState(() => _submitting = false);
 
     switch (result) {
-      case Success():
-        context.pop();
+      case Success(:final value):
+        if (editTransactionId == null) {
+          context.pop();
+        } else {
+          if (context.canPop()) {
+            context.pop(value.transactionId);
+          } else {
+            context.go('/transactions/${value.transactionId}');
+          }
+        }
       case FailureResult(:final failure):
         _showError(failure.message);
     }
   }
+
+  void _applyEditData(TransactionDetailView detail) {
+    final transaction = detail.transaction;
+    _principalController.text =
+        _detailAmount(
+          detail,
+          TransactionDetailType.repaymentPrincipal,
+        ).format();
+    _interestController.text =
+        _optionalDetailAmount(
+          detail,
+          TransactionDetailType.repaymentInterest,
+        )?.format() ??
+        '';
+    _discountController.text =
+        _optionalDetailAmount(
+          detail,
+          TransactionDetailType.repaymentDiscount,
+        )?.format() ??
+        '';
+    _noteController.text = transaction.note ?? '';
+    _occurredAt = transaction.occurredAt;
+    _excludeStats = transaction.isExcludedFromStats;
+    _excludeBudget = transaction.isExcludedFromBudget;
+    _existingFee = _optionalDetailAmount(
+      detail,
+      TransactionDetailType.repaymentFee,
+    );
+    _existingFeeExpenseAccountId = _expenseEntryAccountIdByAmount(
+      detail,
+      _existingFee,
+    );
+    _liabilityAccountId = _firstEntryAccountId(
+      detail,
+      accountType: AccountType.liability,
+      direction: EntryDirection.debit,
+    );
+    _paidFromAccountId = _firstRepaymentSourceAccountId(detail);
+    _editInitialized = true;
+  }
+
+  String get _pageTitle => widget.editTransactionId == null ? '还款' : '编辑还款';
 
   String? _validatePositiveMoney(String? value) {
     try {
@@ -318,6 +433,65 @@ class _RepaymentFormPageState extends ConsumerState<RepaymentFormPage> {
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
+}
+
+Money _detailAmount(TransactionDetailView detail, TransactionDetailType type) {
+  return _optionalDetailAmount(detail, type) ?? Money.zero();
+}
+
+Money? _optionalDetailAmount(
+  TransactionDetailView detail,
+  TransactionDetailType type,
+) {
+  for (final line in detail.details) {
+    if (line.type == type) {
+      return line.amount;
+    }
+  }
+  return null;
+}
+
+int? _firstEntryAccountId(
+  TransactionDetailView detail, {
+  required AccountType accountType,
+  required EntryDirection direction,
+}) {
+  for (final entry in detail.entries) {
+    if (entry.accountType == accountType && entry.direction == direction) {
+      return entry.accountId;
+    }
+  }
+  return null;
+}
+
+int? _firstRepaymentSourceAccountId(TransactionDetailView detail) {
+  for (final entry in detail.entries) {
+    if (entry.direction != EntryDirection.credit) {
+      continue;
+    }
+    if (entry.accountType == AccountType.asset ||
+        entry.accountType == AccountType.liability) {
+      return entry.accountId;
+    }
+  }
+  return null;
+}
+
+int? _expenseEntryAccountIdByAmount(
+  TransactionDetailView detail,
+  Money? amount,
+) {
+  if (amount == null || amount.minorUnits <= 0) {
+    return null;
+  }
+  for (final entry in detail.entries) {
+    if (entry.accountType == AccountType.expense &&
+        entry.direction == EntryDirection.debit &&
+        entry.amount == amount) {
+      return entry.accountId;
+    }
+  }
+  return null;
 }
 
 Account? _findAccount(List<Account> accounts, int? id) {

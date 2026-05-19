@@ -4,9 +4,11 @@ import '../../core/result/result.dart';
 import '../entities/installment_contract.dart';
 import '../entities/installment_repayment.dart';
 import '../entities/installment_schedule.dart';
+import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';
 import '../enums/installment_enums.dart';
 import '../repositories/installment_repository.dart';
+import '../repositories/posting_repository.dart';
 import '../repositories/transaction_query_repository.dart';
 import 'installment_schedule_generator.dart';
 import 'posting_command.dart';
@@ -336,16 +338,19 @@ class InstallmentRepaymentLink extends InstallmentLink {
 class InstallmentServiceImpl implements InstallmentService {
   InstallmentServiceImpl({
     required InstallmentRepository repository,
+    required PostingRepository postingRepository,
     required TransactionService transactionService,
     required TransactionQueryRepository queryRepository,
     InstallmentScheduleGenerator generator =
         const InstallmentScheduleGenerator(),
-  })  : _repository = repository,
-        _transactionService = transactionService,
-        _queryRepository = queryRepository,
-        _generator = generator;
+  }) : _repository = repository,
+       _postingRepository = postingRepository,
+       _transactionService = transactionService,
+       _queryRepository = queryRepository,
+       _generator = generator;
 
   final InstallmentRepository _repository;
+  final PostingRepository _postingRepository;
   final TransactionService _transactionService;
   final TransactionQueryRepository _queryRepository;
   final InstallmentScheduleGenerator _generator;
@@ -362,7 +367,8 @@ class InstallmentServiceImpl implements InstallmentService {
     );
     if (preValidation != null) return Result.failure(preValidation);
 
-    final lastDate = command.lastRepaymentDate ??
+    final lastDate =
+        command.lastRepaymentDate ??
         _defaultLastDate(command.firstRepaymentDate, command.totalPeriods);
 
     final borrowingResult = await _transactionService.createBorrowing(
@@ -411,6 +417,13 @@ class InstallmentServiceImpl implements InstallmentService {
             note: command.note,
           ),
         );
+        await _postingRepository.updateTransactionOwnership(
+          transactionId: borrowing.transactionId,
+          ownership: _installmentOwnership(
+            contractId,
+            InstallmentOwnerRole.disbursement,
+          ),
+        );
         await _repository.replaceSchedules(contractId, drafts);
         return Result.success(
           CreateContractResult(
@@ -434,7 +447,8 @@ class InstallmentServiceImpl implements InstallmentService {
     );
     if (preValidation != null) return Result.failure(preValidation);
 
-    final lastDate = command.lastRepaymentDate ??
+    final lastDate =
+        command.lastRepaymentDate ??
         _defaultLastDate(command.firstRepaymentDate, command.totalPeriods);
 
     final drafts = _generator.generate(
@@ -510,10 +524,11 @@ class InstallmentServiceImpl implements InstallmentService {
     }
 
     final schedules = await _repository.listSchedules(command.contractId);
-    final paid = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.paid)
-        .toList()
-      ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    final paid =
+        schedules
+            .where((s) => s.status == InstallmentScheduleStatus.paid)
+            .toList()
+          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
     final paidCount = paid.length;
 
     if (paidCount > 0 &&
@@ -551,9 +566,11 @@ class InstallmentServiceImpl implements InstallmentService {
       0,
       (acc, s) => acc + s.expectedPrincipal.minorUnits,
     );
-    final extraPrincipalMinor =
-        await _extraPrincipalSumMinor(command.contractId);
-    final remainingMinor = contract.principal.minorUnits -
+    final extraPrincipalMinor = await _extraPrincipalSumMinor(
+      command.contractId,
+    );
+    final remainingMinor =
+        contract.principal.minorUnits -
         paidPrincipalMinor -
         extraPrincipalMinor;
     if (remainingMinor < 0) {
@@ -591,10 +608,11 @@ class InstallmentServiceImpl implements InstallmentService {
     );
 
     // 取得 pending schedules 列表（与 dates 顺序一致），逐个 update。
-    final pendingSchedules = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.pending)
-        .toList()
-      ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    final pendingSchedules =
+        schedules
+            .where((s) => s.status == InstallmentScheduleStatus.pending)
+            .toList()
+          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
 
     // 处理期数变更：如果 totalPeriods 减少，需要 skip 多余 pending 行；
     // 如果增加，由于 schedules 表是按 periodNo 唯一标识的，需要补行。
@@ -607,7 +625,9 @@ class InstallmentServiceImpl implements InstallmentService {
         await _repository.updateSchedule(
           s.id,
           InstallmentSchedulePatch(
-            expectedPrincipal: Money.zero(currency: contract.principal.currency),
+            expectedPrincipal: Money.zero(
+              currency: contract.principal.currency,
+            ),
             expectedInterest: Money.zero(currency: contract.principal.currency),
             expectedFee: Money.zero(currency: contract.principal.currency),
             status: InstallmentScheduleStatus.skipped,
@@ -617,9 +637,10 @@ class InstallmentServiceImpl implements InstallmentService {
     }
 
     // 重写 schedule rows 的范围：min(existing, desired)
-    final usableLen = pendingSchedules.length < desiredPendingCount
-        ? pendingSchedules.length
-        : desiredPendingCount;
+    final usableLen =
+        pendingSchedules.length < desiredPendingCount
+            ? pendingSchedules.length
+            : desiredPendingCount;
     for (var i = 0; i < usableLen; i++) {
       final s = pendingSchedules[i];
       final alloc = allocations[i];
@@ -682,7 +703,8 @@ class InstallmentServiceImpl implements InstallmentService {
         note: command.note,
         clearNote: command.clearNote,
         clearRate:
-            command.interestRatePeriod == null && command.interestRatePpm == null,
+            command.interestRatePeriod == null &&
+            command.interestRatePpm == null,
       ),
     );
 
@@ -762,6 +784,10 @@ class InstallmentServiceImpl implements InstallmentService {
         occurredAt: command.occurredAt,
         counterpartyName: command.counterpartyName,
         note: command.note,
+        ownership: _installmentOwnership(
+          command.contractId,
+          InstallmentOwnerRole.regularRepayment,
+        ),
       ),
     );
     return result.when(
@@ -821,6 +847,10 @@ class InstallmentServiceImpl implements InstallmentService {
         occurredAt: command.occurredAt,
         counterpartyName: command.counterpartyName,
         note: command.note,
+        ownership: _installmentOwnership(
+          command.contractId,
+          InstallmentOwnerRole.extraPrincipal,
+        ),
       ),
     );
     return result.when(
@@ -873,6 +903,10 @@ class InstallmentServiceImpl implements InstallmentService {
         occurredAt: command.occurredAt,
         counterpartyName: command.counterpartyName,
         note: command.note,
+        ownership: _installmentOwnership(
+          command.contractId,
+          InstallmentOwnerRole.earlySettlement,
+        ),
       ),
     );
     return result.when(
@@ -885,8 +919,7 @@ class InstallmentServiceImpl implements InstallmentService {
             transactionId: post.transactionId,
           ),
         );
-        final schedules =
-            await _repository.listSchedules(command.contractId);
+        final schedules = await _repository.listSchedules(command.contractId);
         for (final s in schedules) {
           if (s.status == InstallmentScheduleStatus.pending) {
             await _repository.updateSchedule(
@@ -908,8 +941,9 @@ class InstallmentServiceImpl implements InstallmentService {
 
   @override
   Future<Result<void>> revertRepayment(RevertRepaymentCommand command) async {
-    final repayment =
-        await _repository.findRepaymentByTransaction(command.transactionId);
+    final repayment = await _repository.findRepaymentByTransaction(
+      command.transactionId,
+    );
     if (repayment == null) {
       return const Result.failure(
         Failure(
@@ -940,8 +974,9 @@ class InstallmentServiceImpl implements InstallmentService {
           case InstallmentRepaymentType.extraPrincipal:
             await _recalculatePendingSchedules(repayment.contractId);
           case InstallmentRepaymentType.earlySettlement:
-            final schedules =
-                await _repository.listSchedules(repayment.contractId);
+            final schedules = await _repository.listSchedules(
+              repayment.contractId,
+            );
             for (final s in schedules) {
               if (s.status == InstallmentScheduleStatus.skipped) {
                 await _repository.updateSchedule(
@@ -1027,16 +1062,18 @@ class InstallmentServiceImpl implements InstallmentService {
 
   @override
   Future<InstallmentLink?> findLinkByTransaction(int transactionId) async {
-    final repayment =
-        await _repository.findRepaymentByTransaction(transactionId);
+    final repayment = await _repository.findRepaymentByTransaction(
+      transactionId,
+    );
     if (repayment != null) {
       return InstallmentRepaymentLink(
         contractId: repayment.contractId,
         repaymentType: repayment.repaymentType,
       );
     }
-    final contract =
-        await _repository.findContractByDisbursementTransaction(transactionId);
+    final contract = await _repository.findContractByDisbursementTransaction(
+      transactionId,
+    );
     if (contract != null) {
       return InstallmentDisbursementLink(contractId: contract.id);
     }
@@ -1075,14 +1112,16 @@ class InstallmentServiceImpl implements InstallmentService {
     if (contract == null) return;
 
     final schedules = await _repository.listSchedules(contractId);
-    final paid = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.paid)
-        .toList()
-      ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
-    final pending = schedules
-        .where((s) => s.status == InstallmentScheduleStatus.pending)
-        .toList()
-      ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    final paid =
+        schedules
+            .where((s) => s.status == InstallmentScheduleStatus.paid)
+            .toList()
+          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
+    final pending =
+        schedules
+            .where((s) => s.status == InstallmentScheduleStatus.pending)
+            .toList()
+          ..sort((a, b) => a.periodNo.compareTo(b.periodNo));
     if (pending.isEmpty) return;
 
     final paidPrincipalMinor = paid.fold<int>(
@@ -1090,7 +1129,8 @@ class InstallmentServiceImpl implements InstallmentService {
       (acc, s) => acc + s.expectedPrincipal.minorUnits,
     );
     final extraPrincipalMinor = await _extraPrincipalSumMinor(contractId);
-    final remainingMinor = contract.principal.minorUnits -
+    final remainingMinor =
+        contract.principal.minorUnits -
         paidPrincipalMinor -
         extraPrincipalMinor;
 
@@ -1100,7 +1140,9 @@ class InstallmentServiceImpl implements InstallmentService {
         await _repository.updateSchedule(
           s.id,
           InstallmentSchedulePatch(
-            expectedPrincipal: Money.zero(currency: contract.principal.currency),
+            expectedPrincipal: Money.zero(
+              currency: contract.principal.currency,
+            ),
             expectedInterest: Money.zero(currency: contract.principal.currency),
             expectedFee: Money.zero(currency: contract.principal.currency),
             status: InstallmentScheduleStatus.skipped,
@@ -1184,14 +1226,18 @@ class InstallmentServiceImpl implements InstallmentService {
     // (TODO: 真正的期数增加场景较少且属编辑高级用法；当前实现先保证 paid 不变。)
     // 简化：对已 paid 部分跳过插入，仅追加 pending 行。
     final existingSchedules = await _repository.listSchedules(contractId);
-    final maxPeriodNo = existingSchedules.isEmpty
-        ? 0
-        : existingSchedules.map((s) => s.periodNo).reduce((a, b) => a > b ? a : b);
+    final maxPeriodNo =
+        existingSchedules.isEmpty
+            ? 0
+            : existingSchedules
+                .map((s) => s.periodNo)
+                .reduce((a, b) => a > b ? a : b);
     // 计算需要补几行
     final desiredPending = pendingDates.length;
-    final existingPending = existingSchedules
-        .where((s) => s.status == InstallmentScheduleStatus.pending)
-        .length;
+    final existingPending =
+        existingSchedules
+            .where((s) => s.status == InstallmentScheduleStatus.pending)
+            .length;
     final toAdd = desiredPending - existingPending;
     if (toAdd <= 0) return;
     final newDrafts = <InstallmentScheduleDraft>[];
@@ -1262,6 +1308,17 @@ class InstallmentServiceImpl implements InstallmentService {
       firstDate.year,
       firstDate.month + totalPeriods - 1,
       firstDate.day,
+    );
+  }
+
+  TransactionOwnership _installmentOwnership(
+    int contractId,
+    InstallmentOwnerRole role,
+  ) {
+    return TransactionOwnership(
+      ownerType: installmentOwnerType,
+      ownerId: contractId,
+      ownerRole: role.wireValue,
     );
   }
 }
