@@ -4,7 +4,7 @@ import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/data/builtin_data.dart';
 import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
 
-import '../../helpers/test_app_database.dart';
+import '../helpers/test_app_database.dart';
 
 void main() {
   group('builtin data', () {

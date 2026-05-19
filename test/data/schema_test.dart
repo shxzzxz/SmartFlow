@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/data/app_database.dart';
 import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
 
-import '../../helpers/test_app_database.dart';
+import '../helpers/test_app_database.dart';
 
 void main() {
   group('stage 1 database schema', () {

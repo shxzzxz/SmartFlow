@@ -6,7 +6,7 @@ import 'package:smartflow/data/accounting/repositories/drift_financial_metrics_r
 import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
 import 'package:smartflow/domain/accounting/services/financial_metrics_service.dart';
 
-import '../../helpers/test_app_database.dart';
+import '../../../helpers/test_app_database.dart';
 
 void main() {
   group('DriftFinancialMetricsRepository', () {

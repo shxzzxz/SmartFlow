@@ -8,7 +8,7 @@ import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
 import 'package:smartflow/domain/accounting/services/account_service.dart';
 import 'package:smartflow/domain/accounting/services/category_service.dart';
 
-import '../../helpers/test_app_database.dart';
+import '../../../helpers/test_app_database.dart';
 
 void main() {
   group('DriftAccountRepository', () {

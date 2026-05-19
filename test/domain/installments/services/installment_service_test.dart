@@ -16,7 +16,7 @@ import 'package:smartflow/domain/accounting/services/posting_command.dart';
 import 'package:smartflow/domain/accounting/services/posting_service.dart';
 import 'package:smartflow/domain/accounting/services/transaction_service.dart';
 
-import '../../helpers/test_app_database.dart';
+import '../../../helpers/test_app_database.dart';
 
 void main() {
   group('InstallmentService integration', () {
