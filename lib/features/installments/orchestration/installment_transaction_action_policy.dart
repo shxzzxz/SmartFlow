@@ -1,31 +1,31 @@
+import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../domain/enums/installment_enums.dart';
 import '../../../domain/orchestration/transaction_action_policy.dart';
 import '../../../domain/services/installment_service.dart';
-import '../../../domain/services/transaction_service.dart';
 
 /// 分期编排叠加层针对单笔交易的 action policy。
 ///
-/// - 删除按 [InstallmentOwnerRole] 分流：还款撤销走 revertRepayment；
-///   放款交易走 deleteContract（级联撤销其下所有还款）。
-/// - 编辑路由先指向合同详情页占位，待编辑页另开工作流后再细化。
-/// - 改账户 / 改时间 / 改备注不破坏合同状态，直接委托 [TransactionService]。
-/// - 金额修改一律禁止，引导用户去合同详情或专属编辑页。
+/// 职责限定为"按 `ownerRole` 把通用 UI 的 universal 动作路由到 `InstallmentService`
+/// 的领域入口"——所有写入与一致性逻辑都在 service 内部，policy 不再持有
+/// fallback 也不直接调 TransactionService。
+///
+/// 路由表：
+/// - 删除：disbursement 走 `deleteContract`；其余走 `revertRepayment`。
+/// - 改账户/时间/备注：disbursement 走 `updateContract`；其余走 `editRepayment`。
+/// - 金额修改一律禁止；改动入口在合同详情页/还款表单。
 class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
   const InstallmentTransactionActionPolicy({
     required InstallmentService installment,
-    required TransactionService fallback,
     required int contractId,
     required InstallmentOwnerRole ownerRole,
     required int transactionId,
-  }) : _installment = installment,
-       _fallback = fallback,
-       _contractId = contractId,
-       _ownerRole = ownerRole,
-       _transactionId = transactionId;
+  })  : _installment = installment,
+        _contractId = contractId,
+        _ownerRole = ownerRole,
+        _transactionId = transactionId;
 
   final InstallmentService _installment;
-  final TransactionService _fallback;
   final int _contractId;
   final InstallmentOwnerRole _ownerRole;
   final int _transactionId;
@@ -48,44 +48,65 @@ class InstallmentTransactionActionPolicy implements TransactionActionPolicy {
   String editRoutePath() => '/installments/$_contractId';
 
   @override
-  Future<Result<void>> changeSettlementAccount(int newAccountId) async {
-    final result = await _fallback.updateTransactionBasics(
-      UpdateTransactionBasicsCommand(
-        transactionId: _transactionId,
-        settlementAccountId: newAccountId,
+  Future<Result<void>> changeSettlementAccount(int newAccountId) {
+    return switch (_ownerRole) {
+      InstallmentOwnerRole.disbursement => _installment.updateContract(
+        UpdateContractCommand(
+          contractId: _contractId,
+          disbursementAccountId: newAccountId,
+        ),
       ),
-    );
-    if (result case FailureResult()) return result;
-    // 分期放款交易的结算账户即合同的 disbursement 账户；
-    // 同步合同表，避免下次还款 form 默认预填脱节。
-    if (_ownerRole == InstallmentOwnerRole.disbursement) {
-      return _installment.updateContractDisbursementAccount(
-        _contractId,
-        newAccountId,
-      );
-    }
-    return result;
+      InstallmentOwnerRole.regularRepayment ||
+      InstallmentOwnerRole.extraPrincipal ||
+      InstallmentOwnerRole.earlySettlement => _installment.editRepayment(
+        EditRepaymentCommand(
+          transactionId: _transactionId,
+          contractId: _contractId,
+          paidFromAccountId: newAccountId,
+        ),
+      ),
+    };
   }
 
   @override
   Future<Result<void>> changeOccurredAt(DateTime newTime) {
-    return _fallback.updateTransactionBasics(
-      UpdateTransactionBasicsCommand(
-        transactionId: _transactionId,
-        occurredAt: newTime,
+    return switch (_ownerRole) {
+      InstallmentOwnerRole.disbursement => _installment.updateContract(
+        UpdateContractCommand(
+          contractId: _contractId,
+          borrowingDate: newTime,
+        ),
       ),
-    );
+      InstallmentOwnerRole.regularRepayment ||
+      InstallmentOwnerRole.extraPrincipal ||
+      InstallmentOwnerRole.earlySettlement => _installment.editRepayment(
+        EditRepaymentCommand(
+          transactionId: _transactionId,
+          contractId: _contractId,
+          occurredAt: newTime,
+        ),
+      ),
+    };
   }
 
   @override
   Future<Result<void>> changeNote(String? newNote) {
-    return _fallback.updateTransactionMetadata(
-      UpdateTransactionMetadataCommand(
-        transactionId: _transactionId,
-        note: newNote,
-        noteChanged: true,
+    final Patch<String> notePatch =
+        newNote == null ? const Patch.clear() : Patch.set(newNote);
+    return switch (_ownerRole) {
+      InstallmentOwnerRole.disbursement => _installment.updateContract(
+        UpdateContractCommand(contractId: _contractId, note: notePatch),
       ),
-    );
+      InstallmentOwnerRole.regularRepayment ||
+      InstallmentOwnerRole.extraPrincipal ||
+      InstallmentOwnerRole.earlySettlement => _installment.editRepayment(
+        EditRepaymentCommand(
+          transactionId: _transactionId,
+          contractId: _contractId,
+          note: notePatch,
+        ),
+      ),
+    };
   }
 
   @override

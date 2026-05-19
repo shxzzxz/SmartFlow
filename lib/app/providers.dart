@@ -308,7 +308,6 @@ TransactionActionPolicy transactionActionPolicy(
     if (role != null) {
       return InstallmentTransactionActionPolicy(
         installment: ref.watch(installmentServiceProvider),
-        fallback: ref.watch(transactionServiceProvider),
         contractId: ownership.ownerId!,
         ownerRole: role,
         transactionId: transaction.id,

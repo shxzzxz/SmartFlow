@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../core/money/money.dart';
+import '../../core/patch/patch.dart';
 import '../../domain/entities/installment_contract.dart';
 import '../../domain/entities/installment_repayment.dart';
 import '../../domain/entities/installment_schedule.dart';
@@ -124,27 +125,6 @@ class DriftInstallmentRepository implements InstallmentRepository {
     int contractId,
     InstallmentContractPatch patch,
   ) async {
-    final ratePeriodValue = patch.clearRate
-        ? const Value<InterestRatePeriod?>(null)
-        : (patch.interestRatePeriod == null
-            ? const Value<InterestRatePeriod?>.absent()
-            : Value<InterestRatePeriod?>(patch.interestRatePeriod));
-    final ratePpmValue = patch.clearRate
-        ? const Value<int?>(null)
-        : (patch.interestRatePpm == null
-            ? const Value<int?>.absent()
-            : Value<int?>(patch.interestRatePpm));
-    final noteValue = patch.clearNote
-        ? const Value<String?>(null)
-        : (patch.note == null
-            ? const Value<String?>.absent()
-            : Value<String?>(patch.note));
-    final disbursementAccountValue = patch.clearDisbursementAccount
-        ? const Value<int?>(null)
-        : (patch.disbursementAccountId == null
-            ? const Value<int?>.absent()
-            : Value<int?>(patch.disbursementAccountId));
-
     final companion = InstallmentContractsCompanion(
       totalPeriods: patch.totalPeriods == null
           ? const Value.absent()
@@ -155,24 +135,37 @@ class DriftInstallmentRepository implements InstallmentRepository {
       lastRepaymentDate: patch.lastRepaymentDate == null
           ? const Value.absent()
           : Value(patch.lastRepaymentDate!),
+      borrowingDate: patch.borrowingDate == null
+          ? const Value.absent()
+          : Value(patch.borrowingDate!),
       repaymentMethod: patch.repaymentMethod == null
           ? const Value.absent()
           : Value(patch.repaymentMethod!),
-      interestRatePeriod: ratePeriodValue,
-      interestRatePpm: ratePpmValue,
+      interestRatePeriod: _toNullableValue(patch.interestRatePeriod),
+      interestRatePpm: _toNullableValue(patch.interestRatePpm),
       interestAccrualMethod: patch.interestAccrualMethod == null
           ? const Value.absent()
           : Value(patch.interestAccrualMethod!),
       totalFeeMinor: patch.totalFeeMinor == null
           ? const Value.absent()
           : Value(patch.totalFeeMinor!),
-      note: noteValue,
-      disbursementAccountId: disbursementAccountValue,
+      note: _toNullableValue(patch.note),
+      disbursementAccountId: patch.disbursementAccountId == null
+          ? const Value.absent()
+          : Value(patch.disbursementAccountId!),
       updatedAt: Value(DateTime.now()),
     );
     await (_database.update(_database.installmentContracts)
           ..where((c) => c.id.equals(contractId)))
         .write(companion);
+  }
+
+  Value<T?> _toNullableValue<T>(Patch<T>? patch) {
+    return switch (patch) {
+      null => const Value.absent(),
+      PatchSet<T>(:final value) => Value<T?>(value),
+      PatchClear<T>() => Value<T?>(null),
+    };
   }
 
   @override

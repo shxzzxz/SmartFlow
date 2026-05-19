@@ -1,6 +1,7 @@
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show Value, leftOuterJoin;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
+import 'package:smartflow/core/patch/patch.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/repositories/drift_account_repository.dart';
@@ -563,6 +564,319 @@ void main() {
         );
         expect(res, isA<FailureResult>());
       });
+
+      test('只改 disbursementAccountId 不重算且联动放款交易', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 600000),
+            totalPeriods: 6,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+        final disbursementTxId =
+            (await service.findContract(contractId))!.disbursementTransactionId!;
+        final beforeSchedules = await service.listSchedules(contractId);
+        final beforeDates = beforeSchedules
+            .map((s) => s.expectedRepaymentDate)
+            .toList();
+        final beforePrincipals = beforeSchedules
+            .map((s) => s.expectedPrincipal.minorUnits)
+            .toList();
+
+        final newAssetId = await _insertAccount(
+          database,
+          name: '工行',
+          type: AccountType.asset,
+          subtype: AccountSubtype.bankCard,
+          balanceMinor: 0,
+        );
+
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            disbursementAccountId: newAssetId,
+          ),
+        );
+        expect(res, isA<Success>());
+
+        // 合同同步
+        final contract = await service.findContract(contractId);
+        expect(contract!.disbursementAccountId, newAssetId);
+
+        // schedule 未被重算
+        final afterSchedules = await service.listSchedules(contractId);
+        expect(
+          afterSchedules.map((s) => s.expectedRepaymentDate).toList(),
+          beforeDates,
+        );
+        expect(
+          afterSchedules.map((s) => s.expectedPrincipal.minorUnits).toList(),
+          beforePrincipals,
+        );
+
+        // 放款交易的 settlement entry 切换到新账户
+        expect(
+          await _settlementAccountIdOf(database, disbursementTxId),
+          newAssetId,
+        );
+      });
+
+      test('改 borrowingDate 同时重算 schedule 并联动放款交易 occurredAt', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 600000),
+            totalPeriods: 6,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+        final disbursementTxId =
+            (await service.findContract(contractId))!.disbursementTransactionId!;
+
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            borrowingDate: DateTime(2026, 5, 15),
+          ),
+        );
+        expect(res, isA<Success>());
+
+        final contract = await service.findContract(contractId);
+        expect(contract!.borrowingDate, DateTime(2026, 5, 15));
+
+        // 放款交易 occurredAt 同步
+        final tx = await _readTransaction(database, disbursementTxId);
+        expect(tx.occurredAt, DateTime(2026, 5, 15));
+      });
+
+      test('Patch.set / clear 联动合同 note 与放款交易 note', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 600000),
+            totalPeriods: 6,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+            note: '原备注',
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+        final disbursementTxId =
+            (await service.findContract(contractId))!.disbursementTransactionId!;
+
+        await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            note: const Patch.set('新备注'),
+          ),
+        );
+        expect(
+          (await service.findContract(contractId))!.note,
+          '新备注',
+        );
+        expect(
+          (await _readTransaction(database, disbursementTxId)).note,
+          '新备注',
+        );
+
+        await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            note: const Patch.clear(),
+          ),
+        );
+        expect(
+          (await service.findContract(contractId))!.note,
+          isNull,
+        );
+        expect(
+          (await _readTransaction(database, disbursementTxId)).note,
+          isNull,
+        );
+      });
+
+      test('Patch.clear 清除利率后重算 pending', () async {
+        final contractResult = await service.createDisbursementContract(
+          CreateDisbursementContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            disbursementAccountId: assetAccountId,
+            principal: const Money(minorUnits: 1200000),
+            totalPeriods: 12,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.equalPrincipal,
+            interestRatePeriod: InterestRatePeriod.monthly,
+            interestRatePpm: 5000,
+          ),
+        );
+        final contractId =
+            (contractResult as Success<CreateContractResult>).value.contractId;
+
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            interestRatePeriod: const Patch.clear(),
+            interestRatePpm: const Patch.clear(),
+          ),
+        );
+        expect(res, isA<Success>());
+
+        final contract = await service.findContract(contractId);
+        expect(contract!.interestRatePeriod, isNull);
+        expect(contract.interestRatePpm, isNull);
+
+        // 利率清空后 pending 行利息应归零
+        final schedules = await service.listSchedules(contractId);
+        final pendingInterest = schedules
+            .where((s) => s.status == InstallmentScheduleStatus.pending)
+            .fold<int>(0, (acc, s) => acc + s.expectedInterest.minorUnits);
+        expect(pendingInterest, 0);
+      });
+
+      test('账单分期合同不允许传 disbursementAccountId', () async {
+        final billResult = await service.createBillConversionContract(
+          CreateBillConversionContractCommand(
+            liabilityAccountId: liabilityAccountId,
+            principal: const Money(minorUnits: 500000),
+            totalPeriods: 5,
+            borrowingDate: DateTime(2026, 5, 10),
+            firstRepaymentDate: DateTime(2026, 6, 10),
+            repaymentMethod: InstallmentRepaymentMethod.flatFee,
+          ),
+        );
+        final contractId =
+            (billResult as Success<CreateContractResult>).value.contractId;
+        final res = await service.updateContract(
+          UpdateContractCommand(
+            contractId: contractId,
+            disbursementAccountId: assetAccountId,
+          ),
+        );
+        expect(res, isA<FailureResult>());
+      });
+    });
+
+    group('editRepayment', () {
+      test('改账户委托至放款源账户', () async {
+        final contractId = await createSimpleContract();
+        final schedules = await service.listSchedules(contractId);
+        final repayResult = await service.createRegularRepayment(
+          CreateRegularRepaymentCommand(
+            contractId: contractId,
+            scheduleId: schedules.single.id,
+            principal: const Money(minorUnits: 100000),
+            paidFromAccountId: assetAccountId,
+            occurredAt: DateTime(2026, 7, 10),
+          ),
+        );
+        final txId =
+            (repayResult as Success<PostTransactionResult>).value.transactionId;
+
+        final newAssetId = await _insertAccount(
+          database,
+          name: '建行',
+          type: AccountType.asset,
+          subtype: AccountSubtype.bankCard,
+          balanceMinor: 200000,
+        );
+
+        final res = await service.editRepayment(
+          EditRepaymentCommand(
+            transactionId: txId,
+            paidFromAccountId: newAssetId,
+          ),
+        );
+        expect(res, isA<Success>());
+        expect(await _settlementAccountIdOf(database, txId), newAssetId);
+      });
+
+      test('改时间与备注委托至 transaction', () async {
+        final contractId = await createSimpleContract();
+        final schedules = await service.listSchedules(contractId);
+        final repayResult = await service.createRegularRepayment(
+          CreateRegularRepaymentCommand(
+            contractId: contractId,
+            scheduleId: schedules.single.id,
+            principal: const Money(minorUnits: 100000),
+            paidFromAccountId: assetAccountId,
+            occurredAt: DateTime(2026, 7, 10),
+            note: '初始',
+          ),
+        );
+        final txId =
+            (repayResult as Success<PostTransactionResult>).value.transactionId;
+
+        await service.editRepayment(
+          EditRepaymentCommand(
+            transactionId: txId,
+            occurredAt: DateTime(2026, 7, 15),
+            note: const Patch.set('改后'),
+          ),
+        );
+        final tx = await _readTransaction(database, txId);
+        expect(tx.occurredAt, DateTime(2026, 7, 15));
+        expect(tx.note, '改后');
+
+        await service.editRepayment(
+          EditRepaymentCommand(
+            transactionId: txId,
+            note: const Patch.clear(),
+          ),
+        );
+        expect((await _readTransaction(database, txId)).note, isNull);
+      });
+
+      test('非分期还款交易拒绝编辑', () async {
+        // 用普通收入交易模拟一笔与分期无关的 transaction
+        final accountRepository = DriftAccountRepository(database);
+        final postingRepository = DriftPostingRepository(database);
+        final queryRepository = DriftTransactionQueryRepository(database);
+        final systemAccounts = DriftSystemAccountResolver(database);
+        final transactionService = TransactionServiceImpl(
+          PostingServiceImpl(postingRepository),
+          accountRepository: accountRepository,
+          transactionQueryRepository: queryRepository,
+          systemAccountResolver: systemAccounts,
+          postingRepository: postingRepository,
+        );
+        final incomeAccountId = await _insertAccount(
+          database,
+          name: '工资',
+          type: AccountType.income,
+        );
+        final incomeResult = await transactionService.createIncome(
+          CreateIncomeCommand(
+            amount: const Money(minorUnits: 100000),
+            receiveAccountId: assetAccountId,
+            incomeAccountId: incomeAccountId,
+            occurredAt: DateTime(2026, 5, 1),
+          ),
+        );
+        final txId =
+            (incomeResult as Success<PostTransactionResult>).value.transactionId;
+
+        final res = await service.editRepayment(
+          EditRepaymentCommand(
+            transactionId: txId,
+            occurredAt: DateTime(2026, 5, 2),
+          ),
+        );
+        expect(res, isA<FailureResult>());
+      });
     });
   });
 }
@@ -606,4 +920,35 @@ Future<void> _expectOwnership(
   expect(row.ownerType, 'installment');
   expect(row.ownerId, ownerId);
   expect(row.ownerRole, ownerRole);
+}
+
+Future<TransactionRow> _readTransaction(
+  AppDatabase database,
+  int transactionId,
+) {
+  return (database.select(database.transactions)
+        ..where((t) => t.id.equals(transactionId)))
+      .getSingle();
+}
+
+/// 反查交易的"结算账户"对应 entry 的 accountId。
+/// 约定：disbursement 与 repayment 的 settlement entry 都唯一指向一笔 asset 账户。
+Future<int> _settlementAccountIdOf(
+  AppDatabase database,
+  int transactionId,
+) async {
+  final query = database.select(database.entries).join([
+    leftOuterJoin(
+      database.accounts,
+      database.accounts.id.equalsExp(database.entries.accountId),
+    ),
+  ])..where(database.entries.transactionId.equals(transactionId));
+  final rows = await query.get();
+  for (final row in rows) {
+    final account = row.readTableOrNull(database.accounts);
+    if (account?.accountType == AccountType.asset) {
+      return row.readTable(database.entries).accountId;
+    }
+  }
+  fail('No settlement (asset) entry found for transaction $transactionId');
 }

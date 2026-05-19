@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
 import '../../../design_system/theme/app_text_styles.dart';
 import '../../../design_system/tokens/spacing.dart';
@@ -396,8 +397,12 @@ class _InstallmentContractEditPageState
         firstRepaymentDate: _firstRepaymentDate,
         lastRepaymentDate: _lastRepaymentDate,
         repaymentMethod: _method,
-        interestRatePeriod: ratePpm == null ? null : _ratePeriod,
-        interestRatePpm: ratePpm,
+        interestRatePeriod: ratePpm == null
+            ? const Patch<InterestRatePeriod>.clear()
+            : Patch.set(_ratePeriod),
+        interestRatePpm: ratePpm == null
+            ? const Patch<int>.clear()
+            : Patch.set(ratePpm),
         interestAccrualMethod: _accrualMethod,
         totalFeeMinor: feeMinor,
         equalInstallmentOverrideMinor: overrideMinor,

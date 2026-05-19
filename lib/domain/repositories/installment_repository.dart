@@ -1,4 +1,5 @@
 import '../../core/money/money.dart';
+import '../../core/patch/patch.dart';
 import '../entities/installment_contract.dart';
 import '../entities/installment_repayment.dart';
 import '../entities/installment_schedule.dart';
@@ -44,12 +45,17 @@ class InstallmentContractDraft {
 }
 
 /// 合同字段编辑补丁，仅包含可变字段。
-/// 借款日期、source、放款交易等不可改字段不在此列。
+/// 借款日期之外、可变的合同字段都可在此 patch。
+///
+/// - 普通可空字段使用 `T?`：`null` 表示"不改"。
+/// - `note` / 利率两组字段使用 [Patch]：业务允许从"有值"清除为"无值"。
+/// - `disbursementAccountId` 用 `int?`，业务上禁止从有值清除（不允许合同跨 sourceType）。
 class InstallmentContractPatch {
   const InstallmentContractPatch({
     this.totalPeriods,
     this.firstRepaymentDate,
     this.lastRepaymentDate,
+    this.borrowingDate,
     this.repaymentMethod,
     this.interestRatePeriod,
     this.interestRatePpm,
@@ -57,26 +63,19 @@ class InstallmentContractPatch {
     this.totalFeeMinor,
     this.note,
     this.disbursementAccountId,
-    this.clearRate = false,
-    this.clearNote = false,
-    this.clearDisbursementAccount = false,
   });
 
   final int? totalPeriods;
   final DateTime? firstRepaymentDate;
   final DateTime? lastRepaymentDate;
+  final DateTime? borrowingDate;
   final InstallmentRepaymentMethod? repaymentMethod;
-  final InterestRatePeriod? interestRatePeriod;
-  final int? interestRatePpm;
+  final Patch<InterestRatePeriod>? interestRatePeriod;
+  final Patch<int>? interestRatePpm;
   final InterestAccrualMethod? interestAccrualMethod;
   final int? totalFeeMinor;
-  final String? note;
+  final Patch<String>? note;
   final int? disbursementAccountId;
-
-  /// 设为 true 时清空利率字段（period + ppm 都置空）。
-  final bool clearRate;
-  final bool clearNote;
-  final bool clearDisbursementAccount;
 }
 
 class InstallmentSchedulePatch {
