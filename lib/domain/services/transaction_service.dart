@@ -1,5 +1,6 @@
 import '../../core/errors/failure.dart';
 import '../../core/money/money.dart';
+import '../../core/patch/patch.dart';
 import '../../core/result/result.dart';
 import '../accounts/account_usage.dart';
 import '../entities/transaction.dart';
@@ -1062,8 +1063,9 @@ class TransactionServiceImpl implements TransactionService {
       final metadata = await updateTransactionMetadata(
         UpdateTransactionMetadataCommand(
           transactionId: command.transactionId,
-          note: command.note,
-          noteChanged: true,
+          note: command.note == null
+              ? const Patch<String>.clear()
+              : Patch.set(command.note!),
           isExcludedFromStats: command.isExcludedFromStats,
           isExcludedFromBudget: command.isExcludedFromBudget,
         ),
@@ -1162,7 +1164,7 @@ class TransactionServiceImpl implements TransactionService {
   Future<Result<void>> updateTransactionMetadata(
     UpdateTransactionMetadataCommand command,
   ) async {
-    if (!command.noteChanged &&
+    if (command.note == null &&
         command.isExcludedFromStats == null &&
         command.isExcludedFromBudget == null) {
       return const Result.success(null);
@@ -1194,7 +1196,6 @@ class TransactionServiceImpl implements TransactionService {
     try {
       await repository.updateTransactionMetadata(
         transactionId: command.transactionId,
-        updateNote: command.noteChanged,
         note: command.note,
         isExcludedFromStats: command.isExcludedFromStats,
         isExcludedFromBudget: command.isExcludedFromBudget,
@@ -2461,15 +2462,15 @@ class _ReplacementStructure {
 class UpdateTransactionMetadataCommand {
   const UpdateTransactionMetadataCommand({
     required this.transactionId,
-    this.noteChanged = false,
     this.note,
     this.isExcludedFromStats,
     this.isExcludedFromBudget,
   });
 
   final int transactionId;
-  final bool noteChanged;
-  final String? note;
+
+  /// `null` 表示不改备注；`Patch.set(value)` 设置；`Patch.clear()` 清空。
+  final Patch<String>? note;
   final bool? isExcludedFromStats;
   final bool? isExcludedFromBudget;
 }

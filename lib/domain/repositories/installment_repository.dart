@@ -86,7 +86,6 @@ class InstallmentSchedulePatch {
     this.expectedFee,
     this.status,
     this.note,
-    this.clearNote = false,
   });
 
   final DateTime? expectedRepaymentDate;
@@ -94,8 +93,7 @@ class InstallmentSchedulePatch {
   final Money? expectedInterest;
   final Money? expectedFee;
   final InstallmentScheduleStatus? status;
-  final String? note;
-  final bool clearNote;
+  final Patch<String>? note;
 }
 
 class InstallmentRepaymentDraft {

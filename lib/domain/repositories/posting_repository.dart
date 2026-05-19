@@ -1,3 +1,4 @@
+import '../../core/patch/patch.dart';
 import '../entities/account.dart';
 import '../entities/transaction_ownership.dart';
 import '../services/posting_command.dart';
@@ -17,8 +18,7 @@ abstract interface class PostingRepository {
 
   Future<void> updateTransactionMetadata({
     required int transactionId,
-    bool updateNote = false,
-    String? note,
+    Patch<String>? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
   });

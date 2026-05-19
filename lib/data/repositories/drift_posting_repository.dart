@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../core/money/money.dart';
+import '../../core/patch/patch.dart';
 import '../../domain/entities/account.dart' as domain;
 import '../../domain/entities/transaction_ownership.dart';
 import '../../domain/enums/accounting_enums.dart';
@@ -173,23 +174,26 @@ class DriftPostingRepository implements PostingRepository {
   @override
   Future<void> updateTransactionMetadata({
     required int transactionId,
-    bool updateNote = false,
-    String? note,
+    Patch<String>? note,
     bool? isExcludedFromStats,
     bool? isExcludedFromBudget,
   }) async {
-    if (!updateNote &&
+    if (note == null &&
         isExcludedFromStats == null &&
         isExcludedFromBudget == null) {
       return;
     }
+    final noteValue = switch (note) {
+      null => const Value<String?>.absent(),
+      // 沿用现有约定：空字符串视作清除，避免存储"空字符串备注"这种半残状态。
+      PatchSet<String>(:final value) =>
+        Value<String?>(value.isEmpty ? null : value),
+      PatchClear<String>() => const Value<String?>(null),
+    };
     await (_database.update(_database.transactions)
       ..where((t) => t.id.equals(transactionId))).write(
       TransactionsCompanion(
-        note:
-            updateNote
-                ? Value(note == null || note.isEmpty ? null : note)
-                : const Value.absent(),
+        note: noteValue,
         isExcludedFromStats:
             isExcludedFromStats == null
                 ? const Value.absent()

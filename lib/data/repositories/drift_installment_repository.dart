@@ -245,9 +245,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
           ? const Value.absent()
           : Value(patch.expectedFee!.minorUnits),
       status: patch.status == null ? const Value.absent() : Value(patch.status!),
-      note: patch.clearNote
-          ? const Value(null)
-          : (patch.note == null ? const Value.absent() : Value(patch.note)),
+      note: _toNullableValue(patch.note),
       updatedAt: Value(DateTime.now()),
     );
     await (_database.update(_database.installmentSchedules)

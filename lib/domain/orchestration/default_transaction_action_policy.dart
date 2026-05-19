@@ -1,4 +1,5 @@
 import '../../core/errors/failure.dart';
+import '../../core/patch/patch.dart';
 import '../../core/result/result.dart';
 import '../enums/accounting_enums.dart';
 import '../services/transaction_service.dart';
@@ -59,8 +60,9 @@ class DefaultTransactionActionPolicy implements TransactionActionPolicy {
     return _service.updateTransactionMetadata(
       UpdateTransactionMetadataCommand(
         transactionId: _transactionId,
-        note: newNote,
-        noteChanged: true,
+        note: newNote == null
+            ? const Patch<String>.clear()
+            : Patch.set(newNote),
       ),
     );
   }
@@ -119,8 +121,9 @@ class UnknownOwnedTransactionActionPolicy implements TransactionActionPolicy {
     return _service.updateTransactionMetadata(
       UpdateTransactionMetadataCommand(
         transactionId: _transactionId,
-        note: newNote,
-        noteChanged: true,
+        note: newNote == null
+            ? const Patch<String>.clear()
+            : Patch.set(newNote),
       ),
     );
   }

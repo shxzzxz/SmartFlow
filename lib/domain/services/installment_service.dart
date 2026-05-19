@@ -643,16 +643,11 @@ class InstallmentServiceImpl implements InstallmentService {
           }
         }
         if (command.note != null) {
-          final noteValue = switch (command.note!) {
-            PatchSet<String>(:final value) => value,
-            PatchClear<String>() => null,
-          };
           final metadataResult =
               await _transactionService.updateTransactionMetadata(
             UpdateTransactionMetadataCommand(
               transactionId: txId,
-              note: noteValue,
-              noteChanged: true,
+              note: command.note,
             ),
           );
           if (metadataResult case FailureResult(:final failure)) {
@@ -885,16 +880,11 @@ class InstallmentServiceImpl implements InstallmentService {
     }
 
     if (command.note != null) {
-      final noteValue = switch (command.note!) {
-        PatchSet<String>(:final value) => value,
-        PatchClear<String>() => null,
-      };
       final metadataResult =
           await _transactionService.updateTransactionMetadata(
         UpdateTransactionMetadataCommand(
           transactionId: command.transactionId,
-          note: noteValue,
-          noteChanged: true,
+          note: command.note,
         ),
       );
       if (metadataResult case FailureResult(:final failure)) {
