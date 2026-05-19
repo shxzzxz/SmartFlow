@@ -1,14 +1,14 @@
 import 'package:drift/drift.dart';
 
-import '../../core/money/money.dart';
-import '../../core/patch/patch.dart';
-import '../../domain/installments/entities/installment_contract.dart';
-import '../../domain/installments/entities/installment_repayment.dart';
-import '../../domain/installments/entities/installment_schedule.dart';
-import '../../domain/installments/enums/installment_enums.dart';
-import '../../domain/installments/repositories/installment_repository.dart';
-import '../../domain/installments/services/installment_schedule_generator.dart';
-import '../database/app_database.dart';
+import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
+import '../../../domain/installments/entities/installment_contract.dart';
+import '../../../domain/installments/entities/installment_repayment.dart';
+import '../../../domain/installments/entities/installment_schedule.dart';
+import '../../../domain/installments/enums/installment_enums.dart';
+import '../../../domain/installments/repositories/installment_repository.dart';
+import '../../../domain/installments/services/installment_schedule_generator.dart';
+import '../../app_database.dart';
 
 class DriftInstallmentRepository implements InstallmentRepository {
   DriftInstallmentRepository(this._database);

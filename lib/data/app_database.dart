@@ -2,18 +2,18 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../domain/accounting/enums/accounting_enums.dart';
-import '../../domain/installments/enums/installment_enums.dart';
+import '../domain/accounting/enums/accounting_enums.dart';
+import '../domain/installments/enums/installment_enums.dart';
 import 'migrations/app_migration_strategy.dart';
-import 'tables/accounts.dart';
-import 'tables/app_metadata.dart';
-import 'tables/budgets.dart';
-import 'tables/entries.dart';
-import 'tables/installment_contracts.dart';
-import 'tables/installment_repayments.dart';
-import 'tables/installment_schedules.dart';
-import 'tables/transaction_details.dart';
-import 'tables/transactions.dart';
+import 'accounting/tables/accounts.dart';
+import 'app_metadata.dart';
+import 'budgeting/tables/budgets.dart';
+import 'accounting/tables/entries.dart';
+import 'installments/tables/installment_contracts.dart';
+import 'installments/tables/installment_repayments.dart';
+import 'installments/tables/installment_schedules.dart';
+import 'accounting/tables/transaction_details.dart';
+import 'accounting/tables/transactions.dart';
 
 part 'app_database.g.dart';
 

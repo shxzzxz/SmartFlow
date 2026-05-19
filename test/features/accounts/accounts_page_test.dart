@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smartflow/data/database/database_provider.dart';
+import 'package:smartflow/data/database_provider.dart';
 import 'package:smartflow/design_system/theme/app_theme.dart';
 import 'package:smartflow/features/accounts/pages/accounts_page.dart';
 

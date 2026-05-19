@@ -1,12 +1,12 @@
 import 'package:drift/drift.dart';
 
-import '../../core/money/money.dart';
-import '../../domain/accounting/entities/transaction.dart' as domain;
-import '../../domain/accounting/entities/transaction_ownership.dart';
-import '../../domain/accounting/enums/accounting_enums.dart';
-import '../../domain/accounting/repositories/transaction_query_repository.dart';
-import '../../domain/accounting/services/transaction_query_service.dart';
-import '../database/app_database.dart';
+import '../../../core/money/money.dart';
+import '../../../domain/accounting/entities/transaction.dart' as domain;
+import '../../../domain/accounting/entities/transaction_ownership.dart';
+import '../../../domain/accounting/enums/accounting_enums.dart';
+import '../../../domain/accounting/repositories/transaction_query_repository.dart';
+import '../../../domain/accounting/services/transaction_query_service.dart';
+import '../../app_database.dart';
 
 class DriftTransactionQueryRepository implements TransactionQueryRepository {
   const DriftTransactionQueryRepository(this._database);

@@ -1,11 +1,11 @@
 import 'package:drift/drift.dart';
 
-import '../../core/money/money.dart';
-import '../../core/time/month_key.dart';
-import '../../domain/accounting/repositories/financial_metrics_repository.dart';
-import '../../domain/accounting/services/financial_metrics_service.dart';
-import '../../domain/accounting/services/transaction_query_service.dart';
-import '../database/app_database.dart';
+import '../../../core/money/money.dart';
+import '../../../core/time/month_key.dart';
+import '../../../domain/accounting/repositories/financial_metrics_repository.dart';
+import '../../../domain/accounting/services/financial_metrics_service.dart';
+import '../../../domain/accounting/services/transaction_query_service.dart';
+import '../../app_database.dart';
 
 class DriftFinancialMetricsRepository implements FinancialMetricsRepository {
   const DriftFinancialMetricsRepository(this._database);

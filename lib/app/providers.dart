@@ -1,12 +1,12 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../data/database/database_provider.dart';
-import '../data/repositories/drift_account_repository.dart';
-import '../data/repositories/drift_financial_metrics_repository.dart';
-import '../data/repositories/drift_installment_repository.dart';
-import '../data/repositories/drift_posting_repository.dart';
-import '../data/repositories/drift_system_account_resolver.dart';
-import '../data/repositories/drift_transaction_query_repository.dart';
+import '../data/database_provider.dart';
+import '../data/accounting/repositories/drift_account_repository.dart';
+import '../data/accounting/repositories/drift_financial_metrics_repository.dart';
+import '../data/installments/repositories/drift_installment_repository.dart';
+import '../data/accounting/repositories/drift_posting_repository.dart';
+import '../data/accounting/repositories/drift_system_account_resolver.dart';
+import '../data/accounting/repositories/drift_transaction_query_repository.dart';
 import '../domain/accounting/entities/account_usage.dart';
 import '../domain/accounting/entities/account.dart';
 import '../domain/installments/entities/installment_contract.dart';

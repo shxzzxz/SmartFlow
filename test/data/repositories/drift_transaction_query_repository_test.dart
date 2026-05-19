@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
-import 'package:smartflow/data/database/app_database.dart';
-import 'package:smartflow/data/repositories/drift_account_repository.dart';
-import 'package:smartflow/data/repositories/drift_posting_repository.dart';
-import 'package:smartflow/data/repositories/drift_transaction_query_repository.dart';
+import 'package:smartflow/data/app_database.dart';
+import 'package:smartflow/data/accounting/repositories/drift_account_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_posting_repository.dart';
+import 'package:smartflow/data/accounting/repositories/drift_transaction_query_repository.dart';
 import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
 import 'package:smartflow/domain/accounting/services/account_service.dart';
 import 'package:smartflow/domain/accounting/services/category_service.dart';
