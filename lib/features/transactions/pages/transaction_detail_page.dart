@@ -16,7 +16,7 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
-import '../../../domain/services/installment_service.dart';
+import '../../../domain/orchestration/transaction_handlers.dart';
 import '../../../domain/services/posting_command.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../domain/services/transaction_service.dart';
@@ -35,21 +35,18 @@ class TransactionDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(transactionDetailProvider(transactionId));
-    final linkAsync =
-        ref.watch(installmentLinkByTransactionProvider(transactionId));
-    final link = switch (linkAsync) {
-      AsyncData(value: final v) => v,
-      _ => null,
-    };
+    final handlersAsync =
+        ref.watch(transactionHandlersProvider(transactionId));
+    final handlers = handlersAsync.value;
 
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
         title: const Text('交易详情'),
         actions: [
-          if (link == null)
+          if (handlers != null)
             IconButton(
-              onPressed: () => _confirmDelete(context, ref),
+              onPressed: () => _confirmDelete(context, handlers),
               icon: const Icon(RemixIcons.more_2_line),
               tooltip: '更多',
             ),
@@ -62,13 +59,19 @@ class TransactionDetailPage extends ConsumerWidget {
           if (detail == null) {
             return const Center(child: Text('交易不存在'));
           }
-          return _DetailBody(detail: detail, installmentLink: link);
+          if (handlers == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return _DetailBody(detail: detail, handlers: handlers);
         },
       ),
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    TransactionHandlers handlers,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -88,11 +91,7 @@ class TransactionDetailPage extends ConsumerWidget {
           ),
     );
     if (confirmed != true) return;
-    final result = await ref
-        .read(transactionServiceProvider)
-        .deleteTransaction(
-          DeleteTransactionCommand(transactionId: transactionId),
-        );
+    final result = await handlers.delete();
     if (!context.mounted) return;
     result.when(
       success: (_) => context.pop(),
@@ -105,10 +104,10 @@ class TransactionDetailPage extends ConsumerWidget {
 }
 
 class _DetailBody extends ConsumerWidget {
-  const _DetailBody({required this.detail, this.installmentLink});
+  const _DetailBody({required this.detail, required this.handlers});
 
   final TransactionDetailView detail;
-  final InstallmentLink? installmentLink;
+  final TransactionHandlers handlers;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -123,10 +122,9 @@ class _DetailBody extends ConsumerWidget {
         ref.watch(accountsForUsageProvider(AccountUsage.reimbursement)).value ??
         const <Account>[];
 
-    final linked = installmentLink != null;
-    final showRefund = purpose == BusinessPurpose.dailyExpense && !linked;
-    final showReimbursement =
-        purpose == BusinessPurpose.reimbursementAdvance && !linked;
+    final showRefund = purpose == BusinessPurpose.dailyExpense;
+    final showReimbursement = purpose == BusinessPurpose.reimbursementAdvance;
+    final banner = handlers.displayBanner();
 
     return Column(
       children: [
@@ -140,9 +138,9 @@ class _DetailBody extends ConsumerWidget {
             ),
             children: [
               _HeroCard(detail: detail, semantic: semantic),
-              if (installmentLink != null) ...[
+              if (banner != null) ...[
                 const SizedBox(height: AppSpacing.space12),
-                _InstallmentLinkNotice(link: installmentLink!),
+                _HandlerBanner(text: banner),
               ],
               if (showRefund || showReimbursement) ...[
                 const SizedBox(height: AppSpacing.space12),
@@ -156,19 +154,23 @@ class _DetailBody extends ConsumerWidget {
               _PrimaryMetaCard(
                 detail: detail,
                 accountRows: accountRows,
-                onOccurredAtTap: linked
-                    ? () => _showInstallmentBlocked(context)
-                    : () => _editOccurredAt(context, ref),
-                onAccountTap: linked
-                    ? (_) => _showInstallmentBlocked(context)
-                    : (row) => _editAccount(
-                          context,
-                          ref,
-                          row,
-                          settlementAccounts: settlementAccounts,
-                          reimbursementAccounts: reimbursementAccounts,
-                        ),
-                onNoteTap: () => _editNote(context, ref),
+                onOccurredAtTap: _resolveTap(
+                  context,
+                  EditableField.occurredAt,
+                  () => _editOccurredAt(context),
+                ),
+                onAccountTap: (row) => _handleAccountTap(
+                  context,
+                  ref,
+                  row,
+                  settlementAccounts: settlementAccounts,
+                  reimbursementAccounts: reimbursementAccounts,
+                ),
+                onNoteTap: _resolveTap(
+                  context,
+                  EditableField.note,
+                  () => _editNote(context),
+                ),
               ),
               if (detail.history.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.space12),
@@ -181,21 +183,53 @@ class _DetailBody extends ConsumerWidget {
             ],
           ),
         ),
-        if (installmentLink != null)
-          _InstallmentLinkActionBar(link: installmentLink!)
-        else
-          _ActionBar(detail: detail),
+        _ActionBar(detail: detail, handlers: handlers),
       ],
     );
   }
 
-  void _showInstallmentBlocked(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('此交易由分期合同管理，请在合同详情页修改')),
+  VoidCallback _resolveTap(
+    BuildContext context,
+    EditableField field,
+    Future<void> Function() editor,
+  ) {
+    final permission = handlers.canEdit(field);
+    if (permission.isAllowed) {
+      return () => editor();
+    }
+    return () => _showDenied(context, permission.deniedReason);
+  }
+
+  void _handleAccountTap(
+    BuildContext context,
+    WidgetRef ref,
+    _AccountRowInfo row, {
+    required List<Account> settlementAccounts,
+    required List<Account> reimbursementAccounts,
+  }) {
+    if (row.editKind == _AccountEditKind.settlement) {
+      final permission = handlers.canEdit(EditableField.settlementAccount);
+      if (!permission.isAllowed) {
+        _showDenied(context, permission.deniedReason);
+        return;
+      }
+    }
+    _editAccount(
+      context,
+      ref,
+      row,
+      settlementAccounts: settlementAccounts,
+      reimbursementAccounts: reimbursementAccounts,
     );
   }
 
-  Future<void> _editNote(BuildContext context, WidgetRef ref) async {
+  void _showDenied(BuildContext context, String? reason) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(reason ?? '此字段在当前上下文不可编辑')),
+    );
+  }
+
+  Future<void> _editNote(BuildContext context) async {
     final current = detail.transaction.note ?? '';
     final controller = TextEditingController(text: current);
     final updated = await showDialog<String>(
@@ -231,20 +265,13 @@ class _DetailBody extends ConsumerWidget {
     if (updated == null) return;
     if (updated == current) return;
 
-    final result = await ref
-        .read(transactionServiceProvider)
-        .updateTransactionMetadata(
-          UpdateTransactionMetadataCommand(
-            transactionId: detail.transaction.id,
-            note: updated.isEmpty ? null : updated,
-            noteChanged: true,
-          ),
-        );
+    final result =
+        await handlers.changeNote(updated.isEmpty ? null : updated);
     if (!context.mounted) return;
     _showResultSnackBar(context, result, success: '备注已更新');
   }
 
-  Future<void> _editOccurredAt(BuildContext context, WidgetRef ref) async {
+  Future<void> _editOccurredAt(BuildContext context) async {
     final current = detail.transaction.occurredAt;
     final updated = await showAppDateTimePicker(
       context: context,
@@ -253,14 +280,7 @@ class _DetailBody extends ConsumerWidget {
     );
     if (updated == null || !context.mounted) return;
     if (updated == current) return;
-    final result = await ref
-        .read(transactionServiceProvider)
-        .updateTransactionBasics(
-          UpdateTransactionBasicsCommand(
-            transactionId: detail.transaction.id,
-            occurredAt: updated,
-          ),
-        );
+    final result = await handlers.changeOccurredAt(updated);
     if (!context.mounted) return;
     _showResultSnackBar(context, result, success: '交易时间已更新');
   }
@@ -283,19 +303,21 @@ class _DetailBody extends ConsumerWidget {
       selectedId: row.accountId == 0 ? null : row.accountId,
     );
     if (selectedId == null || selectedId == row.accountId) return;
-    final result = await ref
-        .read(transactionServiceProvider)
-        .updateTransactionBasics(
-          UpdateTransactionBasicsCommand(
-            transactionId: detail.transaction.id,
-            settlementAccountId:
-                row.editKind == _AccountEditKind.settlement ? selectedId : null,
-            reimbursementAccountId:
-                row.editKind == _AccountEditKind.reimbursement
-                    ? selectedId
-                    : null,
-          ),
-        );
+    final Result<void> result;
+    if (row.editKind == _AccountEditKind.settlement) {
+      result = await handlers.changeSettlementAccount(selectedId);
+    } else {
+      // reimbursement 账户变更属 reimbursementAdvance 流图原语自身的字段，
+      // 不经 handler；直接走 transactionService（参见 docs/08.2 动作二分）。
+      result = await ref
+          .read(transactionServiceProvider)
+          .updateTransactionBasics(
+            UpdateTransactionBasicsCommand(
+              transactionId: detail.transaction.id,
+              reimbursementAccountId: selectedId,
+            ),
+          );
+    }
     if (!context.mounted) return;
     _showResultSnackBar(context, result, success: '${row.label}已更新');
   }
@@ -614,9 +636,10 @@ class _RowCard extends StatelessWidget {
 }
 
 class _ActionBar extends StatelessWidget {
-  const _ActionBar({required this.detail});
+  const _ActionBar({required this.detail, required this.handlers});
 
   final TransactionDetailView detail;
+  final TransactionHandlers handlers;
 
   @override
   Widget build(BuildContext context) {
@@ -634,14 +657,6 @@ class _ActionBar extends StatelessWidget {
                 () => context.push('/transactions/${transaction.id}/refund'),
           ),
         );
-        actions.add(
-          _PrimaryAction(
-            label: '编辑',
-            onPressed:
-                () => context.push('/transactions/${transaction.id}/edit'),
-          ),
-        );
-        break;
       case BusinessPurpose.reimbursementAdvance:
         if (!closed) {
           actions.add(
@@ -661,33 +676,15 @@ class _ActionBar extends StatelessWidget {
                     : () => _showReimbursementDialog(context, detail),
           ),
         );
-        actions.add(
-          _PrimaryAction(
-            label: '编辑',
-            onPressed:
-                () => context.push('/transactions/${transaction.id}/edit'),
-          ),
-        );
-        break;
-      case BusinessPurpose.dailyIncome:
-      case BusinessPurpose.transfer:
-      case BusinessPurpose.borrowing:
-        actions.add(
-          _PrimaryAction(
-            label: '编辑',
-            onPressed:
-                () => context.push('/transactions/${transaction.id}/edit'),
-          ),
-        );
-        break;
       default:
-        actions.add(
-          _PrimaryAction(
-            label: '编辑',
-            onPressed: () => _showEditUnsupported(context),
-          ),
-        );
+        break;
     }
+    actions.add(
+      _PrimaryAction(
+        label: '编辑',
+        onPressed: () => context.push(handlers.editRoutePath()),
+      ),
+    );
 
     return SafeArea(
       top: false,
@@ -724,12 +721,6 @@ class _ActionBar extends StatelessWidget {
       context: context,
       builder: (_) => _ReimbursementDialog(detail: detail),
     );
-  }
-
-  void _showEditUnsupported(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('该交易类型暂不支持编辑')));
   }
 }
 
@@ -1067,35 +1058,15 @@ class _SecondaryAction extends StatelessWidget {
   }
 }
 
-class _InstallmentLinkNotice extends StatelessWidget {
-  const _InstallmentLinkNotice({required this.link});
+class _HandlerBanner extends StatelessWidget {
+  const _HandlerBanner({required this.text});
 
-  final InstallmentLink link;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final styles = context.appTextStyles;
-    final (title, body) = switch (link) {
-      InstallmentDisbursementLink() => (
-        '分期合同放款',
-        '此为分期合同的放款交易，金额、账户、日期等需在合同详情页内调整。',
-      ),
-      InstallmentRepaymentLink(:final repaymentType) => switch (repaymentType) {
-        InstallmentRepaymentType.regular => (
-          '分期还款',
-          '此交易由分期合同生成，撤销请在合同详情页操作。',
-        ),
-        InstallmentRepaymentType.extraPrincipal => (
-          '分期提前还本',
-          '此交易由分期合同生成，撤销请在合同详情页操作。',
-        ),
-        InstallmentRepaymentType.earlySettlement => (
-          '分期提前结清',
-          '此交易由分期合同生成，撤销请在合同详情页操作。',
-        ),
-      },
-    };
     return AppSurface(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space12),
@@ -1108,50 +1079,14 @@ class _InstallmentLinkNotice extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.space8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: styles.formValue),
-                  const SizedBox(height: AppSpacing.space2),
-                  Text(
-                    body,
-                    style: styles.listSupporting
-                        .copyWith(color: colors.onSurfaceVariant),
-                  ),
-                ],
+              child: Text(
+                text,
+                style: styles.listSupporting.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InstallmentLinkActionBar extends StatelessWidget {
-  const _InstallmentLinkActionBar({required this.link});
-
-  final InstallmentLink link;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.space16,
-          AppSpacing.space12,
-          AppSpacing.space16,
-          AppSpacing.space12,
-        ),
-        child: SizedBox(
-          height: AppSpacing.space48,
-          child: FilledButton.icon(
-            onPressed: () =>
-                context.push('/installments/${link.contractId}'),
-            icon: const Icon(RemixIcons.external_link_line),
-            label: const Text('去分期合同详情'),
-          ),
         ),
       ),
     );
@@ -1305,7 +1240,8 @@ List<_AccountRowInfo> _resolveAccountRows(TransactionDetailView detail) {
           accountId: inAccount.accountId,
           endpoint: _endpointFromEntry(inAccount),
           editKind:
-              purpose == BusinessPurpose.dailyIncome
+              purpose == BusinessPurpose.dailyIncome ||
+                      purpose == BusinessPurpose.borrowing
                   ? _AccountEditKind.settlement
                   : null,
         ),
@@ -1318,13 +1254,11 @@ List<_AccountRowInfo> _resolveAccountRows(TransactionDetailView detail) {
       );
       return [
         _AccountRowInfo(
-          label: '收支账户',
+          label:
+              purpose == BusinessPurpose.debtRepayment ? '还款账户' : '收支账户',
           accountId: outAccount.accountId,
           endpoint: _endpointFromEntry(outAccount),
-          editKind:
-              purpose == BusinessPurpose.dailyExpense
-                  ? _AccountEditKind.settlement
-                  : null,
+          editKind: _AccountEditKind.settlement,
         ),
       ];
     case BusinessPurpose.reimbursementAdvance:

@@ -12,6 +12,7 @@ import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../domain/accounts/account_usage.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/enums/installment_enums.dart';
 import '../../../domain/services/installment_service.dart';
 import '../../../widgets/business/plain_transaction_fields.dart';
 import '../widgets/installment_field_options.dart';

@@ -2,7 +2,7 @@ import '../../core/money/money.dart';
 import '../entities/installment_contract.dart';
 import '../entities/installment_repayment.dart';
 import '../entities/installment_schedule.dart';
-import '../enums/accounting_enums.dart';
+import '../enums/installment_enums.dart';
 import '../services/installment_schedule_generator.dart';
 
 class InstallmentContractDraft {
@@ -56,8 +56,10 @@ class InstallmentContractPatch {
     this.interestAccrualMethod,
     this.totalFeeMinor,
     this.note,
+    this.disbursementAccountId,
     this.clearRate = false,
     this.clearNote = false,
+    this.clearDisbursementAccount = false,
   });
 
   final int? totalPeriods;
@@ -69,10 +71,12 @@ class InstallmentContractPatch {
   final InterestAccrualMethod? interestAccrualMethod;
   final int? totalFeeMinor;
   final String? note;
+  final int? disbursementAccountId;
 
   /// 设为 true 时清空利率字段（period + ppm 都置空）。
   final bool clearRate;
   final bool clearNote;
+  final bool clearDisbursementAccount;
 }
 
 class InstallmentSchedulePatch {

@@ -9,6 +9,7 @@ import 'package:smartflow/data/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/repositories/drift_system_account_resolver.dart';
 import 'package:smartflow/data/repositories/drift_transaction_query_repository.dart';
 import 'package:smartflow/domain/enums/accounting_enums.dart';
+import 'package:smartflow/domain/enums/installment_enums.dart';
 import 'package:smartflow/domain/services/installment_service.dart';
 import 'package:smartflow/domain/services/posting_service.dart';
 import 'package:smartflow/domain/services/transaction_service.dart';

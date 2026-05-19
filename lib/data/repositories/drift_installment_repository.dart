@@ -4,7 +4,7 @@ import '../../core/money/money.dart';
 import '../../domain/entities/installment_contract.dart';
 import '../../domain/entities/installment_repayment.dart';
 import '../../domain/entities/installment_schedule.dart';
-import '../../domain/enums/accounting_enums.dart';
+import '../../domain/enums/installment_enums.dart';
 import '../../domain/repositories/installment_repository.dart';
 import '../../domain/services/installment_schedule_generator.dart';
 import '../database/app_database.dart';
@@ -139,6 +139,11 @@ class DriftInstallmentRepository implements InstallmentRepository {
         : (patch.note == null
             ? const Value<String?>.absent()
             : Value<String?>(patch.note));
+    final disbursementAccountValue = patch.clearDisbursementAccount
+        ? const Value<int?>(null)
+        : (patch.disbursementAccountId == null
+            ? const Value<int?>.absent()
+            : Value<int?>(patch.disbursementAccountId));
 
     final companion = InstallmentContractsCompanion(
       totalPeriods: patch.totalPeriods == null
@@ -162,6 +167,7 @@ class DriftInstallmentRepository implements InstallmentRepository {
           ? const Value.absent()
           : Value(patch.totalFeeMinor!),
       note: noteValue,
+      disbursementAccountId: disbursementAccountValue,
       updatedAt: Value(DateTime.now()),
     );
     await (_database.update(_database.installmentContracts)

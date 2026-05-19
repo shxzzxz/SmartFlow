@@ -1,4 +1,4 @@
-import '../enums/accounting_enums.dart';
+import '../enums/installment_enums.dart';
 
 class InstallmentRepayment {
   const InstallmentRepayment({

@@ -14,7 +14,7 @@ import '../../../design_system/widgets/app_submit_button.dart';
 import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/installment_contract.dart';
 import '../../../domain/entities/installment_schedule.dart';
-import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/enums/installment_enums.dart';
 import '../../../domain/services/installment_metrics.dart';
 import '../../../domain/services/installment_schedule_generator.dart';
 import '../../../domain/services/installment_service.dart';

@@ -13,6 +13,9 @@ import '../domain/entities/installment_contract.dart';
 import '../domain/entities/installment_repayment.dart';
 import '../domain/entities/installment_schedule.dart';
 import '../domain/enums/accounting_enums.dart';
+import '../domain/orchestration/default_transaction_handlers.dart';
+import '../domain/orchestration/orchestration_registry.dart';
+import '../domain/orchestration/transaction_handlers.dart';
 import '../domain/repositories/account_repository.dart';
 import '../domain/repositories/financial_metrics_repository.dart';
 import '../domain/repositories/installment_repository.dart';
@@ -27,6 +30,7 @@ import '../domain/services/installment_service.dart';
 import '../domain/services/posting_service.dart';
 import '../domain/services/transaction_query_service.dart';
 import '../domain/services/transaction_service.dart';
+import '../features/installments/orchestration/installment_contribution.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
@@ -280,16 +284,31 @@ Future<List<InstallmentRepayment>> installmentRepayments(
   return ref.watch(installmentServiceProvider).listRepayments(contractId);
 }
 
-/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
-/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+/// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
+@Riverpod(keepAlive: true)
+OrchestrationRegistry orchestrationRegistry(Ref ref) {
+  return OrchestrationRegistry([
+    InstallmentContribution(
+      ref.watch(installmentServiceProvider),
+      ref.watch(transactionServiceProvider),
+    ),
+  ]);
+}
+
+/// 交易详情页据此获取该笔交易适用的 handler；
+/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
 @riverpod
-Future<InstallmentLink?> installmentLinkByTransaction(
+Future<TransactionHandlers> transactionHandlers(
   Ref ref,
   int transactionId,
-) {
-  return ref
-      .watch(installmentServiceProvider)
-      .findLinkByTransaction(transactionId);
+) async {
+  final registry = ref.watch(orchestrationRegistryProvider);
+  final orchestrationHandlers = await registry.handlersFor(transactionId);
+  return orchestrationHandlers ??
+      DefaultTransactionHandlers(
+        service: ref.watch(transactionServiceProvider),
+        transactionId: transactionId,
+      );
 }
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。

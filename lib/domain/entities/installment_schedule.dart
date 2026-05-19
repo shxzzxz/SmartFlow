@@ -1,5 +1,5 @@
 import '../../core/money/money.dart';
-import '../enums/accounting_enums.dart';
+import '../enums/installment_enums.dart';
 
 class InstallmentSchedule {
   const InstallmentSchedule({

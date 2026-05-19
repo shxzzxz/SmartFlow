@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/domain/entities/installment_contract.dart';
 import 'package:smartflow/domain/entities/installment_schedule.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
+import 'package:smartflow/domain/enums/installment_enums.dart';
 import 'package:smartflow/domain/services/installment_metrics.dart';
 
 void main() {

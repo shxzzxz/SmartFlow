@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/enums/installment_enums.dart';
 
 @DataClassName('InstallmentRepaymentRow')
 class InstallmentRepayments extends Table {

@@ -110,7 +110,6 @@ class _InstallmentRepaymentFormPageState
         if (schedule.expectedFee.minorUnits > 0) {
           _feeController.text = schedule.expectedFee.major.toString();
         }
-        _occurredAt = schedule.expectedRepaymentDate;
       }
       if (widget.mode == InstallmentRepaymentMode.earlySettlement) {
         final paidPrincipalSum = schedules

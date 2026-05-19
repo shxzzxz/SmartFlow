@@ -11,6 +11,7 @@ import '../../../design_system/widgets/app_surface.dart';
 import '../../../domain/entities/account.dart';
 import '../../../domain/entities/installment_contract.dart';
 import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/enums/installment_enums.dart';
 import '../../../domain/services/transaction_query_service.dart';
 import '../../../features/home/view_models/transaction_row_presentation.dart';
 import '../../../features/home/widgets/transaction_row.dart';

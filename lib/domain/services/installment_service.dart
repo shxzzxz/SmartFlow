@@ -5,6 +5,7 @@ import '../entities/installment_contract.dart';
 import '../entities/installment_repayment.dart';
 import '../entities/installment_schedule.dart';
 import '../enums/accounting_enums.dart';
+import '../enums/installment_enums.dart';
 import '../repositories/installment_repository.dart';
 import '../repositories/transaction_query_repository.dart';
 import 'installment_schedule_generator.dart';
@@ -271,6 +272,14 @@ abstract interface class InstallmentService {
   );
 
   Future<Result<void>> updateContract(UpdateContractCommand command);
+
+  /// 同步合同的放款账户字段。
+  /// 用于交易详情页改放款交易的结算账户时一并维护合同侧引用，
+  /// 不重算 schedule、不改其他字段。
+  Future<Result<void>> updateContractDisbursementAccount(
+    int contractId,
+    int accountId,
+  );
 
   Future<Result<PostTransactionResult>> createRegularRepayment(
     CreateRegularRepaymentCommand command,
@@ -677,6 +686,35 @@ class InstallmentServiceImpl implements InstallmentService {
       ),
     );
 
+    return const Result.success(null);
+  }
+
+  @override
+  Future<Result<void>> updateContractDisbursementAccount(
+    int contractId,
+    int accountId,
+  ) async {
+    final contract = await _repository.findContract(contractId);
+    if (contract == null) {
+      return const Result.failure(
+        Failure(
+          code: 'installment_contract_not_found',
+          message: 'Installment contract does not exist.',
+        ),
+      );
+    }
+    if (contract.sourceType != InstallmentSourceType.disbursement) {
+      return const Result.failure(
+        Failure(
+          code: 'installment_contract_not_disbursement',
+          message: 'Only disbursement contracts carry a disbursement account.',
+        ),
+      );
+    }
+    await _repository.updateContract(
+      contractId,
+      InstallmentContractPatch(disbursementAccountId: accountId),
+    );
     return const Result.success(null);
   }
 

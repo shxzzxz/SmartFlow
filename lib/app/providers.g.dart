@@ -1789,63 +1789,116 @@ final class InstallmentRepaymentsFamily extends $Family
   String toString() => r'installmentRepaymentsProvider';
 }
 
-/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
-/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+/// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
 
-@ProviderFor(installmentLinkByTransaction)
-final installmentLinkByTransactionProvider =
-    InstallmentLinkByTransactionFamily._();
+@ProviderFor(orchestrationRegistry)
+final orchestrationRegistryProvider = OrchestrationRegistryProvider._();
 
-/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
-/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+/// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
 
-final class InstallmentLinkByTransactionProvider
+final class OrchestrationRegistryProvider
     extends
         $FunctionalProvider<
-          AsyncValue<InstallmentLink?>,
-          InstallmentLink?,
-          FutureOr<InstallmentLink?>
+          OrchestrationRegistry,
+          OrchestrationRegistry,
+          OrchestrationRegistry
         >
-    with $FutureModifier<InstallmentLink?>, $FutureProvider<InstallmentLink?> {
-  /// 反查 transaction 是否被分期模块持有（放款 / 还款）。
-  /// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
-  InstallmentLinkByTransactionProvider._({
-    required InstallmentLinkByTransactionFamily super.from,
+    with $Provider<OrchestrationRegistry> {
+  /// 编排叠加层注册表：当前只接入分期。新增编排层时在此处追加 contribution。
+  OrchestrationRegistryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'orchestrationRegistryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$orchestrationRegistryHash();
+
+  @$internal
+  @override
+  $ProviderElement<OrchestrationRegistry> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  OrchestrationRegistry create(Ref ref) {
+    return orchestrationRegistry(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(OrchestrationRegistry value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<OrchestrationRegistry>(value),
+    );
+  }
+}
+
+String _$orchestrationRegistryHash() =>
+    r'b223ab68b2cab262180646c28b8609c69d54f509';
+
+/// 交易详情页据此获取该笔交易适用的 handler；
+/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
+
+@ProviderFor(transactionHandlers)
+final transactionHandlersProvider = TransactionHandlersFamily._();
+
+/// 交易详情页据此获取该笔交易适用的 handler；
+/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
+
+final class TransactionHandlersProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<TransactionHandlers>,
+          TransactionHandlers,
+          FutureOr<TransactionHandlers>
+        >
+    with
+        $FutureModifier<TransactionHandlers>,
+        $FutureProvider<TransactionHandlers> {
+  /// 交易详情页据此获取该笔交易适用的 handler；
+  /// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
+  TransactionHandlersProvider._({
+    required TransactionHandlersFamily super.from,
     required int super.argument,
   }) : super(
          retry: null,
-         name: r'installmentLinkByTransactionProvider',
+         name: r'transactionHandlersProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$installmentLinkByTransactionHash();
+  String debugGetCreateSourceHash() => _$transactionHandlersHash();
 
   @override
   String toString() {
-    return r'installmentLinkByTransactionProvider'
+    return r'transactionHandlersProvider'
         ''
         '($argument)';
   }
 
   @$internal
   @override
-  $FutureProviderElement<InstallmentLink?> $createElement(
+  $FutureProviderElement<TransactionHandlers> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<InstallmentLink?> create(Ref ref) {
+  FutureOr<TransactionHandlers> create(Ref ref) {
     final argument = this.argument as int;
-    return installmentLinkByTransaction(ref, argument);
+    return transactionHandlers(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is InstallmentLinkByTransactionProvider &&
-        other.argument == argument;
+    return other is TransactionHandlersProvider && other.argument == argument;
   }
 
   @override
@@ -1854,34 +1907,31 @@ final class InstallmentLinkByTransactionProvider
   }
 }
 
-String _$installmentLinkByTransactionHash() =>
-    r'a8d64923b687cce37cbac40c46682923befe0ab6';
+String _$transactionHandlersHash() =>
+    r'33d3498b431d46c8f1190eda820fc49904b788ba';
 
-/// 反查 transaction 是否被分期模块持有（放款 / 还款）。
-/// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+/// 交易详情页据此获取该笔交易适用的 handler；
+/// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
 
-final class InstallmentLinkByTransactionFamily extends $Family
-    with $FunctionalFamilyOverride<FutureOr<InstallmentLink?>, int> {
-  InstallmentLinkByTransactionFamily._()
+final class TransactionHandlersFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<TransactionHandlers>, int> {
+  TransactionHandlersFamily._()
     : super(
         retry: null,
-        name: r'installmentLinkByTransactionProvider',
+        name: r'transactionHandlersProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  /// 反查 transaction 是否被分期模块持有（放款 / 还款）。
-  /// 交易详情页据此决定是否屏蔽更正/删除并提示跳转到合同详情页。
+  /// 交易详情页据此获取该笔交易适用的 handler；
+  /// 命中任一编排层则用其装配的 handler，否则使用走 transactionService 的默认 handler。
 
-  InstallmentLinkByTransactionProvider call(int transactionId) =>
-      InstallmentLinkByTransactionProvider._(
-        argument: transactionId,
-        from: this,
-      );
+  TransactionHandlersProvider call(int transactionId) =>
+      TransactionHandlersProvider._(argument: transactionId, from: this);
 
   @override
-  String toString() => r'installmentLinkByTransactionProvider';
+  String toString() => r'transactionHandlersProvider';
 }
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。
