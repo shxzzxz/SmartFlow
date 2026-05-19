@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/time/month_key.dart';
 import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/repositories/drift_financial_metrics_repository.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
-import 'package:smartflow/domain/services/financial_metrics_service.dart';
+import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/services/financial_metrics_service.dart';
 
 import '../../helpers/test_app_database.dart';
 

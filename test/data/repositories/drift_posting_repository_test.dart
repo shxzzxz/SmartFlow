@@ -4,11 +4,11 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/repositories/drift_posting_repository.dart';
-import 'package:smartflow/domain/entities/transaction_ownership.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
-import 'package:smartflow/domain/ledger/ledger_rules.dart';
-import 'package:smartflow/domain/services/posting_command.dart';
-import 'package:smartflow/domain/services/posting_service.dart';
+import 'package:smartflow/domain/accounting/entities/transaction_ownership.dart';
+import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/ledger/ledger_rules.dart';
+import 'package:smartflow/domain/accounting/services/posting_command.dart';
+import 'package:smartflow/domain/accounting/services/posting_service.dart';
 
 import '../../helpers/test_app_database.dart';
 

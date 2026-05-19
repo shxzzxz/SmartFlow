@@ -13,9 +13,9 @@ import '../../../design_system/tokens/spacing.dart';
 import '../../../design_system/widgets/app_datetime_picker.dart';
 import '../../../design_system/widgets/app_form_field.dart';
 import '../../../design_system/widgets/app_plain_form_row.dart';
-import '../../../domain/entities/account.dart';
-import '../../../domain/enums/accounting_enums.dart';
-import '../../../domain/services/account_service.dart';
+import '../../../domain/accounting/entities/account.dart';
+import '../../../domain/accounting/enums/accounting_enums.dart';
+import '../../../domain/accounting/services/account_service.dart';
 import '../../../widgets/business/business_icon.dart';
 import '../../../widgets/business/icon_choice_grid.dart';
 

@@ -1,4 +1,4 @@
-import '../entities/account.dart';
+import 'account.dart';
 import '../enums/accounting_enums.dart';
 
 enum AccountUsage {

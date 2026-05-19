@@ -1,4 +1,4 @@
-import '../../core/patch/patch.dart';
+import '../../../core/patch/patch.dart';
 import '../entities/account.dart';
 import '../entities/transaction_ownership.dart';
 import '../services/posting_command.dart';

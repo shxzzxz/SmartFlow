@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../../domain/enums/accounting_enums.dart';
+import '../../../domain/accounting/enums/accounting_enums.dart';
 
 @DataClassName('AccountRow')
 class Accounts extends Table {

@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-import '../../domain/enums/accounting_enums.dart';
+import '../../domain/accounting/enums/accounting_enums.dart';
 import 'app_database.dart';
 
 const builtinDataVersionKey = 'builtin_data_version';

@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 
-import '../../domain/enums/accounting_enums.dart';
-import '../../domain/repositories/system_account_resolver.dart';
+import '../../domain/accounting/enums/accounting_enums.dart';
+import '../../domain/accounting/repositories/system_account_resolver.dart';
 import '../database/app_database.dart';
 
 class DriftSystemAccountResolver implements SystemAccountResolver {

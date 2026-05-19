@@ -1,4 +1,4 @@
-import '../../core/money/money.dart';
+import '../../../core/money/money.dart';
 import '../entities/transaction.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/transaction_query_repository.dart';

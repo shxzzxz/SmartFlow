@@ -1,8 +1,8 @@
-import '../../core/errors/failure.dart';
-import '../../core/money/money.dart';
-import '../../core/patch/patch.dart';
-import '../../core/result/result.dart';
-import '../accounts/account_usage.dart';
+import '../../../core/errors/failure.dart';
+import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
+import '../../../core/result/result.dart';
+import '../entities/account_usage.dart';
 import '../entities/transaction.dart';
 import '../entities/transaction_ownership.dart';
 import '../enums/accounting_enums.dart';

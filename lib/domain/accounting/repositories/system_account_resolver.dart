@@ -1,4 +1,4 @@
-import '../../core/money/money.dart';
+import '../../../core/money/money.dart';
 
 abstract interface class SystemAccountResolver {
   Future<int> resolveOpeningBalance({

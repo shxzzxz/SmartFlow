@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/money/money.dart';
 import '../../../design_system/theme/app_theme_extension.dart';
-import '../../../domain/enums/accounting_enums.dart';
-import '../../../domain/services/transaction_query_service.dart';
+import '../../../domain/accounting/enums/accounting_enums.dart';
+import '../../../domain/accounting/services/transaction_query_service.dart';
 import '../../../widgets/business/finance_labels.dart';
 
 /// 主交易行展示用的纯计算函数。

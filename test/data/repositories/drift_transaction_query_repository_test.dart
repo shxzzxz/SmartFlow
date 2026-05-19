@@ -5,12 +5,12 @@ import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/repositories/drift_account_repository.dart';
 import 'package:smartflow/data/repositories/drift_posting_repository.dart';
 import 'package:smartflow/data/repositories/drift_transaction_query_repository.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
-import 'package:smartflow/domain/services/account_service.dart';
-import 'package:smartflow/domain/services/category_service.dart';
-import 'package:smartflow/domain/services/posting_service.dart';
-import 'package:smartflow/domain/services/transaction_query_service.dart';
-import 'package:smartflow/domain/services/transaction_service.dart';
+import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/services/account_service.dart';
+import 'package:smartflow/domain/accounting/services/category_service.dart';
+import 'package:smartflow/domain/accounting/services/posting_service.dart';
+import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
+import 'package:smartflow/domain/accounting/services/transaction_service.dart';
 
 import '../../helpers/test_app_database.dart';
 

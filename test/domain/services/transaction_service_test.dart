@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
-import 'package:smartflow/domain/entities/account.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
-import 'package:smartflow/domain/repositories/account_repository.dart';
-import 'package:smartflow/domain/services/posting_command.dart';
-import 'package:smartflow/domain/services/posting_service.dart';
-import 'package:smartflow/domain/services/transaction_service.dart';
+import 'package:smartflow/domain/accounting/entities/account.dart';
+import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/repositories/account_repository.dart';
+import 'package:smartflow/domain/accounting/services/posting_command.dart';
+import 'package:smartflow/domain/accounting/services/posting_service.dart';
+import 'package:smartflow/domain/accounting/services/transaction_service.dart';
 
 void main() {
   group('TransactionService', () {

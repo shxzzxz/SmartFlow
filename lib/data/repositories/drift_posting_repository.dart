@@ -2,12 +2,12 @@ import 'package:drift/drift.dart';
 
 import '../../core/money/money.dart';
 import '../../core/patch/patch.dart';
-import '../../domain/entities/account.dart' as domain;
-import '../../domain/entities/transaction_ownership.dart';
-import '../../domain/enums/accounting_enums.dart';
-import '../../domain/ledger/ledger_rules.dart';
-import '../../domain/repositories/posting_repository.dart';
-import '../../domain/services/posting_command.dart';
+import '../../domain/accounting/entities/account.dart' as domain;
+import '../../domain/accounting/entities/transaction_ownership.dart';
+import '../../domain/accounting/enums/accounting_enums.dart';
+import '../../domain/accounting/ledger/ledger_rules.dart';
+import '../../domain/accounting/repositories/posting_repository.dart';
+import '../../domain/accounting/services/posting_command.dart';
 import '../database/app_database.dart';
 
 class DriftPostingRepository implements PostingRepository {

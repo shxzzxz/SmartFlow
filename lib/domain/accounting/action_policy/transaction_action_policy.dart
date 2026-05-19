@@ -1,4 +1,4 @@
-import '../../core/result/result.dart';
+import '../../../core/result/result.dart';
 
 /// 通用 UI 与业务域之间的"槽集"。
 ///

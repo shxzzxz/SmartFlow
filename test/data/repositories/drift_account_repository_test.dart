@@ -4,9 +4,9 @@ import 'package:smartflow/core/money/money.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/repositories/drift_account_repository.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
-import 'package:smartflow/domain/services/account_service.dart';
-import 'package:smartflow/domain/services/category_service.dart';
+import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/services/account_service.dart';
+import 'package:smartflow/domain/accounting/services/category_service.dart';
 
 import '../../helpers/test_app_database.dart';
 

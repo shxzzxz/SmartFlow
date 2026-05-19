@@ -7,9 +7,9 @@ import 'package:smartflow/core/errors/failure.dart';
 import 'package:smartflow/core/result/result.dart';
 import 'package:smartflow/data/database/app_database.dart';
 import 'package:smartflow/data/database/database_provider.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
-import 'package:smartflow/domain/services/posting_command.dart';
-import 'package:smartflow/domain/services/transaction_service.dart';
+import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/services/posting_command.dart';
+import 'package:smartflow/domain/accounting/services/transaction_service.dart';
 import 'package:smartflow/features/transactions/pages/transaction_form_page.dart';
 
 import '../../helpers/test_app_database.dart';

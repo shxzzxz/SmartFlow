@@ -1,6 +1,6 @@
-import '../../core/errors/failure.dart';
-import '../../core/money/money.dart';
-import '../../core/result/result.dart';
+import '../../../core/errors/failure.dart';
+import '../../../core/money/money.dart';
+import '../../../core/result/result.dart';
 import '../entities/account.dart';
 import '../enums/accounting_enums.dart';
 import '../repositories/account_repository.dart';

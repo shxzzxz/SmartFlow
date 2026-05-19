@@ -1,5 +1,5 @@
-import '../../core/errors/failure.dart';
-import '../../core/result/result.dart';
+import '../../../core/errors/failure.dart';
+import '../../../core/result/result.dart';
 import '../enums/accounting_enums.dart';
 import '../ledger/ledger_rules.dart';
 import '../repositories/posting_repository.dart';

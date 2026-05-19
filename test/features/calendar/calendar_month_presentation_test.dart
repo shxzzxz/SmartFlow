@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smartflow/core/money/money.dart';
-import 'package:smartflow/domain/enums/accounting_enums.dart';
-import 'package:smartflow/domain/services/financial_metrics_service.dart';
-import 'package:smartflow/domain/services/transaction_query_service.dart';
+import 'package:smartflow/domain/accounting/enums/accounting_enums.dart';
+import 'package:smartflow/domain/accounting/services/financial_metrics_service.dart';
+import 'package:smartflow/domain/accounting/services/transaction_query_service.dart';
 import 'package:smartflow/features/calendar/view_models/calendar_month_presentation.dart';
 import 'package:smartflow/features/calendar/view_models/lunar_label_resolver.dart';
 

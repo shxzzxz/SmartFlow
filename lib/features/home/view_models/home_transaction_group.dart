@@ -1,6 +1,6 @@
-import '../../../domain/enums/accounting_enums.dart';
-import '../../../domain/services/financial_metrics_service.dart';
-import '../../../domain/services/transaction_query_service.dart';
+import '../../../domain/accounting/enums/accounting_enums.dart';
+import '../../../domain/accounting/services/financial_metrics_service.dart';
+import '../../../domain/accounting/services/transaction_query_service.dart';
 
 /// 同一日的主交易聚合，用于按日分组卡片。
 class HomeTransactionDayGroup {

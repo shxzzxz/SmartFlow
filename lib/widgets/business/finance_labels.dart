@@ -1,4 +1,4 @@
-import '../../domain/enums/accounting_enums.dart';
+import '../../domain/accounting/enums/accounting_enums.dart';
 
 String accountTypeLabel(AccountType type) {
   return switch (type) {

@@ -1,4 +1,4 @@
-import '../../core/money/money.dart';
+import '../../../core/money/money.dart';
 import '../enums/accounting_enums.dart';
 
 class Entry {

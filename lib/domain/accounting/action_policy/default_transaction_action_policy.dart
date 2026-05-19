@@ -1,6 +1,6 @@
-import '../../core/errors/failure.dart';
-import '../../core/patch/patch.dart';
-import '../../core/result/result.dart';
+import '../../../core/errors/failure.dart';
+import '../../../core/patch/patch.dart';
+import '../../../core/result/result.dart';
 import '../enums/accounting_enums.dart';
 import '../services/transaction_service.dart';
 import 'transaction_action_policy.dart';
