@@ -1,19 +1,19 @@
-import '../../core/errors/failure.dart';
-import '../../core/money/money.dart';
-import '../../core/patch/patch.dart';
-import '../../core/result/result.dart';
+import '../../../core/errors/failure.dart';
+import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
+import '../../../core/result/result.dart';
 import '../entities/installment_contract.dart';
 import '../entities/installment_repayment.dart';
 import '../entities/installment_schedule.dart';
-import '../accounting/entities/transaction_ownership.dart';
-import '../accounting/enums/accounting_enums.dart';
+import '../../accounting/entities/transaction_ownership.dart';
+import '../../accounting/enums/accounting_enums.dart';
 import '../enums/installment_enums.dart';
 import '../repositories/installment_repository.dart';
-import '../accounting/repositories/posting_repository.dart';
-import '../accounting/repositories/transaction_query_repository.dart';
+import '../../accounting/repositories/posting_repository.dart';
+import '../../accounting/repositories/transaction_query_repository.dart';
 import 'installment_schedule_generator.dart';
-import '../accounting/services/posting_command.dart';
-import '../accounting/services/transaction_service.dart';
+import '../../accounting/services/posting_command.dart';
+import '../../accounting/services/transaction_service.dart';
 
 class CreateDisbursementContractCommand {
   const CreateDisbursementContractCommand({

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../domain/enums/installment_enums.dart';
+import '../../../domain/installments/enums/installment_enums.dart';
 
 const List<DropdownMenuItem<InstallmentRepaymentMethod>>
     installmentRepaymentMethodItems = [

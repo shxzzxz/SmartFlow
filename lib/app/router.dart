@@ -2,7 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
 import '../domain/accounting/enums/accounting_enums.dart';
-import '../domain/enums/installment_enums.dart';
+import '../domain/installments/enums/installment_enums.dart';
 import '../features/accounts/pages/account_detail_page.dart';
 import '../features/accounts/pages/account_form_page.dart';
 import '../features/accounts/pages/accounts_page.dart';

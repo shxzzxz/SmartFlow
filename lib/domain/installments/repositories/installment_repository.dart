@@ -1,5 +1,5 @@
-import '../../core/money/money.dart';
-import '../../core/patch/patch.dart';
+import '../../../core/money/money.dart';
+import '../../../core/patch/patch.dart';
 import '../entities/installment_contract.dart';
 import '../entities/installment_repayment.dart';
 import '../entities/installment_schedule.dart';

@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import '../../core/money/money.dart';
+import '../../../core/money/money.dart';
 import '../entities/installment_contract.dart';
 import '../entities/installment_schedule.dart';
 import '../enums/installment_enums.dart';

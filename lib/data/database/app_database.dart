@@ -3,7 +3,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/accounting/enums/accounting_enums.dart';
-import '../../domain/enums/installment_enums.dart';
+import '../../domain/installments/enums/installment_enums.dart';
 import 'migrations/app_migration_strategy.dart';
 import 'tables/accounts.dart';
 import 'tables/app_metadata.dart';
