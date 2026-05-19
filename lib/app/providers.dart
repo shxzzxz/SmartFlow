@@ -12,11 +12,7 @@ import '../domain/accounting/entities/account.dart';
 import '../domain/installments/entities/installment_contract.dart';
 import '../domain/installments/entities/installment_repayment.dart';
 import '../domain/installments/entities/installment_schedule.dart';
-import '../domain/accounting/entities/transaction.dart' as domain;
 import '../domain/accounting/enums/accounting_enums.dart';
-import '../domain/installments/enums/installment_enums.dart';
-import '../domain/accounting/action_policy/default_transaction_action_policy.dart';
-import '../domain/accounting/action_policy/transaction_action_policy.dart';
 import '../domain/accounting/repositories/account_repository.dart';
 import '../domain/accounting/repositories/financial_metrics_repository.dart';
 import '../domain/installments/repositories/installment_repository.dart';
@@ -31,7 +27,6 @@ import '../domain/installments/services/installment_service.dart';
 import '../domain/accounting/services/posting_service.dart';
 import '../domain/accounting/services/transaction_query_service.dart';
 import '../domain/accounting/services/transaction_service.dart';
-import '../domain/installments/action_policy/installment_transaction_action_policy.dart';
 import '../core/time/month_key.dart';
 import '../core/money/money.dart';
 
@@ -284,42 +279,6 @@ Future<List<InstallmentRepayment>> installmentRepayments(
   int contractId,
 ) {
   return ref.watch(installmentServiceProvider).listRepayments(contractId);
-}
-
-/// 交易详情页据此获取该笔交易适用的 action policy。
-/// policy 按 transaction.owner_type 预解析，UI 不再按业务模块分流。
-@riverpod
-TransactionActionPolicy transactionActionPolicy(
-  Ref ref,
-  domain.Transaction transaction,
-) {
-  final ownership = transaction.ownership;
-  if (ownership == null) {
-    return DefaultTransactionActionPolicy(
-      service: ref.watch(transactionServiceProvider),
-      transactionId: transaction.id,
-      businessPurpose: transaction.businessPurpose,
-    );
-  }
-
-  if (ownership.ownerType == installmentOwnerType &&
-      ownership.ownerId != null) {
-    final role = InstallmentOwnerRole.fromWire(ownership.ownerRole);
-    if (role != null) {
-      return InstallmentTransactionActionPolicy(
-        installment: ref.watch(installmentServiceProvider),
-        contractId: ownership.ownerId!,
-        ownerRole: role,
-        transactionId: transaction.id,
-      );
-    }
-  }
-
-  return UnknownOwnedTransactionActionPolicy(
-    service: ref.watch(transactionServiceProvider),
-    transactionId: transaction.id,
-    ownerType: ownership.ownerType,
-  );
 }
 
 /// 提供 metrics 模块所需的 RepaymentCashflow 列表。

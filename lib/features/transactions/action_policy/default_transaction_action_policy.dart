@@ -1,8 +1,8 @@
 import '../../../core/errors/failure.dart';
 import '../../../core/patch/patch.dart';
 import '../../../core/result/result.dart';
-import '../enums/accounting_enums.dart';
-import '../services/transaction_service.dart';
+import '../../../domain/accounting/enums/accounting_enums.dart';
+import '../../../domain/accounting/services/transaction_service.dart';
 import 'transaction_action_policy.dart';
 
 /// 普通交易的默认 policy：所有 universal 动作直接走 [TransactionService]。
