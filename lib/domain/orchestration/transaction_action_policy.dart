@@ -1,8 +1,8 @@
 import '../../core/result/result.dart';
 
-/// 通用 UI 与编排叠加层之间的"槽集"。
+/// 通用 UI 与业务域之间的"槽集"。
 ///
-/// 详见 docs/08.2 通用UI与编排叠加层接入协议.md。
+/// 详见 docs/08.2 通用UI与业务域接入协议.md。
 abstract interface class TransactionActionPolicy {
   Future<Result<void>> delete();
 

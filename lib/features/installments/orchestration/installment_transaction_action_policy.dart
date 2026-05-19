@@ -4,7 +4,7 @@ import '../../../domain/enums/installment_enums.dart';
 import '../../../domain/orchestration/transaction_action_policy.dart';
 import '../../../domain/services/installment_service.dart';
 
-/// 分期编排叠加层针对单笔交易的 action policy。
+/// 分期业务域针对单笔交易的 action policy。
 ///
 /// 职责限定为"按 `ownerRole` 把通用 UI 的 universal 动作路由到 `InstallmentService`
 /// 的领域入口"——所有写入与一致性逻辑都在 service 内部，policy 不再持有
